@@ -34,7 +34,12 @@ function f2(r){
    ||/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION)\b.{0,180}\bABANDONAD[OA]\b/.test(t)
    ||/\bABANDONAD[OA]\b.{0,180}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION)\b/.test(t);
  const seizureStatus=/\bPEDIDO (?:DE |DE ADELANTO DE )?SECUESTRO(?: ACTIVO)?\b/.test(t);
- const currentFinding=procedure && (recoveryStrong||seizureStatus) && /\b(VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|DOMINIO|CHASIS|MOTOR)\b/.test(t);
+ const existingSeizure=/\b(?:POSEE|REGISTRA|SURGE|PESA|TENIA|TENÍA|CON|RESULTA (?:QUE )?(?:POSEE|REGISTRA)|ARROJA)\b.{0,120}\bPEDIDO (?:DE |DE ADELANTO DE )?SECUESTRO(?: ACTIVO)?\b/.test(t)
+   ||/\bPEDIDO (?:DE |DE ADELANTO DE )?SECUESTRO(?: ACTIVO)?\b.{0,140}\b(?:VIGENTE|ACTIVO|FECHA|SOLICITADO|REQUERIDO)\b/.test(t);
+ const newSeizure=/\b(?:SE DISPONE|DISPONE|SE SOLICITA|SOLICITA|SE IMPARTE|IMPARTE|SE CURSA|CURSA|SE INSERTA|INSERTA)\b.{0,120}\bPEDIDO (?:DE |DE ADELANTO DE )?SECUESTRO\b/.test(t);
+ const policePossession=/\b(?:INTERCEPTA|INTERCEPTADO|IDENTIFICA|IDENTIFICADO|PROCEDE AL SECUESTRO|SECUESTRA|INCAUTA|INCAUTADO|HALLA|HALLADO|LOCALIZA|LOCALIZADO|ENCUENTRA|ENCONTRADO)\b.{0,260}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|DOMINIO|CHASIS|MOTOR)\b/.test(t)
+   ||/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION)\b.{0,260}\b(?:INTERCEPTA|INTERCEPTADO|PROCEDE AL SECUESTRO|SECUESTRA|INCAUTA|HALLA|HALLADO|LOCALIZA|LOCALIZADO|ENCUENTRA|ENCONTRADO)\b/.test(t);
+ const currentFinding=(recoveryStrong || (procedure&&existingSeizure&&policePossession)) && /\b(VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|DOMINIO|CHASIS|MOTOR)\b/.test(t);
 
  // En actas de procedimiento, la sustracción relatada suele ser antecedente del hallazgo actual.
  if(currentFinding){
@@ -45,7 +50,7 @@ function f2(r){
 
  // Pedido de secuestro por sí solo no es recuperación.
  if(theftStrong && !recoveryStrong)
-   return {ok:1,cond:"SUSTRAIDO",why:"Sustracción del automotor acreditada; un eventual pedido de secuestro no se toma como recuperación."};
+   return {ok:1,cond:"SUSTRAIDO",why:newSeizure?"Sustracción actual acreditada; el pedido de secuestro se genera a raíz de este hecho y no implica recuperación.":"Sustracción del automotor acreditada sin recuperación posterior."};
 
  if(theftStrong && recoveryStrong){
    const theftIdx=Math.max(t.search(S),0), recIdx=t.search(recoveryAction);
@@ -54,9 +59,9 @@ function f2(r){
    return {ok:1,cond:"REVISION HUMANA",why:"Hay evidencia fuerte de sustracción y recuperación, pero el orden o la relación entre ambos eventos no es suficientemente claro."};
  }
 
- if(recoveryStrong||seizureStatus){
-   if(procedure||/HALLAZGO AUTOMOTOR/.test(c))
-     return {ok:1,cond:"HALLAZGO",why:"Predomina evidencia de hallazgo/localización del automotor."};
+ if(recoveryStrong || (existingSeizure&&policePossession)){
+   if(procedure||/HALLAZGO AUTOMOTOR|ENCUBRIMIENTO/.test(c)||existingSeizure)
+     return {ok:1,cond:"HALLAZGO",why:existingSeizure?"El automotor es hallado/interceptado en el hecho actual y registra un pedido de secuestro previo.":"Predomina evidencia de hallazgo/localización del automotor."};
    return {ok:1,cond:"REVISION HUMANA",why:"El automotor tiene evidencia de recuperación/hallazgo, pero el tipo de hecho actual no queda suficientemente definido."};
  }
 
