@@ -1,65 +1,27 @@
-let sourceRows=[], audited=[];
-const $=id=>document.getElementById(id);
+let src=[],cand=[],accepted=[],rejected=[],finalRows=[];const $=x=>document.getElementById(x);
 const norm=s=>(s??"").toString().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/\s+/g," ").trim();
-const get=(r,names)=>{for(const n of names){const k=Object.keys(r).find(k=>norm(k)===norm(n));if(k)return r[k]}return ""};
-
-function classify(row){
- const relato=norm(get(row,["relato","descripcion","narrativa","hecho"]));
- const car=norm(get(row,["analisis_caratula","caratula"]));
- if(!relato) return null;
-
- // Exclusiones fuertes: piezas/pertenencias sin evidencia de sustracción del rodado completo.
- const partes=/\b(PATENTE|CHAPA PATENTE|RUEDA|CUBIERTA|AUXILIO|BATERIA|ESTEREO|AUTOPARTE|PERTENENCIAS)\b/;
- const vehiculo=/\b(AUTOMOVIL|AUTO|VEHICULO|RODADO|CAMIONETA|CAMION|UTILITARIO|FURGON|SEDAN)\b/;
- const moto=/\b(MOTO|MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR)\b/;
- const sustr=/\b(SUSTRA(?:E|EN|JO|JERON|IDO|IDA)|ROBA(?:N|RON|DO|DA)?|APODERA(?:N|RON)?|SE LLEV(?:A|AN|ARON)|YA NO (?:SE )?ENCONTRABA|NO SE ENCONTRABA|FALTANTE DEL RODADO)\b/;
- const recupera=/\b(HALLA(?:DO|DA|RON|N)?|LOCALIZA(?:DO|DA|RON|N)?|RECUPERA(?:DO|DA|RON|N)?|ENCUENTRA(?:N|RON)?|DAN CON (?:EL|LA) (?:VEHICULO|RODADO|AUTO|CAMIONETA)|PEDIDO DE SECUESTRO|SECUESTRO ACTIVO)\b/;
- const hallazgoOrigen=/\b(HALLAZGO|VEHICULO ABANDONADO|RODADO ABANDONADO|PEDIDO DE SECUESTRO|SECUESTRO ACTIVO|PROCEDEN? AL SECUESTRO)\b/;
-
- const hasVehicle=vehiculo.test(relato)||/SUSTRA[C]?CION AUTOMOTOR/.test(car);
- const hasMoto=moto.test(relato)&&!vehiculo.test(relato);
- const hasSustr=sustr.test(relato);
- const hasRec=recupera.test(relato);
- if(hasMoto && !hasVehicle) return null;
-
- // Hallazgo independiente: recuperación/pedido activo sin narración de sustracción actual.
- if(hasRec && !hasSustr && (hallazgoOrigen.test(relato)||/HALLAZGO AUTOMOTOR/.test(car)))
-   return {cond:"HALLAZGO",why:"Relato de hallazgo/recuperación sin sustracción actual narrada."};
-
- // Inmediato exige los dos eventos en el mismo relato.
- if(hasVehicle && hasSustr && hasRec)
-   return {cond:"INMEDIATO",why:"El relato contiene sustracción del automotor y posterior recuperación/localización."};
-
- if(hasVehicle && hasSustr){
-   // Si el texto sólo habla claramente de una pieza, no aceptar por ahora.
-   if(partes.test(relato) && !/\b(RODADO|VEHICULO|AUTOMOVIL|AUTO|CAMIONETA)\b.{0,80}\b(SUSTRA|ROBA|APODERA|LLEV)/.test(relato)
-      && !/\b(SUSTRA|ROBA|APODERA|LLEV).{0,80}\b(RODADO|VEHICULO|AUTOMOVIL|AUTO|CAMIONETA)\b/.test(relato)) return null;
-   return {cond:"SUSTRAIDO",why:"Evidencia narrativa de apoderamiento del automotor completo sin recuperación posterior."};
- }
- return null;
+const get=(r,ns)=>{for(const n of ns){const k=Object.keys(r).find(k=>norm(k)===norm(n));if(k)return r[k]}return ""};
+const relato=r=>norm(get(r,["relato","descripcion","narrativa","hecho"]));
+const car=r=>norm(get(r,["analisis_caratula","caratula"]));
+const V=/\b(AUTOMOVIL|VEHICULO|RODADO|CAMIONETA|CAMION|UTILITARIO|FURGON|SEDAN|COCHE)\b/;
+const S=/\b(SUSTRA(?:E|EN|JO|JERON|IDO|IDA)|ROBA(?:N|RON|DO|DA)?|APODERA(?:N|RON)?|SE LLEV(?:A|AN|ARON)|NO SE ENCONTRABA|YA NO (?:SE )?ENCONTRABA)\b/;
+const R=/\b(HALLA(?:DO|DA|RON|N)?|LOCALIZA(?:DO|DA|RON|N)?|RECUPERA(?:DO|DA|RON|N)?|DAN CON (?:EL|LA) (?:VEHICULO|RODADO|AUTO|CAMIONETA)|VEHICULO ABANDONADO|RODADO ABANDONADO|PEDIDO DE SECUESTRO(?: ACTIVO)?)\b/;
+const PART=/\b(CHAPA PATENTE|PATENTE|RUEDA|CUBIERTA|AUXILIO|BATERIA|ESTEREO|AUTOPARTE|PERTENENCIAS)\b/;
+const MOTO=/\b(MOTO|MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR)\b/;
+function near(t,a,b,d=140){for(const ma of t.matchAll(new RegExp(a.source,"g"))){const z=t.slice(Math.max(0,ma.index-d),ma.index+d);if(b.test(z))return true}return false}
+function filter1(r){const t=relato(r),c=car(r);if(!t)return null;const vehicle=V.test(t)||/AUTOMOTOR/.test(c);const event=S.test(t)||R.test(t)||/SUSTRA[C]?CION AUTOMOTOR|HALLAZGO AUTOMOTOR/.test(c);if(!vehicle||!event)return null;if(MOTO.test(t)&&!V.test(t)&&!/AUTOMOTOR/.test(c))return null;return {...r,ETAPA_1:"CANDIDATO",MOTIVO_1:"Mención de automotor + evento compatible; requiere auditoría contextual."}}
+function filter2(r){const t=relato(r),c=car(r);const sv=near(t,V,S)||near(t,S,V),rv=near(t,V,R)||near(t,R,V);const strongHall=/\b(VEHICULO|RODADO|AUTOMOVIL|CAMIONETA)\b.{0,180}\b(PEDIDO DE SECUESTRO|ABANDONAD[OA]|HALLAD[OA]|LOCALIZAD[OA])\b/.test(t)||/\b(PEDIDO DE SECUESTRO|ABANDONAD[OA]|HALLAD[OA]|LOCALIZAD[OA])\b.{0,180}\b(VEHICULO|RODADO|AUTOMOVIL|CAMIONETA)\b/.test(t);
+ if(sv&&rv)return {ok:true,cond:"INMEDIATO",why:"Dos eventos vinculados al automotor: sustracción y recuperación/localización."};
+ if(sv&&!rv){if(PART.test(t)&&!near(t,S,V,80))return {ok:false,why:"La acción parece referirse a patente/autoparte/pertenencias, no al rodado completo."};return {ok:true,cond:"SUSTRAIDO",why:"Sustracción vinculada contextualmente al automotor, sin recuperación en la secuencia."}}
+ if(!sv&&(rv||strongHall)&&(/HALLAZGO AUTOMOTOR/.test(c)||strongHall))return {ok:true,cond:"HALLAZGO",why:"Hallazgo/localización vinculada al automotor sin sustracción actual narrada."};
+ return {ok:false,why:"No se pudo vincular con suficiente fuerza la acción de sustracción/hallazgo al automotor."}
 }
-
-$("file").addEventListener("change",async e=>{
- const f=e.target.files[0]; if(!f)return;
- const data=await f.arrayBuffer(), wb=XLSX.read(data), ws=wb.Sheets[wb.SheetNames[0]];
- sourceRows=XLSX.utils.sheet_to_json(ws,{defval:""});
- $("audit").disabled=false;$("status").textContent=`${sourceRows.length.toLocaleString("es-AR")} filas cargadas. Listo para auditar.`;
-});
-
-$("audit").addEventListener("click",()=>{
- audited=[];
- for(const row of sourceRows){const c=classify(row);if(c)audited.push({...row,CONDICION_AUDITOR:c.cond,MOTIVO_AUDITOR:c.why});}
- render(); $("download").disabled=!audited.length;
-});
-
-function render(){
- const counts={SUSTRAIDO:0,INMEDIATO:0,HALLAZGO:0};audited.forEach(r=>counts[r.CONDICION_AUDITOR]++);
- $("summary").innerHTML=Object.entries(counts).map(([k,v])=>`<div class="pill">${k}: ${v}</div>`).join("");
- $("status").textContent=`Auditoría terminada: ${audited.length} candidatos. Revisá los resultados antes de tomarlos como definitivos.`;
- $("rows").innerHTML=audited.slice(0,1000).map(r=>`<tr><td class="${r.CONDICION_AUDITOR}">${r.CONDICION_AUDITOR}</td><td>${esc(get(r,["numero_interno","nro_interno","numero interno"]))}</td><td>${esc(get(r,["analisis_caratula","caratula"]))}</td><td>${esc(r.MOTIVO_AUDITOR)}</td><td class="relato">${esc(get(r,["relato","descripcion","narrativa","hecho"]))}</td></tr>`).join("");
-}
+function extract(r){const t=norm(get(r,["relato","descripcion","narrativa","hecho"]));const pick=res=>{for(const re of res){const m=t.match(re);if(m)return m[1].trim()}return ""};return {...r,MARCA:"",MODELO:"",PATENTE:pick([/\bDOMINIO\s*(?:NRO|N°|NUMERO)?\s*[:\-]?\s*([A-Z]{2,3}\s?\d{3}\s?[A-Z]{0,2}|[A-Z]{3}\s?\d{3})\b/,/\bPATENTE\s*(?:NRO|N°|NUMERO)?\s*[:\-]?\s*([A-Z0-9]{6,9})\b/]),MOTOR:pick([/\b(?:NUMERO DE MOTOR|MOTOR(?: NRO| N°| NUMERO)?)\s*[:\-]?\s*([A-Z0-9.-]{4,25})\b/]),CHASIS:pick([/\b(?:NUMERO DE CHASIS|CHASIS(?: NRO| N°| NUMERO)?)\s*[:\-]?\s*([A-Z0-9.-]{6,30})\b/])}}
+$("file").onchange=async e=>{const f=e.target.files[0];if(!f)return;const wb=XLSX.read(await f.arrayBuffer()),ws=wb.Sheets[wb.SheetNames[0]];src=XLSX.utils.sheet_to_json(ws,{defval:""});cand=[];accepted=[];rejected=[];finalRows=[];$("f1").disabled=false;$("f2").disabled=$("f3").disabled=true;["d1","d2","d3"].forEach(x=>$(x).disabled=true);$("status").textContent=src.length.toLocaleString("es-AR")+" denuncias cargadas."};
+$("f1").onclick=()=>{cand=src.map(filter1).filter(Boolean);$("f2").disabled=!cand.length;$("d1").disabled=!cand.length;show(cand,"ETAPA_1","Filtro 1: "+cand.length+" candidatos de "+src.length+".")};
+$("f2").onclick=()=>{accepted=[];rejected=[];for(const r of cand){const x=filter2(r);(x.ok?accepted:rejected).push({...r,CONDICION_AUDITOR:x.cond||"DESCARTADO",MOTIVO_2:x.why})}$("f3").disabled=!accepted.length;$("d2").disabled=false;show(accepted,"CONDICION_AUDITOR",`Filtro 2: ${accepted.length} aceptados; ${rejected.length} descartados.`)};
+$("f3").onclick=()=>{finalRows=accepted.map(extract);$("d3").disabled=!finalRows.length;show(finalRows,"CONDICION_AUDITOR","Filtro 3: "+finalRows.length+" casos finales. Marca/modelo quedan pendientes de reglas validadas; patente/motor/chasis son extracción inicial.")};
+function show(arr,key,msg){$("status").textContent=msg;const ct={};arr.forEach(r=>ct[r[key]]=(ct[r[key]]||0)+1);$("summary").innerHTML=Object.entries(ct).map(([k,v])=>`<div class="pill">${k}: ${v}</div>`).join("");$("rows").innerHTML=arr.slice(0,1000).map(r=>`<tr><td>${esc(r[key])}</td><td>${esc(get(r,["numero_interno","nro_interno","numero interno"]))}</td><td>${esc(get(r,["analisis_caratula","caratula"]))}</td><td>${esc(r.MOTIVO_2||r.MOTIVO_1||"")}</td><td class="relato">${esc(get(r,["relato","descripcion","narrativa","hecho"]))}</td></tr>`).join("")}
+function dl(rows,name,sheets){const wb=XLSX.utils.book_new();for(const [sn,rs] of sheets||[["RESULTADO",rows]])XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rs),sn);XLSX.writeFile(wb,name)}
+$("d1").onclick=()=>dl(cand,"FILTRO_1_CANDIDATOS.xlsx");$("d2").onclick=()=>dl(null,"FILTRO_2_AUDITORIA.xlsx",[["ACEPTADOS",accepted],["DESCARTADOS",rejected]]);$("d3").onclick=()=>dl(finalRows,"AUDITORIA_AUTOMOTORES_FINAL.xlsx");
 function esc(v){return (v??"").toString().replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
-$("download").addEventListener("click",()=>{
- const ws=XLSX.utils.json_to_sheet(audited),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"AUDITORIA");
- XLSX.writeFile(wb,"AUDITORIA_AUTOMOTORES.xlsx");
-});
