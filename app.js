@@ -28,3 +28,4 @@ function esc(v){return (v??"").toString().replace(/[&<>"']/g,m=>({"&":"&amp;","<
 function tick(){return new Promise(r=>setTimeout(r,0))}
 function lock(on){$("file").disabled=on;$("f1").disabled=on||!src.length;$("f2").disabled=on||!cand.length;if(on)$("f3").disabled=true}
 window.addEventListener("error",e=>{$("status").textContent="❌ Error de la aplicación: "+e.message});
+\nif(document.getElementById("status")) document.getElementById("status").textContent="✅ Aplicación lista. Seleccioná el Excel de Cassandra.";\n
