@@ -1,30 +1,33 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
-  const status=document.getElementById("status");
-  const file=document.getElementById("file");
-  const f1=document.getElementById("f1");
-  status.textContent="✅ Aplicación lista. Seleccioná el Excel de Cassandra.";
-  file.addEventListener("change", async function(){
-    const f=this.files && this.files[0];
-    if(!f)return;
-    status.textContent="Leyendo "+f.name+"…";
-    try{
-      if(typeof XLSX==="undefined") throw new Error("No se cargó XLSX");
-      const buf=await f.arrayBuffer();
-      status.textContent="Interpretando Excel…";
-      const wb=XLSX.read(buf,{type:"array"});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      const rows=XLSX.utils.sheet_to_json(ws,{defval:""});
-      window.__CASSANDRA_ROWS__=rows;
-      f1.disabled=rows.length===0;
-      status.textContent="✅ "+rows.length.toLocaleString("es-AR")+" denuncias cargadas. El archivo se leyó correctamente.";
-    }catch(e){
-      status.textContent="❌ Error: "+e.message;
-    }
-  });
-  f1.addEventListener("click",function(){
-    const rows=window.__CASSANDRA_ROWS__||[];
-    status.textContent="✅ Botón 1 responde. Hay "+rows.length.toLocaleString("es-AR")+" denuncias listas para procesar.";
-  });
+let src=[],cand=[],accepted=[],rejected=[],finalRows=[];
+const $=id=>document.getElementById(id), status=$("status");
+const norm=s=>(s??"").toString().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/\s+/g," ").trim();
+const get=(r,names)=>{for(const n of names){const k=Object.keys(r).find(k=>norm(k)===norm(n));if(k)return r[k]}return ""};
+const txt=r=>norm(get(r,["relato","descripcion","narrativa","hecho"])), car=r=>norm(get(r,["analisis_caratula","caratula"]));
+const V=/\b(AUTOMOVIL|VEHICULO|RODADO|CAMIONETA|CAMION|UTILITARIO|FURGON|SEDAN|COCHE|AUTO)\b/;
+const S=/\b(SUSTRA(?:E|EN|JO|JERON|IDO|IDA)|ROBA(?:N|RON|DO|DA)?|APODERA(?:N|RON)?|SE LLEV(?:A|AN|ARON)|NO SE ENCONTRABA|YA NO (?:SE )?ENCONTRABA)\b/;
+const R=/\b(HALLA(?:DO|DA|RON|N)?|LOCALIZA(?:DO|DA|RON|N)?|RECUPERA(?:DO|DA|RON|N)?|ABANDONAD[OA]|PEDIDO DE SECUESTRO(?: ACTIVO)?)\b/;
+const M=/\b(MOTO|MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR)\b/;
+function near(t,a,b,d=150){for(const m of t.matchAll(new RegExp(a.source,"g"))){if(b.test(t.slice(Math.max(0,m.index-d),m.index+d)))return true}return false}
+function f1(r){const t=txt(r),c=car(r);if(!t)return null;const q=/SUSTRA[C]?CION AUTOMOTOR|HALLAZGO AUTOMOTOR/.test(c);if(!(V.test(t)||q)||!(S.test(t)||R.test(t)||q))return null;if(M.test(t)&&!V.test(t)&&!q)return null;return {...r,ETAPA_1:"CANDIDATO",MOTIVO_1:"Automotor + evento compatible. Pasa a auditoría estricta."}}
+function f2(r){const t=txt(r),c=car(r),sv=near(t,V,S)||near(t,S,V),rv=near(t,V,R)||near(t,R,V);const hall=near(t,V,R,180)||near(t,R,V,180);
+if(sv&&rv)return {ok:1,cond:"INMEDIATO",why:"Sustracción y recuperación/localización vinculadas al automotor."};
+if(sv)return {ok:1,cond:"SUSTRAIDO",why:"Sustracción vinculada al automotor sin recuperación vinculada."};
+if(hall&&(/HALLAZGO AUTOMOTOR/.test(c)||/PEDIDO DE SECUESTRO|ABANDONAD|HALLAD|LOCALIZAD/.test(t)))return {ok:1,cond:"HALLAZGO",why:"Hallazgo/localización vinculada al automotor sin sustracción actual."};
+return {ok:0,why:"Sin vínculo contextual suficientemente fuerte entre la acción y el automotor."}}
+function extract(r){const t=txt(r),pick=arr=>{for(const re of arr){const m=t.match(re);if(m)return m[1].trim()}return ""};return {...r,PATENTE:pick([/\bDOMINIO\s*(?:NRO|N°|NUMERO)?\s*[:\-]?\s*([A-Z]{2,3}\s?\d{3}\s?[A-Z]{0,2}|[A-Z]{3}\s?\d{3})\b/]),MOTOR:pick([/\b(?:NUMERO DE MOTOR|MOTOR(?: NRO| N°| NUMERO)?)\s*[:\-]?\s*([A-Z0-9.-]{4,25})\b/]),CHASIS:pick([/\b(?:NUMERO DE CHASIS|CHASIS(?: NRO| N°| NUMERO)?)\s*[:\-]?\s*([A-Z0-9.-]{6,30})\b/])}}
+function tick(){return new Promise(r=>setTimeout(r,0))}
+function show(rows,key,msg){status.textContent=msg;const c={};rows.forEach(r=>c[r[key]]=(c[r[key]]||0)+1);$("summary").innerHTML=Object.entries(c).map(([k,v])=>'<div class="pill">'+k+": "+v+"</div>").join("");$("rows").innerHTML=rows.slice(0,500).map(r=>"<tr><td>"+esc(r[key])+"</td><td>"+esc(get(r,["numero_interno","nro_interno","numero interno"]))+"</td><td>"+esc(get(r,["analisis_caratula","caratula"]))+"</td><td>"+esc(r.MOTIVO_2||r.MOTIVO_1||"")+"</td><td class='relato'>"+esc(get(r,["relato","descripcion","narrativa","hecho"]))+"</td></tr>").join("")}
+function esc(v){return (v??"").toString().replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
+function dl(name,sheets){const wb=XLSX.utils.book_new();sheets.forEach(([n,r])=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(r),n));XLSX.writeFile(wb,name)}
+status.textContent="✅ Aplicación lista. Seleccioná el Excel de Cassandra.";
+$("file").addEventListener("change",async function(){const f=this.files[0];if(!f)return;try{status.textContent="Leyendo "+f.name+"…";const wb=XLSX.read(await f.arrayBuffer(),{type:"array"});src=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""});cand=[];accepted=[];rejected=[];finalRows=[];$("f1").disabled=!src.length;$("f2").disabled=$("f3").disabled=true;["d1","d2","d3"].forEach(x=>$(x).disabled=true);status.textContent="✅ "+src.length.toLocaleString("es-AR")+" denuncias cargadas. Presioná 1️⃣ Detectar candidatos."}catch(e){status.textContent="❌ "+e.message}});
+$("f1").addEventListener("click",async()=>{cand=[];$("f1").disabled=true;for(let i=0;i<src.length;i++){const x=f1(src[i]);if(x)cand.push(x);if(i%250===0){status.textContent="🔎 Filtro 1 procesando… "+Math.round(100*i/src.length)+"%";await tick()}}$("f1").disabled=false;$("f2").disabled=!cand.length;$("d1").disabled=!cand.length;show(cand,"ETAPA_1","✅ Filtro 1 terminado: "+cand.length.toLocaleString("es-AR")+" candidatos de "+src.length.toLocaleString("es-AR")+".")});
+$("f2").addEventListener("click",async()=>{accepted=[];rejected=[];$("f2").disabled=true;for(let i=0;i<cand.length;i++){const r=cand[i],x=f2(r),z={...r,CONDICION_AUDITOR:x.cond||"DESCARTADO",MOTIVO_2:x.why};(x.ok?accepted:rejected).push(z);if(i%150===0){status.textContent="🧠 Filtro 2 procesando… "+Math.round(100*i/cand.length)+"%";await tick()}}$("f2").disabled=false;$("f3").disabled=!accepted.length;$("d2").disabled=false;show(accepted,"CONDICION_AUDITOR","✅ Filtro 2: "+accepted.length.toLocaleString("es-AR")+" aceptados / "+rejected.length.toLocaleString("es-AR")+" descartados.")});
+$("f3").addEventListener("click",async()=>{status.textContent="🧾 Filtro 3 completando datos…";await tick();finalRows=accepted.map(extract);$("d3").disabled=!finalRows.length;show(finalRows,"CONDICION_AUDITOR","✅ Filtro 3 terminado: "+finalRows.length.toLocaleString("es-AR")+" casos finales.")});
+$("d1").onclick=()=>dl("FILTRO_1_CANDIDATOS.xlsx",[["CANDIDATOS",cand]]);
+$("d2").onclick=()=>dl("FILTRO_2_AUDITORIA.xlsx",[["ACEPTADOS",accepted],["DESCARTADOS",rejected]]);
+$("d3").onclick=()=>dl("AUDITORIA_AUTOMOTORES_FINAL.xlsx",[["FINAL",finalRows]]);
 })();
 </script></body></html>
