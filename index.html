@@ -61,6 +61,19 @@ function f2(r){
    ||/\bCONSTATA\b.{0,140}\b(?:QUE )?(?:SU |EL |LA )?(?:UNIDAD|VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA)\b.{0,80}\b(?:NO ESTABA|NO SE ENCONTRABA|HABIA DESAPARECIDO)\b/.test(t)
    ||/\b(?:OBLIGA|OBLIGAN|INTIMA|INTIMAN)\b.{0,180}\bDESCEND(?:ER|ER DEL|A|E)\b.{0,260}\b(?:SE RETIRA|SE RETIRAN|HUYE|HUYEN|FUGA)\b.{0,180}\b(?:UNIDAD|VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA)\b/.test(t);
 
+ // V9.15 — capa semántica de ESTADO. Las frases aportan evidencia; no deciden categoría por sí solas.
+ // Evaluamos recuperación en segmentos locales para no convertir búsqueda, negación o hipótesis en un hallazgo real.
+ const segments=t.split(/[.!?;\n]+/).map(x=>x.trim()).filter(Boolean);
+ const vehicleToken=/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD)\b/;
+ const recoveryToken=/\b(?:HALLA|HALLAN|HALLARON|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCALIZARON|LOCALIZADO|LOCALIZADA|RECUPERA|RECUPERAN|RECUPERARON|RECUPERADO|RECUPERADA|ENCUENTRA|ENCUENTRAN|ENCONTRARON|ENCONTRADO|ENCONTRADA|HABIDO|HABIDA|APARECIO|APARECIDO)\b/;
+ const searchState=/\b(?:BUSCA|BUSCAR|BUSCANDO|RASTRILLA|RASTRILLAJE|RECORRE|RECORRIO|DAR|DIO|DA|DANDO)\b.{0,100}\b(?:VER SI|ENCONTRAR|HALLAR|LOCALIZAR|UBICAR)\b|\bPARA (?:VER SI )?(?:ENCONTRAR|HALLAR|LOCALIZAR|UBICAR)\b/;
+ const negRecovery=/\b(?:NO|SIN)\b.{0,55}\b(?:ENCONTRAR|ENCONTRADO|HALLAR|HALLADO|LOCALIZAR|LOCALIZADO|RECUPERAR|RECUPERADO|DAR CON)\b|\b(?:NO POSEE|NO TIENE|SIN)\b.{0,60}\b(?:RASTREO|GPS|LOJACK|GEOLOCALIZACION)\b/;
+ const hypotheticalRecovery=/\b(?:PODRIA|PODRIA HABER|HABRIA|POSIBLEMENTE|PRESUNTAMENTE|TAL VEZ)\b.{0,80}\b(?:ENCONTR|HALL|LOCALIZ|RECUPER|ABANDON)\w*/;
+ const questionRecovery=/\b(?:CONSULTAD[OA]|PREGUNTAD[OA])\b.{0,100}\b(?:ENCONTR|HALL|LOCALIZ|RECUPER)\w*/;
+ const assertedRecoverySegments=segments.filter(s=>vehicleToken.test(s)&&recoveryToken.test(s)&&!searchState.test(s)&&!negRecovery.test(s)&&!hypotheticalRecovery.test(s)&&!questionRecovery.test(s));
+ const recoveryAsserted=assertedRecoverySegments.length>0;
+ const recoveryOnlyNonAsserted=segments.some(s=>recoveryToken.test(s)&&(searchState.test(s)||negRecovery.test(s)||hypotheticalRecovery.test(s)||questionRecovery.test(s)))&&!recoveryAsserted;
+
  const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCALIZADO|LOCALIZADA|RECUPERA|RECUPERAN|RECUPERADO|RECUPERADA|ENCONTRADO|ENCONTRADA|HABIDO|HABIDA)\b/;
  const recoveryStrong=
    /\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION)\b.{0,220}\b(?:FUE|ES|RESULTA|SIENDO)? ?(?:HALLADO|HALLADA|LOCALIZADO|LOCALIZADA|RECUPERADO|RECUPERADA|ENCONTRADO|ENCONTRADA|HABIDO|HABIDA)\b/.test(t)
@@ -90,7 +103,7 @@ function f2(r){
    ||/\bFUE RECIENTEMENTE SUSTRAID[OA]\b/.test(t)
    ||/\bDESPOJARLO DE LA MISMA\b.{0,2500}\bVEHICULOS INCAUTADOS\b/.test(t)
    ||/\bSUSTRAID[OA].{0,2500}\b(?:PROCEDEMOS|PROCEDEN) A LA INCAUTACION DEL (?:AUTOMOTOR|RODADO|VEHICULO)\b/.test(t);
- const currentFinding=(recoveryStrong || (procedure&&existingSeizure&&policePossession)) && /\b(VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|DOMINIO|CHASIS|MOTOR)\b/.test(t);
+ const currentFinding=((recoveryStrong && !recoveryOnlyNonAsserted) || (procedure&&existingSeizure&&policePossession)) && /\b(VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|DOMINIO|CHASIS|MOTOR)\b/.test(t);
 
  // Motor de evidencias temporales: una tecnología o palabra aislada nunca define INMEDIATO.
  const evDuranteDenuncia=/\b(?:MIENTRAS|AL MOMENTO|EN MOMENTOS QUE).{0,100}\b(?:RADICABA|REALIZABA|FORMULABA|EFECTUABA).{0,80}\bDENUNCIA\b.{0,260}\b(?:HALLAD[OA]|HABID[OA]|LOCALIZAD[OA]|RECUPERAD[OA]|APARECIDO)\b/.test(t);
@@ -133,7 +146,7 @@ function f2(r){
  const historicalRecoveryBeforeCurrent=/\b(?:DIA|FECHA)\b.{0,80}\b(?:ANTERIOR|PASAD[OA]|[0-3]?[0-9][\/\-][01]?[0-9][\/\-](?:20)?2[0-9])\b.{0,500}\b(?:RECUPER[AO]|HALLAD[OA]|HABID[OA])\b.{0,800}\b(?:EN LA FECHA|DIA DE LA FECHA|HOY)\b.{0,500}\b(?:SUSTRA|ROBA|APODERA)\w*/.test(t);
  const accessoryOnly=/\b(?:SUSTRAJERON|SUSTRAJO|SUSTRAE|SUSTRAEN|ROBARON|ROBO|ROBA|ROBAN|APODERARON|APODERO)\b.{0,160}\b(?:RUEDA|CUBIERTA|NEUMATICO|AUXILIO|BATERIA|ESTEREO|PATENTE|CHAPA PATENTE|PERTENENCIAS|MORRAL|BOLSO|MOCHILA|HERRAMIENTAS|CELULAR|TELEFONO|IPHONE)\b/.test(t)
    && !/\b(?:SUSTRAJERON|SUSTRAE|SUSTRAEN|ROBARON|ROBA|ROBAN|SE LLEVAN|SE LLEVARON)\b.{0,120}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD)\b/.test(t);
- const immediateHigh=theftStrong && !accessoryOnly && immediateEvidence>0
+ const immediateHigh=theftStrong && !accessoryOnly && !recoveryOnlyNonAsserted && immediateEvidence>0
    && (evMismoRodado||evAvisoHallado||evDanCon||positiveConstata||evHallazgoDuranteDenuncia||evAbandonoPosterior||evRastreoPositivo)
    && !negativeAbsence && !historicalRecoveryBeforeCurrent
    && !(historicalTheft && !victimComplaint && !evAbandonoPosterior);
@@ -175,10 +188,10 @@ function f2(r){
  }
 
  // Pedido de secuestro por sí solo no es recuperación.
- if(theftStrong && !recoveryStrong)
+ if(theftStrong && (!recoveryStrong || recoveryOnlyNonAsserted))
    return {ok:1,cond:"SUSTRAIDO",why:newSeizure?"Sustracción actual acreditada; el pedido de secuestro se genera a raíz de este hecho y no implica recuperación.":"Sustracción del automotor acreditada sin recuperación posterior."};
 
- if(theftStrong && recoveryStrong){
+ if(theftStrong && recoveryStrong && !recoveryOnlyNonAsserted){
    const theftIdx=t.search(S), recIdx=t.search(recoveryAction);
    const sameSequence=/\b(?:POSTERIORMENTE|LUEGO|MINUTOS DESPUES|HORAS DESPUES|MIENTRAS.{0,80}DENUNCIA|RASTREO SATELITAL|GPS|LOJACK|PERSECUCION|SEGUIMIENTO)\b/.test(t)
       ||/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION)\b.{0,100}\b(?:ES|FUE) HABID[OA]\b/.test(t);
@@ -187,7 +200,7 @@ function f2(r){
    return {ok:1,cond:"REVISION HUMANA",why:"Hay evidencia fuerte de sustracción y recuperación, pero el orden o la relación entre ambos eventos no es suficientemente claro."};
  }
 
- if(recoveryStrong || (existingSeizure&&policePossession)){
+ if((recoveryStrong && !recoveryOnlyNonAsserted) || (existingSeizure&&policePossession)){
    if(procedure||/HALLAZGO AUTOMOTOR|ENCUBRIMIENTO/.test(c)||existingSeizure)
      return {ok:1,cond:"HALLAZGO",why:existingSeizure?"El automotor es hallado/interceptado en el hecho actual y registra un pedido de secuestro previo.":"Predomina evidencia de hallazgo/localización del automotor."};
    return {ok:1,cond:"REVISION HUMANA",why:"El automotor tiene evidencia de recuperación/hallazgo, pero el tipo de hecho actual no queda suficientemente definido."};
