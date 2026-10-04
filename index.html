@@ -80,10 +80,18 @@ function f2(r){
  const evConstataRecuperado=/\b(?:SE DIRIGE|SE DIRIGIO|ARRIBA|ARRIBO|CONCURRE|CONCURRIO)\b.{0,360}\b(?:CONSTATA|CONSTATANDO|OBSERVA|VISUALIZA|RECONOCE)\b.{0,220}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b.{0,120}\b(?:ALLI|EN EL LUGAR|ABANDONAD[OA]|INCENDIAD[OA])\b/.test(t)
    ||/\bCONSTATA\b.{0,100}\b(?:QUE )?(?:EL |SU )?(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b.{0,80}\b(?:ESTABA|SE HALLABA|SE ENCONTRABA)\b.{0,100}\b(?:ALLI|EN EL LUGAR|ABANDONAD[OA]|INCENDIAD[OA])\b/.test(t);
  const evHallazgoDuranteDenuncia=/\b(?:AL MOMENTO|MIENTRAS|EN MOMENTOS)\b.{0,180}\b(?:DENUNCIA|DENUNCIANDO|RECEPCIONANDO|RADICANDO)\b.{0,220}\b(?:TOMA CONOCIMIENTO|INFORMAN|INFORMARON)\b.{0,180}\b(?:HALLAD[OA]|LOCALIZAD[OA]|RECUPERAD[OA])\b/.test(t);
- const immediateEvidence=[evDuranteDenuncia,evRastreoPositivo,evAbandonoPosterior,evRecuperacionExplicita,evAvisoHallado,evDanCon,evConstataRecuperado,evHallazgoDuranteDenuncia].filter(Boolean).length;
- // V9.6: para INMEDIATO importa la secuencia del hecho, no que el relato sea policial.
- // Exigimos sustracción actual y una recuperación positiva posterior; GPS/LoJack solos no alcanzan.
- const immediateHigh=theftStrong && immediateEvidence>0 && (evMismoRodado||immediateRecovery||evAvisoHallado||evDanCon||evConstataRecuperado||evHallazgoDuranteDenuncia)
+ // V9.7: las negaciones y el orden temporal tienen prioridad sobre coincidencias léxicas.
+ const negativeAbsence=/\b(?:CONSTATA|ADVIERTE|OBSERVA)\b.{0,120}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b.{0,100}\b(?:NO SE ENCONTRABA|NO ESTABA|YA NO SE ENCONTRABA|NO SE HALLABA|FALTABA)\b/.test(t)
+   ||/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b.{0,80}\b(?:NO SE ENCONTRABA|NO ESTABA|YA NO ESTABA|NO SE HALLABA)\b/.test(t);
+ const positiveConstata=evConstataRecuperado && !negativeAbsence;
+ const immediateEvidence=[evDuranteDenuncia,evRastreoPositivo,evAbandonoPosterior,evRecuperacionExplicita,evAvisoHallado,evDanCon,positiveConstata,evHallazgoDuranteDenuncia].filter(Boolean).length;
+
+ // Una recuperación histórica no puede cerrar como INMEDIATO una nueva sustracción.
+ // También evitamos que "constata que el vehículo NO estaba" sea leído como hallazgo.
+ const historicalRecoveryBeforeCurrent=/\b(?:DIA|FECHA)\b.{0,80}\b(?:ANTERIOR|PASAD[OA]|[0-3]?[0-9][\/\-][01]?[0-9][\/\-](?:20)?2[0-9])\b.{0,500}\b(?:RECUPER[AO]|HALLAD[OA]|HABID[OA])\b.{0,800}\b(?:EN LA FECHA|DIA DE LA FECHA|HOY)\b.{0,500}\b(?:SUSTRA|ROBA|APODERA)\w*/.test(t);
+ const immediateHigh=theftStrong && immediateEvidence>0
+   && (evMismoRodado||evAvisoHallado||evDanCon||positiveConstata||evHallazgoDuranteDenuncia||evAbandonoPosterior||evRastreoPositivo)
+   && !negativeAbsence && !historicalRecoveryBeforeCurrent
    && !(historicalTheft && !victimComplaint && !evAbandonoPosterior);
 
  const rawHallazgo=/\bHALLAZGO DE AUTOMOTOR\b/.test(cf);
@@ -92,7 +100,7 @@ function f2(r){
  // INMEDIATO de alta confianza: sustracción actual + recuperación inequívoca del mismo rodado.
  if(immediateHigh)
    return {ok:1,cond:"INMEDIATO",why:"Confianza alta: sustracción actual + recuperación posterior vinculada al mismo automotor ("+
-     [evDuranteDenuncia||evHallazgoDuranteDenuncia?"durante la denuncia":"",evRastreoPositivo?"rastreo con localización positiva":"",evAvisoHallado?"aviso posterior de hallazgo":"",evDanCon?"localización efectiva del rodado":"",evConstataRecuperado?"constatación posterior del rodado":"",evAbandonoPosterior?"abandono posterior":"",evRecuperacionExplicita?"recuperación temporal explícita":""].filter(Boolean).join(", ")+")."};
+     [evDuranteDenuncia||evHallazgoDuranteDenuncia?"durante la denuncia":"",evRastreoPositivo?"rastreo con localización positiva":"",evAvisoHallado?"aviso posterior de hallazgo":"",evDanCon?"localización efectiva del rodado":"",positiveConstata?"constatación positiva posterior del rodado":"",evAbandonoPosterior?"abandono posterior":"",evRecuperacionExplicita?"recuperación temporal explícita":""].filter(Boolean).join(", ")+")."};
 
  // La calificación original de Hallazgo sólo refuerza cuando el relato también es un procedimiento actual sobre el rodado.
  if(hallazgoProcedure)
