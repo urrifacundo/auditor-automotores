@@ -1,17 +1,16 @@
 # Auditor de Automotores
 
-Auditor específico para detectar automotores (no motovehículos) a partir del relato crudo de Cassandra.
+Auditor de automotores basado en el relato crudo de Cassandra. No toma la clasificación de Quirón como verdad.
 
-## V1
-El primer botón clasifica candidatos en:
-- SUSTRAIDO: automotor efectivamente sustraído sin recuperación en la misma secuencia.
-- INMEDIATO: sustracción + recuperación/localización en la misma secuencia narrativa.
-- HALLAZGO: hallazgo/recuperación de un automotor previamente sustraído, sin sustracción actual narrada.
+## Arquitectura de tres filtros
+1. **Detectar candidatos:** reduce el universo. No clasifica.
+2. **Auditar candidatos:** exige relación contextual entre acción y automotor; clasifica SUSTRAIDO, INMEDIATO o HALLAZGO. Los descartados se conservan para revisar falsos negativos.
+3. **Completar datos:** extracción final de patente, motor y chasis; marca/modelo se incorporarán después de validar reglas.
 
-La carátula de Quirón es evidencia auxiliar, nunca la fuente de verdad.
+### Criterios
+- INMEDIATO es una categoría propia: exige sustracción + recuperación/localización en la misma secuencia.
+- HALLAZGO es recuperación/localización de un automotor previamente sustraído sin narrar una sustracción actual.
+- Patentes, ruedas, autopartes, pertenencias, motos y menciones circunstanciales no deben confundirse con un automotor sustraído.
+- Caso de regresión: una denuncia de Lesiones que dice “secuestro de la ropa” y “trasladado en auto particular” debe descartarse.
 
-## Principio de diseño
-Alta precisión antes que cantidad. Patente, ruedas, autopartes, pertenencias, tentativa y motovehículos no deben confundirse con sustracción de un automotor completo.
-
-## Próxima etapa
-Validar esta V1 contra el lote 1–10 de enero, revisar desacuerdos y convertir los errores reales en reglas de regresión. Luego incorporar el segundo botón para extraer marca, modelo, patente, motor y chasis.
+El objetivo durante el desarrollo es alta precisión y trazabilidad, no maximizar candidatos.
