@@ -75,8 +75,16 @@ function f2(r){
  const evMismoRodado=/\b(?:DICHO|MISMO|MENCIONADO|REFERIDO) (?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b/.test(t)
    ||/\b(?:SU|EL) (?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b/.test(t);
  const historicalTheft=/\b(?:HABIA SIDO|HABRIA SIDO|REGISTRABA|POSEIA|POSEE|TENIA)\b.{0,120}\b(?:SUSTRAID[OA]|ROBADO|PEDIDO DE SECUESTRO)\b/.test(t);
- const immediateEvidence=[evDuranteDenuncia,evRastreoPositivo,evAbandonoPosterior,evRecuperacionExplicita].filter(Boolean).length;
- const immediateHigh=theftStrong && immediateEvidence>0 && (evMismoRodado||immediateRecovery) && !historicalTheft;
+ const evAvisoHallado=/\b(?:RECIBE|RECIBIO|TOMA CONOCIMIENTO|LE INFORMAN|LE INFORMARON|LE AVISAN|LE AVISARON|ESCUCHA)\b.{0,260}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)?\b.{0,160}\b(?:HABIA APARECIDO|HABIA SIDO HALLAD[OA]|FUE HALLAD[OA]|FUE LOCALIZAD[OA]|HABIA SIDO LOCALIZAD[OA]|HABIA SIDO RECUPERAD[OA])\b/.test(t);
+ const evDanCon=/\b(?:DAN|DIERON|LOGRAN|LOGRARON) (?:FINALMENTE )?CON (?:EL |LA |DICHO |DICHA |SU )?(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b/.test(t);
+ const evConstataRecuperado=/\b(?:SE DIRIGE|SE DIRIGIO|ARRIBA|ARRIBO|CONCURRE|CONCURRIO)\b.{0,360}\b(?:CONSTATA|CONSTATANDO|OBSERVA|VISUALIZA|RECONOCE)\b.{0,220}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b.{0,120}\b(?:ALLI|EN EL LUGAR|ABANDONAD[OA]|INCENDIAD[OA])\b/.test(t)
+   ||/\bCONSTATA\b.{0,100}\b(?:QUE )?(?:EL |SU )?(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b.{0,80}\b(?:ESTABA|SE HALLABA|SE ENCONTRABA)\b.{0,100}\b(?:ALLI|EN EL LUGAR|ABANDONAD[OA]|INCENDIAD[OA])\b/.test(t);
+ const evHallazgoDuranteDenuncia=/\b(?:AL MOMENTO|MIENTRAS|EN MOMENTOS)\b.{0,180}\b(?:DENUNCIA|DENUNCIANDO|RECEPCIONANDO|RADICANDO)\b.{0,220}\b(?:TOMA CONOCIMIENTO|INFORMAN|INFORMARON)\b.{0,180}\b(?:HALLAD[OA]|LOCALIZAD[OA]|RECUPERAD[OA])\b/.test(t);
+ const immediateEvidence=[evDuranteDenuncia,evRastreoPositivo,evAbandonoPosterior,evRecuperacionExplicita,evAvisoHallado,evDanCon,evConstataRecuperado,evHallazgoDuranteDenuncia].filter(Boolean).length;
+ // V9.6: para INMEDIATO importa la secuencia del hecho, no que el relato sea policial.
+ // Exigimos sustracción actual y una recuperación positiva posterior; GPS/LoJack solos no alcanzan.
+ const immediateHigh=theftStrong && immediateEvidence>0 && (evMismoRodado||immediateRecovery||evAvisoHallado||evDanCon||evConstataRecuperado||evHallazgoDuranteDenuncia)
+   && !(historicalTheft && !victimComplaint && !evAbandonoPosterior);
 
  const rawHallazgo=/\bHALLAZGO DE AUTOMOTOR\b/.test(cf);
  const hallazgoProcedure=rawHallazgo && procedure && (policePossession||recoveryStrong||/\b(?:ESTADO DE ABANDONO|ABANDONAD[OA]|CIRCULABA|ESTACIONADO)\b/.test(t));
@@ -84,7 +92,7 @@ function f2(r){
  // INMEDIATO de alta confianza: sustracción actual + recuperación inequívoca del mismo rodado.
  if(immediateHigh)
    return {ok:1,cond:"INMEDIATO",why:"Confianza alta: sustracción actual + recuperación posterior vinculada al mismo automotor ("+
-     [evDuranteDenuncia?"durante la denuncia":"",evRastreoPositivo?"rastreo con localización positiva":"",evAbandonoPosterior?"abandono posterior":"",evRecuperacionExplicita?"recuperación temporal explícita":""].filter(Boolean).join(", ")+")."};
+     [evDuranteDenuncia||evHallazgoDuranteDenuncia?"durante la denuncia":"",evRastreoPositivo?"rastreo con localización positiva":"",evAvisoHallado?"aviso posterior de hallazgo":"",evDanCon?"localización efectiva del rodado":"",evConstataRecuperado?"constatación posterior del rodado":"",evAbandonoPosterior?"abandono posterior":"",evRecuperacionExplicita?"recuperación temporal explícita":""].filter(Boolean).join(", ")+")."};
 
  // La calificación original de Hallazgo sólo refuerza cuando el relato también es un procedimiento actual sobre el rodado.
  if(hallazgoProcedure)
