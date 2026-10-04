@@ -12,7 +12,7 @@ const M=/\b(MOTO|MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR)\b/;
 function near(t,a,b,d=150){for(const m of t.matchAll(new RegExp(a.source,"g"))){if(b.test(t.slice(Math.max(0,m.index-d),m.index+d)))return true}return false}
 function f1(r){const t=txt(r),c=car(r);if(!t)return null;const q=/SUSTRA[C]?CION AUTOMOTOR|HALLAZGO AUTOMOTOR/.test(c);if(!(V.test(t)||q)||!(S.test(t)||R.test(t)||q))return null;if(M.test(t)&&!V.test(t)&&!q)return null;return {...r,ETAPA_1:"CANDIDATO",MOTIVO_1:"Automotor + evento compatible. Pasa a auditoría estricta."}}
 function f2(r){
- const t=txt(r), c=car(r);
+ const t=txt(r), c=car(r), cf=calif(r);
  const autoWord=/\b(AUTOMOVIL|AUTO|CAMIONETA|CAMION|UTILITARIO|FURGON|SEDAN|COCHE)\b/.test(t);
  const genericVehicle=/\b(VEHICULO|RODADO)\b/.test(t);
  const moto=M.test(t);
@@ -27,7 +27,12 @@ function f2(r){
    ||/\b(SE LO|SE LA|LO|LA) (?:HABRIAN |HABRIA )?(?:SUSTRAIDO|ROBADO|LLEVADO)\b/.test(t)
    ||/\b(?:TOMAN|TOMARON|SUSTRAEN|SUSTRAJERON) (?:LA |LAS )?LLAVE(?:S)?\b.{0,260}\b(?:SE DAN|DANDOSE|DARSE) A LA FUGA\b/.test(t)
    ||/\b(?:SUBEN|SUBIERON|ABORDAN|ABORDARON) (?:A |AL )?(?:SU |EL )?(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA)\b.{0,220}\b(?:FUGA|RETIRAN|HUYEN)\b/.test(t)
-   ||/\b(?:DEJO|DEJA|HABIA DEJADO) (?:ESTACIONADO )?(?:SU |EL )?(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA)\b.{0,450}\b(?:NO SE ENCONTRABA|YA NO ESTABA|CONSTATA.{0,100}(?:FALTANTE|SUSTRA))\b/.test(t);
+   ||/\b(?:DEJO|DEJA|HABIA DEJADO) (?:ESTACIONADO )?(?:SU |EL )?(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA)\b.{0,450}\b(?:NO SE ENCONTRABA|YA NO ESTABA|CONSTATA.{0,100}(?:FALTANTE|SUSTRA))\b/.test(t)
+   ||/\b(?:DESPOJA|DESPOJAN|DESPOJARON|DESPOJARLO|DESPOJARLA)\b.{0,160}\b(?:UNIDAD|VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA)\b/.test(t)
+   ||/\b(?:LE|LO|LA) SUSTRA(?:EN|JERON|JO|E)\b.{0,180}\b(?:SU |EL |LA )?(?:UNIDAD|VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA)\b/.test(t)
+   ||/\b(?:UNIDAD|VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA)\b.{0,180}\b(?:LE|LO|LA) (?:SUSTRAEN|SUSTRAJERON|ROB[A-Z]*|LLEVAN|LLEVARON)\b/.test(t)
+   ||/\bCONSTATA\b.{0,140}\b(?:QUE )?(?:SU |EL |LA )?(?:UNIDAD|VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA)\b.{0,80}\b(?:NO ESTABA|NO SE ENCONTRABA|HABIA DESAPARECIDO)\b/.test(t)
+   ||/\b(?:OBLIGA|OBLIGAN|INTIMA|INTIMAN)\b.{0,180}\bDESCEND(?:ER|ER DEL|A|E)\b.{0,260}\b(?:SE RETIRA|SE RETIRAN|HUYE|HUYEN|FUGA)\b.{0,180}\b(?:UNIDAD|VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA)\b/.test(t);
 
  const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCALIZADO|LOCALIZADA|RECUPERA|RECUPERAN|RECUPERADO|RECUPERADA|ENCONTRADO|ENCONTRADA|HABIDO|HABIDA)\b/;
  const recoveryStrong=
@@ -60,9 +65,16 @@ function f2(r){
    ||/\bSUSTRAID[OA].{0,2500}\b(?:PROCEDEMOS|PROCEDEN) A LA INCAUTACION DEL (?:AUTOMOTOR|RODADO|VEHICULO)\b/.test(t);
  const currentFinding=(recoveryStrong || (procedure&&existingSeizure&&policePossession)) && /\b(VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|DOMINIO|CHASIS|MOTOR)\b/.test(t);
 
+ const rawHallazgo=/\bHALLAZGO DE AUTOMOTOR\b/.test(cf);
+ const hallazgoProcedure=rawHallazgo && procedure && (policePossession||recoveryStrong||/\b(?:ESTADO DE ABANDONO|ABANDONAD[OA]|CIRCULABA|ESTACIONADO)\b/.test(t));
+
  // INMEDIATO de alta confianza: sustracción actual + recuperación inequívoca del mismo rodado.
  if(theftStrong && immediateRecovery)
    return {ok:1,cond:"INMEDIATO",why:"El relato acredita una sustracción actual y una recuperación posterior inequívoca del mismo automotor."};
+
+ // La calificación original de Hallazgo sólo refuerza cuando el relato también es un procedimiento actual sobre el rodado.
+ if(hallazgoProcedure)
+   return {ok:1,cond:"HALLAZGO",why:"La calificación original indica hallazgo de automotor y el relato confirma un procedimiento actual sobre el rodado; la sustracción mencionada se trata como antecedente."};
 
  // En actas de procedimiento, la sustracción relatada suele ser antecedente del hallazgo actual.
  if(currentFinding){
