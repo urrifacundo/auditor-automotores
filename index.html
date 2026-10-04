@@ -4,7 +4,7 @@ let src=[],cand=[],accepted=[],rejected=[],finalRows=[];
 const $=id=>document.getElementById(id), status=$("status");
 const norm=s=>(s??"").toString().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/\s+/g," ").trim();
 const get=(r,names)=>{for(const n of names){const k=Object.keys(r).find(k=>norm(k)===norm(n));if(k)return r[k]}return ""};
-const txt=r=>norm(get(r,["relato","descripcion","narrativa","hecho"])), car=r=>norm(get(r,["analisis_caratula","caratula"]));
+const txt=r=>norm(get(r,["relato","descripcion","narrativa","hecho"])), car=r=>norm(get(r,["analisis_caratula","caratula"])), calif=r=>norm(get(r,["calificaciones","calificacion"]));
 const V=/\b(AUTOMOVIL|VEHICULO|RODADO|CAMIONETA|CAMION|UTILITARIO|FURGON|SEDAN|COCHE|AUTO)\b/;
 const S=/\b(SUSTRA(?:E|EN|JO|JERON|IDO|IDA)|ROBA(?:N|RON|DO|DA)?|APODERA(?:N|RON)?|SE LLEV(?:A|AN|ARON)|NO SE ENCONTRABA|YA NO (?:SE )?ENCONTRABA)\b/;
 const R=/\b(HALLA(?:DO|DA|RON|N)?|LOCALIZA(?:DO|DA|RON|N)?|RECUPERA(?:DO|DA|RON|N)?|ABANDONAD[OA]|PEDIDO DE SECUESTRO(?: ACTIVO)?)\b/;
