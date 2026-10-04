@@ -29,8 +29,10 @@ function f2(r){
    ||/\b(?:SUBEN|SUBIERON|ABORDAN|ABORDARON) (?:A |AL )?(?:SU |EL )?(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA)\b.{0,220}\b(?:FUGA|RETIRAN|HUYEN)\b/.test(t)
    ||/\b(?:DEJO|DEJA|HABIA DEJADO) (?:ESTACIONADO )?(?:SU |EL )?(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA)\b.{0,450}\b(?:NO SE ENCONTRABA|YA NO ESTABA|CONSTATA.{0,100}(?:FALTANTE|SUSTRA))\b/.test(t);
 
- const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCALIZADO|LOCALIZADA|RECUPERA|RECUPERAN|RECUPERADO|RECUPERADA|ENCUENTRA|ENCUENTRAN|ENCONTRADO|ENCONTRADA)\b/;
- const recoveryStrong=near(t,V,recoveryAction,320)||near(t,recoveryAction,V,320)
+ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCALIZADO|LOCALIZADA|RECUPERA|RECUPERAN|RECUPERADO|RECUPERADA|ENCONTRADO|ENCONTRADA|HABIDO|HABIDA)\b/;
+ const recoveryStrong=
+   /\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION)\b.{0,220}\b(?:FUE|ES|RESULTA|SIENDO)? ?(?:HALLADO|HALLADA|LOCALIZADO|LOCALIZADA|RECUPERADO|RECUPERADA|ENCONTRADO|ENCONTRADA|HABIDO|HABIDA)\b/.test(t)
+   ||/\b(?:HALLAN|HALLA|LOCALIZAN|LOCALIZA|RECUPERAN|RECUPERA|ENCONTRARON|HALLADO|LOCALIZADO|RECUPERADO)\b.{0,220}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION)\b/.test(t)
    ||/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION)\b.{0,180}\bABANDONAD[OA]\b/.test(t)
    ||/\bABANDONAD[OA]\b.{0,180}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION)\b/.test(t);
  const seizureStatus=/\bPEDIDO (?:DE |DE ADELANTO DE )?SECUESTRO(?: ACTIVO)?\b/.test(t);
@@ -53,9 +55,11 @@ function f2(r){
    return {ok:1,cond:"SUSTRAIDO",why:newSeizure?"Sustracción actual acreditada; el pedido de secuestro se genera a raíz de este hecho y no implica recuperación.":"Sustracción del automotor acreditada sin recuperación posterior."};
 
  if(theftStrong && recoveryStrong){
-   const theftIdx=Math.max(t.search(S),0), recIdx=t.search(recoveryAction);
-   if(recIdx>=0 && recIdx>theftIdx)
-     return {ok:1,cond:"INMEDIATO",why:"El relato contiene sustracción y una acción posterior de hallazgo/localización/recuperación del automotor."};
+   const theftIdx=t.search(S), recIdx=t.search(recoveryAction);
+   const sameSequence=/\b(?:POSTERIORMENTE|LUEGO|MINUTOS DESPUES|HORAS DESPUES|MIENTRAS.{0,80}DENUNCIA|RASTREO SATELITAL|GPS|LOJACK|PERSECUCION|SEGUIMIENTO)\b/.test(t)
+      ||/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION)\b.{0,100}\b(?:ES|FUE) HABID[OA]\b/.test(t);
+   if(recIdx>=0 && theftIdx>=0 && recIdx>theftIdx && sameSequence)
+     return {ok:1,cond:"INMEDIATO",why:"Sustracción actual seguida por una recuperación/hallazgo posterior dentro de la misma secuencia del hecho."};
    return {ok:1,cond:"REVISION HUMANA",why:"Hay evidencia fuerte de sustracción y recuperación, pero el orden o la relación entre ambos eventos no es suficientemente claro."};
  }
 
