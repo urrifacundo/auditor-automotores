@@ -35,6 +35,18 @@ function f2(r){
  if(autoOnlyContext)
    return {ok:0,why:"La sustracción recae sobre una autoparte/pertenencia; el automotor aparece como contexto y no como objeto del hecho."};
 
+ // V9.14 — segunda vuelta del módulo OBJETO: rol del automotor dentro del hecho.
+ // No alcanza con que vehículo y verbo aparezcan cerca: distinguimos vehículo-víctima de vehículo-contexto/medio.
+ const vehicleAsMeans=/\b(?:AUTORES?|SUJETOS?|MASCULINOS?|FEMENINAS?)\b[^.!?]{0,180}\b(?:A BORDO DE|EN|MEDIANTE|UTILIZANDO)\b[^.!?]{0,80}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO)\b/.test(t)
+   ||/\b(?:SE DAN A LA FUGA|SE DA A LA FUGA|HUYEN|HUYE|ESCAPAN|ESCAPA)\b[^.!?]{0,140}\b(?:EN|A BORDO DE)\b[^.!?]{0,80}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO)\b/.test(t);
+ const victimVehicleRelation=/\b(?:SU|MI|DEL DENUNCIANTE|DE LA VICTIMA|PROPIEDAD DEL|PROPIEDAD DE LA)\b[^.!?]{0,60}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD)\b/.test(t)
+   ||/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD)\b[^.!?]{0,80}\b(?:DE SU PROPIEDAD|DE MI PROPIEDAD|DEL DENUNCIANTE|DE LA VICTIMA)\b/.test(t);
+ const explicitWholeLoss=/\b(?:LE|LO|LA)\s+(?:SUSTRAEN|SUSTRAJERON|ROB[A-Z]*|DESPOJAN|DESPOJARON)\b[^.!?]{0,180}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD)\b/.test(t)
+   ||/\b(?:SE LLEVAN|SE LLEVARON|HUYEN|HUYE|SE RETIRAN|SE RETIRA)\b[^.!?]{0,120}\b(?:CON|EN)\b[^.!?]{0,60}\b(?:SU|EL|LA)?\s*(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD)\b/.test(t);
+ const contextualAutoOnly=vehicleAsMeans && nonAutoTheftObject && !explicitWholeLoss && !victimVehicleRelation;
+ if(contextualAutoOnly)
+   return {ok:0,why:"El automotor aparece como medio/contexto del hecho; la acción de sustracción recae sobre otro objeto."};
+
  const procedure=/\b(ACTA DE PROCEDI|ACTA DE PROCEDIMIENTO|RECORRIDA|COMANDO DE PATRULLAS|MOVIL POLICIAL|SOMOS COMISIONADOS|ALERTADOS POR 911|OPERADOR DE RADIO|CURSAR (?:POR )?SISTEMA)\b/.test(t);
  const victimComplaint=/\b(DENUNCIA|DENUNCIANTE|RESULTA SER (?:TITULAR|POSEEDOR)|DEJA ESTACIONADO|DEJO ESTACIONADO|CONSTATA)\b/.test(t);
 
