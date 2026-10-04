@@ -129,52 +129,63 @@ function f2(r){
  const rawHallazgo=/\bHALLAZGO DE AUTOMOTOR\b/.test(cf);
  const hallazgoProcedure=rawHallazgo && procedure && (policePossession||recoveryStrong||/\b(?:ESTADO DE ABANDONO|ABANDONAD[OA]|CIRCULABA|ESTACIONADO)\b/.test(t));
 
- // Si el relato actual nace de un procedimiento sobre un rodado ya localizado/interceptado,
- // la sustracción funciona como antecedente: HALLAZGO. Una denuncia de robo que luego recupera sigue siendo INMEDIATO.
- if(procedureStartsWithVehicle && !currentTheftComplaintFirst && (recoveryStrong||existingSeizure||historicalTheft))
-   return {ok:1,cond:"HALLAZGO",why:"El hecho principal es un procedimiento actual sobre un automotor ya localizado/interceptado; la sustracción aparece como antecedente."};
+ // V9.11 — capa de razonamiento: los regex detectan evidencia; la decisión se toma por objeto + evento + temporalidad + relación.
+ const theftOfWholeVehicle=theftStrong && !accessoryOnly && !motoAsObject;
+ const recoveryOfVehicle=(recoveryStrong||evAvisoHallado||evDanCon||positiveConstata||evAbandonoPosterior||evRecuperacionExplicita)
+   && !negativeAbsence && !trackingOtherObject && !impersonalHabido;
+ const currentTheftNarrative=theftOfWholeVehicle && (
+   /\b(?:DENUNCIA|DENUNCIANTE|MANIFIESTA|REFIERE|EXPRESA)\b/.test(t)
+   ||/\b(?:DEJO|DEJA|HABIA DEJADO)\b.{0,120}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b/.test(t)
+   ||/\b(?:DESPOJA|DESPOJAN|SUSTRAEN|SUSTRAJERON|ROBAN|ROBARON)\b.{0,180}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b/.test(t)
+ );
+ const recoveryAfterTheft=theftOfWholeVehicle && recoveryOfVehicle && !historicalRecoveryBeforeCurrent && (
+   immediateEvidence>0
+   ||/\b(?:POSTERIORMENTE|LUEGO|MINUTOS DESPUES|HORAS DESPUES|MOMENTOS DESPUES|AL FINALIZAR|FINALIZADA|DURANTE|MIENTRAS)\b/.test(t)
+ );
+ const sameVehicleLink=evMismoRodado||evAvisoHallado||evDanCon||positiveConstata||evAbandonoPosterior
+   ||/\b(?:DICHO|MISMO|SU|EL|LA) (?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b/.test(t);
 
- // Un procedimiento actual sobre un vehículo abandonado con sustracción/pedido previo es HALLAZGO.
- if(abandonedPriorTheft)
-   return {ok:1,cond:"HALLAZGO",why:"El hecho actual es el hallazgo de un automotor abandonado con sustracción/pedido previo."};
+ // El inicio policial del hecho pesa más que la mera presencia de "denuncia" en antecedentes.
+ const hallazgoAsMainEvent=(procedureStartsWithVehicle||abandonedPriorTheft||hallazgoProcedure
+   ||(procedure&&existingSeizure&&policePossession))
+   && recoveryOfVehicle
+   && !evDuranteDenuncia && !evHallazgoDuranteDenuncia;
 
- // INMEDIATO de alta confianza: sustracción actual + recuperación inequívoca del mismo rodado.
- if(immediateHigh)
-   return {ok:1,cond:"INMEDIATO",why:"Confianza alta: sustracción actual + recuperación posterior vinculada al mismo automotor ("+
-     [evDuranteDenuncia||evHallazgoDuranteDenuncia?"durante la denuncia":"",evRastreoPositivo?"rastreo con localización positiva":"",evAvisoHallado?"aviso posterior de hallazgo":"",evDanCon?"localización efectiva del rodado":"",positiveConstata?"constatación positiva posterior del rodado":"",evAbandonoPosterior?"abandono posterior":"",evRecuperacionExplicita?"recuperación temporal explícita":""].filter(Boolean).join(", ")+")."};
+ // 1) Exclusiones por objeto: el vehículo es contexto, no el objeto de la sustracción.
+ if(accessoryOnly && !theftOfWholeVehicle)
+   return {ok:0,why:"La acción de sustracción recae sobre una autoparte/pertenencia, no sobre el automotor completo."};
+ if(motoAsObject && !autoWord && !quironAuto)
+   return {ok:0,why:"La acción principal recae sobre un motovehículo; queda fuera del auditor de automotores."};
 
- // La calificación original de Hallazgo sólo refuerza cuando el relato también es un procedimiento actual sobre el rodado.
- if(hallazgoProcedure)
-   return {ok:1,cond:"HALLAZGO",why:"La calificación original indica hallazgo de automotor y el relato confirma un procedimiento actual sobre el rodado; la sustracción mencionada se trata como antecedente."};
+ // 2) HALLAZGO: el hecho actual comienza con policía/tercero ante un rodado ya localizado,
+ // y la sustracción o pedido funciona como antecedente.
+ if(hallazgoAsMainEvent)
+   return {ok:1,cond:"HALLAZGO",why:"Hecho principal: hallazgo/localización/interceptación actual del automotor; la sustracción o pedido de secuestro funciona como antecedente."};
 
- // En actas de procedimiento, la sustracción relatada suele ser antecedente del hallazgo actual.
- if(currentFinding){
-   if(recoveryStrong && theftStrong && victimComplaint && !procedure)
-     return {ok:1,cond:"REVISION HUMANA",why:"Hay sustracción y recuperación, pero no puede establecerse con seguridad si pertenecen a la misma secuencia."};
-   return {ok:1,cond:"HALLAZGO",why:"El hecho actual es un procedimiento de hallazgo/localización; la eventual sustracción narrada funciona como antecedente."};
- }
+ // 3) INMEDIATO: exige dos eventos unidos: sustracción actual + recuperación posterior del MISMO automotor.
+ if(currentTheftNarrative && recoveryAfterTheft && sameVehicleLink)
+   return {ok:1,cond:"INMEDIATO",why:"Secuencia acreditada: sustracción actual del automotor + recuperación/localización efectiva posterior del mismo rodado."};
 
- // Pedido de secuestro por sí solo no es recuperación.
- if(theftStrong && !recoveryStrong)
-   return {ok:1,cond:"SUSTRAIDO",why:newSeizure?"Sustracción actual acreditada; el pedido de secuestro se genera a raíz de este hecho y no implica recuperación.":"Sustracción del automotor acreditada sin recuperación posterior."};
+ // 4) SUSTRAÍDO: automotor completo sustraído actualmente, sin recuperación válida posterior.
+ if(currentTheftNarrative && !recoveryOfVehicle)
+   return {ok:1,cond:"SUSTRAIDO",why:newSeizure?"Sustracción actual del automotor; el pedido de secuestro se genera por este hecho y no equivale a recuperación.":"Sustracción actual del automotor completo sin recuperación posterior acreditada."};
 
- if(theftStrong && recoveryStrong){
-   const theftIdx=t.search(S), recIdx=t.search(recoveryAction);
-   const sameSequence=/\b(?:POSTERIORMENTE|LUEGO|MINUTOS DESPUES|HORAS DESPUES|MIENTRAS.{0,80}DENUNCIA|RASTREO SATELITAL|GPS|LOJACK|PERSECUCION|SEGUIMIENTO)\b/.test(t)
-      ||/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION)\b.{0,100}\b(?:ES|FUE) HABID[OA]\b/.test(t);
-   if(recIdx>=0 && theftIdx>=0 && recIdx>theftIdx && sameSequence)
-     return {ok:1,cond:"INMEDIATO",why:"Sustracción actual seguida por una recuperación/hallazgo posterior dentro de la misma secuencia del hecho."};
-   return {ok:1,cond:"REVISION HUMANA",why:"Hay evidencia fuerte de sustracción y recuperación, pero el orden o la relación entre ambos eventos no es suficientemente claro."};
- }
+ // 5) HALLAZGO sin inicio policial explícito, pero con recuperación actual + antecedente inequívoco.
+ if(recoveryOfVehicle && (historicalTheft||existingSeizure) && !currentTheftNarrative)
+   return {ok:1,cond:"HALLAZGO",why:"Recuperación actual del automotor con sustracción/pedido previo como antecedente."};
 
- if(recoveryStrong || (existingSeizure&&policePossession)){
-   if(procedure||/HALLAZGO AUTOMOTOR|ENCUBRIMIENTO/.test(c)||existingSeizure)
-     return {ok:1,cond:"HALLAZGO",why:existingSeizure?"El automotor es hallado/interceptado en el hecho actual y registra un pedido de secuestro previo.":"Predomina evidencia de hallazgo/localización del automotor."};
-   return {ok:1,cond:"REVISION HUMANA",why:"El automotor tiene evidencia de recuperación/hallazgo, pero el tipo de hecho actual no queda suficientemente definido."};
- }
+ // 6) Conflictos reales: sólo aquí usamos revisión humana.
+ if(theftOfWholeVehicle && recoveryOfVehicle)
+   return {ok:1,cond:"REVISION HUMANA",why:"Hay evidencia de sustracción y recuperación del automotor, pero no queda suficientemente acreditado el orden, el hecho principal o que ambos eventos correspondan a la misma secuencia."};
+
+ if(theftOfWholeVehicle)
+   return {ok:1,cond:"SUSTRAIDO",why:"Sustracción del automotor completo acreditada; no se acredita una recuperación posterior del mismo rodado."};
+
+ if(recoveryOfVehicle && (procedure||rawHallazgo||existingSeizure))
+   return {ok:1,cond:"HALLAZGO",why:"Predomina evidencia de hallazgo/localización actual del automotor."};
 
  if(quironAuto && (theftStrong||recoveryStrong))
-   return {ok:1,cond:"REVISION HUMANA",why:"Caso de automotor relevante con señales contradictorias o incompletas para una clasificación segura."};
+   return {ok:1,cond:"REVISION HUMANA",why:"Caso de automotor relevante, pero objeto/evento/temporalidad no alcanzan para una clasificación segura."};
 
  return {ok:0,why:"Sin evidencia narrativa suficiente de sustracción, hallazgo o recuperación del automotor completo."};
 }
