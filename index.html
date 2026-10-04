@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V9.16</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V9.16</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V9.17</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V9.17</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[];
 const $=id=>document.getElementById(id), status=$("status");
@@ -73,37 +73,47 @@ function f2(r){
  const assertedRecoverySegments=segments.filter(s=>vehicleToken.test(s)&&recoveryToken.test(s)&&!searchState.test(s)&&!negRecovery.test(s)&&!hypotheticalRecovery.test(s)&&!questionRecovery.test(s));
  const recoveryAsserted=assertedRecoverySegments.length>0;
  const recoveryOnlyNonAsserted=segments.some(s=>recoveryToken.test(s)&&(searchState.test(s)||negRecovery.test(s)||hypotheticalRecovery.test(s)||questionRecovery.test(s)))&&!recoveryAsserted;
-  // V9.16 — CADENA SEMANTICA: OBJETO -> ACCION -> ESTADO -> TEMPORALIDAD -> RELACION -> RESULTADO.
+  // V9.17 — CADENA SEMANTICA DE EVENTOS: OBJETO -> ACCION -> ESTADO -> TEMPORALIDAD -> RELACION -> RESULTADO.
   const eventVehicle=/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD)\b/;
   const eventTheft=/\b(?:SUSTRAE|SUSTRAEN|SUSTRAJO|SUSTRAJERON|SUSTRAIDO|SUSTRAIDA|ROBA|ROBAN|ROBO|ROBARON|ROBADO|ROBADA|APODERA|APODERAN|APODERO|APODERARON|SE LLEVA|SE LLEVAN|SE LLEVO|SE LLEVARON|DESPOJA|DESPOJAN|DESPOJARON)\b/;
-  const eventRecovery=/\b(?:HALLA|HALLAN|HALLARON|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCALIZARON|LOCALIZADO|LOCALIZADA|RECUPERA|RECUPERAN|RECUPERARON|RECUPERADO|RECUPERADA|ENCUENTRA|ENCUENTRAN|ENCONTRARON|ENCONTRADO|ENCONTRADA|HABIDO|HABIDA|APARECIO|APARECIDO|ABANDONADO|ABANDONADA)\b/;
+  // ACCION real de recuperacion. "Se halla/se hallaba/se encuentra" queda como ESTADO.
+  const recoveryActive=/\b(?:HALLAN|HALLARON|LOCALIZA|LOCALIZAN|LOCALIZARON|RECUPERA|RECUPERAN|RECUPERARON|ENCUENTRAN|ENCONTRARON|DAN CON|DIERON CON|LOGRAN DAR CON|LOGRARON DAR CON)\b/;
+  const recoveryResult=/\b(?:FUE|ES|RESULTA|HABIA SIDO|HABRIA SIDO|HA SIDO)\s+(?:HALLADO|HALLADA|LOCALIZADO|LOCALIZADA|RECUPERADO|RECUPERADA|ENCONTRADO|ENCONTRADA|HABIDO|HABIDA)\b/;
+  const recoveryParticipial=/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD)\b.{0,100}\b(?:HALLADO|HALLADA|LOCALIZADO|LOCALIZADA|RECUPERADO|RECUPERADA|ENCONTRADO|ENCONTRADA|ABANDONADO|ABANDONADA)\b/;
   const eventSource=/\b(?:INFORMA|INFORMAN|INFORMARON|AVISA|AVISAN|AVISARON|COMUNICA|COMUNICAN|COMUNICARON|MODULA|MODULAN|MODULARON|DAN AVISO|DIO AVISO|VIA RADIAL|RADIAL|911|PERSONAL POLICIAL|MOVIL)\b/;
-  const eventTemporal=/\b(?:POSTERIORMENTE|LUEGO|DESPUES|MINUTOS DESPUES|HORAS DESPUES|MOMENTOS DESPUES|A CONTINUACION|SEGUIDAMENTE|MIENTRAS|AL MOMENTO)\b/;
+  const eventTemporal=/\b(?:POSTERIORMENTE|LUEGO|DESPUES|MINUTOS DESPUES|HORAS DESPUES|MOMENTOS DESPUES|A CONTINUACION|SEGUIDAMENTE|MIENTRAS|AL MOMENTO|EN EL TRANSCURSO)\b/;
   const eventSameVehicle=/\b(?:(?:DICHO|MISMO|MENCIONADO|REFERIDO|SU|EL|LA)\s+(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD)|(?:VEHICULO|RODADO) EN CUESTION)\b/;
-  const eventNodes=segments.map((s,i)=>({i,s,vehicle:eventVehicle.test(s),theft:eventTheft.test(s),recovery:eventRecovery.test(s),source:eventSource.test(s),temporal:eventTemporal.test(s),sameVehicle:eventSameVehicle.test(s),negated:negRecovery.test(s),searching:searchState.test(s),questioned:questionRecovery.test(s),hypothetical:hypotheticalRecovery.test(s)}));
-  const sourcedRecovery=eventNodes.some((e,i)=>{
-    if(!e.recovery||e.negated||e.searching||e.questioned)return false;
-    const ctx=eventNodes.slice(Math.max(0,i-1),Math.min(eventNodes.length,i+2));
-    return e.source||ctx.some(x=>x.source);
+  const eventNodes=segments.map((seg,i)=>{
+    const active=recoveryActive.test(seg), result=recoveryResult.test(seg), participial=recoveryParticipial.test(seg);
+    return {i,s:seg,vehicle:eventVehicle.test(seg),theft:eventTheft.test(seg),
+      recovery:active||result||participial,source:eventSource.test(seg),temporal:eventTemporal.test(seg),
+      sameVehicle:eventSameVehicle.test(seg),negated:negRecovery.test(seg),searching:searchState.test(seg),
+      questioned:questionRecovery.test(seg),hypothetical:hypotheticalRecovery.test(seg)};
   });
+  // La fuente debe estar en la recuperacion o introducirla inmediatamente, sin otro evento intermedio.
+  const sourceForRecovery=re=>{
+    if(re.source)return true;
+    const prev=eventNodes[re.i-1];
+    return !!(prev&&prev.source&&!prev.theft&&!prev.recovery);
+  };
+  const sourcedRecovery=eventNodes.some(e=>e.recovery&&!e.negated&&!e.searching&&!e.questioned&&sourceForRecovery(e));
+  const strictRecoveryEvent=eventNodes.some(e=>e.recovery&&!e.negated&&!e.searching&&!e.questioned);
   let linkedRecoveryAfterTheft=false;
   const theftNodes=eventNodes.filter(e=>e.theft);
   const recoveryNodes=eventNodes.filter(e=>e.recovery&&!e.negated&&!e.searching&&!e.questioned);
   for(const te of theftNodes){
     for(const re of recoveryNodes){
       if(re.i<te.i)continue;
-      const bridge=eventNodes.slice(te.i,re.i+1);
-      const objectLink=re.vehicle||re.sameVehicle||bridge.some(x=>x.sameVehicle);
-      const temporalLink=re.temporal||bridge.some(x=>x.temporal)||(re.i-te.i)<=3;
-      // "Habria sido hallado" puede ser discurso referido si existe fuente concreta.
-      const asserted=!re.hypothetical||re.source||sourcedRecovery;
+      const gap=re.i-te.i, bridge=eventNodes.slice(te.i,re.i+1);
+      const objectLink=re.vehicle||re.sameVehicle||(gap<=2&&bridge.slice(1).some(x=>x.sameVehicle));
+      const temporalLink=re.temporal||bridge.some(x=>x.temporal)||(gap<=1&&(re.vehicle||re.sameVehicle));
+      const asserted=!re.hypothetical||sourceForRecovery(re);
       if(objectLink&&temporalLink&&asserted){linkedRecoveryAfterTheft=true;break;}
     }
     if(linkedRecoveryAfterTheft)break;
   }
 
-
- const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCALIZADO|LOCALIZADA|RECUPERA|RECUPERAN|RECUPERADO|RECUPERADA|ENCONTRADO|ENCONTRADA|HABIDO|HABIDA)\b/;
+  const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCALIZADO|LOCALIZADA|RECUPERA|RECUPERAN|RECUPERADO|RECUPERADA|ENCONTRADO|ENCONTRADA|HABIDO|HABIDA)\b/;
  const recoveryStrong=
    /\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION)\b.{0,220}\b(?:FUE|ES|RESULTA|SIENDO)? ?(?:HALLADO|HALLADA|LOCALIZADO|LOCALIZADA|RECUPERADO|RECUPERADA|ENCONTRADO|ENCONTRADA|HABIDO|HABIDA)\b/.test(t)
    ||/\b(?:HALLAN|HALLA|LOCALIZAN|LOCALIZA|RECUPERAN|RECUPERA|ENCONTRARON|HALLADO|LOCALIZADO|RECUPERADO)\b.{0,220}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION)\b/.test(t)
@@ -132,7 +142,7 @@ function f2(r){
    ||/\bFUE RECIENTEMENTE SUSTRAID[OA]\b/.test(t)
    ||/\bDESPOJARLO DE LA MISMA\b.{0,2500}\bVEHICULOS INCAUTADOS\b/.test(t)
    ||/\bSUSTRAID[OA].{0,2500}\b(?:PROCEDEMOS|PROCEDEN) A LA INCAUTACION DEL (?:AUTOMOTOR|RODADO|VEHICULO)\b/.test(t);
- const currentFinding=((recoveryStrong && (!recoveryOnlyNonAsserted||sourcedRecovery||linkedRecoveryAfterTheft)) || (procedure&&existingSeizure&&policePossession)) && /\b(VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|DOMINIO|CHASIS|MOTOR)\b/.test(t);
+ const currentFinding=((recoveryStrong && (!recoveryOnlyNonAsserted||(strictRecoveryEvent&&sourcedRecovery)||linkedRecoveryAfterTheft)) || (procedure&&existingSeizure&&policePossession)) && /\b(VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|DOMINIO|CHASIS|MOTOR)\b/.test(t);
 
  // Motor de evidencias temporales: una tecnología o palabra aislada nunca define INMEDIATO.
  const evDuranteDenuncia=/\b(?:MIENTRAS|AL MOMENTO|EN MOMENTOS QUE).{0,100}\b(?:RADICABA|REALIZABA|FORMULABA|EFECTUABA).{0,80}\bDENUNCIA\b.{0,260}\b(?:HALLAD[OA]|HABID[OA]|LOCALIZAD[OA]|RECUPERAD[OA]|APARECIDO)\b/.test(t);
@@ -175,7 +185,7 @@ function f2(r){
  const historicalRecoveryBeforeCurrent=/\b(?:DIA|FECHA)\b.{0,80}\b(?:ANTERIOR|PASAD[OA]|[0-3]?[0-9][\/\-][01]?[0-9][\/\-](?:20)?2[0-9])\b.{0,500}\b(?:RECUPER[AO]|HALLAD[OA]|HABID[OA])\b.{0,800}\b(?:EN LA FECHA|DIA DE LA FECHA|HOY)\b.{0,500}\b(?:SUSTRA|ROBA|APODERA)\w*/.test(t);
  const accessoryOnly=/\b(?:SUSTRAJERON|SUSTRAJO|SUSTRAE|SUSTRAEN|ROBARON|ROBO|ROBA|ROBAN|APODERARON|APODERO)\b.{0,160}\b(?:RUEDA|CUBIERTA|NEUMATICO|AUXILIO|BATERIA|ESTEREO|PATENTE|CHAPA PATENTE|PERTENENCIAS|MORRAL|BOLSO|MOCHILA|HERRAMIENTAS|CELULAR|TELEFONO|IPHONE)\b/.test(t)
    && !/\b(?:SUSTRAJERON|SUSTRAE|SUSTRAEN|ROBARON|ROBA|ROBAN|SE LLEVAN|SE LLEVARON)\b.{0,120}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD)\b/.test(t);
- const immediateHigh=theftStrong && !accessoryOnly && (!recoveryOnlyNonAsserted||sourcedRecovery||linkedRecoveryAfterTheft) && immediateEvidence>0
+ const immediateHigh=theftStrong && !accessoryOnly && (!recoveryOnlyNonAsserted||(strictRecoveryEvent&&sourcedRecovery)||linkedRecoveryAfterTheft) && immediateEvidence>0
    && (evMismoRodado||evAvisoHallado||evDanCon||positiveConstata||evHallazgoDuranteDenuncia||evAbandonoPosterior||evRastreoPositivo||linkedRecoveryAfterTheft)
    && !negativeAbsence && !historicalRecoveryBeforeCurrent
    && !(historicalTheft && !victimComplaint && !evAbandonoPosterior);
@@ -217,7 +227,7 @@ function f2(r){
  }
 
  // Pedido de secuestro por sí solo no es recuperación.
- if(theftStrong && (!recoveryStrong || (recoveryOnlyNonAsserted&&!sourcedRecovery&&!linkedRecoveryAfterTheft)))
+ if(theftStrong && (!recoveryStrong || (recoveryOnlyNonAsserted&&!(strictRecoveryEvent&&sourcedRecovery)&&!linkedRecoveryAfterTheft)))
    return {ok:1,cond:"SUSTRAIDO",why:newSeizure?"Sustracción actual acreditada; el pedido de secuestro se genera a raíz de este hecho y no implica recuperación.":"Sustracción del automotor acreditada sin recuperación posterior."};
 
  // V9.16 — cadena vinculada del mismo automotor.
