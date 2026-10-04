@@ -11,11 +11,29 @@ const R=/\b(HALLA(?:DO|DA|RON|N)?|LOCALIZA(?:DO|DA|RON|N)?|RECUPERA(?:DO|DA|RON|
 const M=/\b(MOTO|MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR)\b/;
 function near(t,a,b,d=150){for(const m of t.matchAll(new RegExp(a.source,"g"))){if(b.test(t.slice(Math.max(0,m.index-d),m.index+d)))return true}return false}
 function f1(r){const t=txt(r),c=car(r);if(!t)return null;const q=/SUSTRA[C]?CION AUTOMOTOR|HALLAZGO AUTOMOTOR/.test(c);if(!(V.test(t)||q)||!(S.test(t)||R.test(t)||q))return null;if(M.test(t)&&!V.test(t)&&!q)return null;return {...r,ETAPA_1:"CANDIDATO",MOTIVO_1:"Automotor + evento compatible. Pasa a auditoría estricta."}}
-function f2(r){const t=txt(r),c=car(r),sv=near(t,V,S)||near(t,S,V),rv=near(t,V,R)||near(t,R,V);const hall=near(t,V,R,180)||near(t,R,V,180);
-if(sv&&rv)return {ok:1,cond:"INMEDIATO",why:"Sustracción y recuperación/localización vinculadas al automotor."};
-if(sv)return {ok:1,cond:"SUSTRAIDO",why:"Sustracción vinculada al automotor sin recuperación vinculada."};
-if(hall&&(/HALLAZGO AUTOMOTOR/.test(c)||/PEDIDO DE SECUESTRO|ABANDONAD|HALLAD|LOCALIZAD/.test(t)))return {ok:1,cond:"HALLAZGO",why:"Hallazgo/localización vinculada al automotor sin sustracción actual."};
-return {ok:0,why:"Sin vínculo contextual suficientemente fuerte entre la acción y el automotor."}}
+function f2(r){
+ const t=txt(r),c=car(r);
+ const auto=V.test(t), moto=M.test(t);
+ const theftDirect=near(t,V,S,260)||near(t,S,V,260)
+   ||/\b(SE LO|SE LA|LO|LA) (?:HABRIAN )?(?:SUSTRAIDO|ROBADO|LLEVADO)\b/.test(t)
+   ||/\b(TOMAN|TOMARON|SUSTRAEN|SUSTRAJERON) (?:LA |LAS )?LLAVE(?:S)?\b.{0,220}\b(SE DAN|DANDOSE) A LA FUGA\b/.test(t)
+   ||/\b(ABORDAN|ABORDARON|SUBEN|SUBIERON) (?:A |AL )?(?:SU |EL )?(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA)\b.{0,180}\b(?:FUGA|RETIRAN|HUYEN)\b/.test(t)
+   ||/\b(?:DEJO|DEJA|HABIA DEJADO) (?:SU |EL )?(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA)\b.{0,350}\b(?:NO SE ENCONTRABA|YA NO ESTABA|CONSTATA.{0,80}(?:FALTANTE|SUSTRA))\b/.test(t);
+ const recoveryDirect=near(t,V,R,280)||near(t,R,V,280)
+   ||/\bPEDIDO (?:DE |DE ADELANTO DE )?SECUESTRO(?: ACTIVO)?\b.{0,320}\b(?:RODADO|VEHICULO|DOMINIO|MOTOR|CHASIS)\b/.test(t)
+   ||/\b(?:RODADO|VEHICULO|DOMINIO|MOTOR|CHASIS)\b.{0,320}\bPEDIDO (?:DE |DE ADELANTO DE )?SECUESTRO(?: ACTIVO)?\b/.test(t)
+   ||/\b(?:ENCUENTRA|ENCONTRADO|HALLA|HALLADO|LOCALIZA|LOCALIZADO)\b.{0,220}\b(?:ABANDONADO|RODADO|VEHICULO|AUTO|AUTOMOVIL|CAMIONETA)\b/.test(t);
+ const accessory=/\b(PATENTE|CHAPA PATENTE|RUEDA|CUBIERTA|AUXILIO|BATERIA|ESTEREO|AUTOPARTE|PERTENENCIAS)\b/.test(t);
+ const wholeAuto=auto && !(moto&&!/\b(AUTOMOVIL|AUTO|CAMIONETA|CAMION|UTILITARIO|FURGON|SEDAN|COCHE)\b/.test(t));
+ if(!wholeAuto && !/AUTOMOTOR/.test(c))return {ok:0,why:"No queda acreditado que el objeto principal sea un automotor (posible moto u otro objeto)."};
+ if(theftDirect&&recoveryDirect)return {ok:1,cond:"INMEDIATO",why:"Secuencia completa: sustracción del automotor y posterior hallazgo/recuperación en el mismo relato."};
+ if(theftDirect){
+   if(accessory&&!/\b(SE LO|SE LA) (?:HABRIAN )?(?:SUSTRAIDO|ROBADO|LLEVADO)\b/.test(t)&&!near(t,V,S,180))return {ok:0,why:"La sustracción detectada puede corresponder a patente/autoparte/pertenencias y no al automotor completo."};
+   return {ok:1,cond:"SUSTRAIDO",why:"Relato acredita desapoderamiento del automotor, incluso mediante fuga con el rodado o constatación posterior."};
+ }
+ if(recoveryDirect)return {ok:1,cond:"HALLAZGO",why:"Relato acredita localización/hallazgo o pedido de secuestro del automotor sin sustracción actual."};
+ return {ok:0,why:"Sin evidencia narrativa suficiente de sustracción o hallazgo del automotor completo."};
+}
 function extract(r){const t=txt(r),pick=arr=>{for(const re of arr){const m=t.match(re);if(m)return m[1].trim()}return ""};return {...r,PATENTE:pick([/\bDOMINIO\s*(?:NRO|N°|NUMERO)?\s*[:\-]?\s*([A-Z]{2,3}\s?\d{3}\s?[A-Z]{0,2}|[A-Z]{3}\s?\d{3})\b/]),MOTOR:pick([/\b(?:NUMERO DE MOTOR|MOTOR(?: NRO| N°| NUMERO)?)\s*[:\-]?\s*([A-Z0-9.-]{4,25})\b/]),CHASIS:pick([/\b(?:NUMERO DE CHASIS|CHASIS(?: NRO| N°| NUMERO)?)\s*[:\-]?\s*([A-Z0-9.-]{6,30})\b/])}}
 function tick(){return new Promise(r=>setTimeout(r,0))}
 function show(rows,key,msg){status.textContent=msg;const c={};rows.forEach(r=>c[r[key]]=(c[r[key]]||0)+1);$("summary").innerHTML=Object.entries(c).map(([k,v])=>'<div class="pill">'+k+": "+v+"</div>").join("");$("rows").innerHTML=rows.slice(0,500).map(r=>"<tr><td>"+esc(r[key])+"</td><td>"+esc(get(r,["numero_interno","nro_interno","numero interno"]))+"</td><td>"+esc(get(r,["analisis_caratula","caratula"]))+"</td><td>"+esc(r.MOTIVO_2||r.MOTIVO_1||"")+"</td><td class='relato'>"+esc(get(r,["relato","descripcion","narrativa","hecho"]))+"</td></tr>").join("")}
