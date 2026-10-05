@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V9.18</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V9.18</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V9.19</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V9.19</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[];
 const $=id=>document.getElementById(id), status=$("status");
@@ -75,28 +75,38 @@ function f2(r){
  const recoveryOnlyNonAsserted=segments.some(s=>recoveryToken.test(s)&&(searchState.test(s)||negRecovery.test(s)||hypotheticalRecovery.test(s)||questionRecovery.test(s)))&&!recoveryAsserted;
   // V9.18 — CADENA SEMANTICA CON IDENTIDAD DE OBJETO.
   // OBJETO SUSTRAIDO -> ACCION -> TEMPORALIDAD -> MISMO OBJETO -> RECUPERACION.
-  const eventVehicle=/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD)\b/;
-  const eventOtherObject=/\b(?:RUEDA|CUBIERTA|NEUMATICO|AUXILIO|BATERIA|ESTEREO|PATENTE|CHAPA PATENTE|BICICLETA|BICI|CELULAR|TELEFONO|IPHONE|MOCHILA|BOLSO|MORRAL|CARTERA|HERRAMIENTAS|PERTENENCIAS)\b/;
+  // V9.19 — PRIMERO RESOLVEMOS EL OBJETO DEL DELITO.
+  // OBJETO -> SUSTRACCION -> TEMPORALIDAD -> IDENTIDAD -> RECUPERACION.
+  const eventVehicle=/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD|MOTOVEHICULO|MOTOCICLETA|MOTO)\b/;
+  const eventAutoPart=/\b(?:RUEDA|RUEDAS|CUBIERTA|CUBIERTAS|NEUMATICO|NEUMATICOS|AUXILIO|RUEDA DE AUXILIO|BATERIA|ESTEREO|PATENTE|CHAPA PATENTE|ESPEJO|ESPEJOS|LLANTA|LLANTAS|OPTICA|OPTICAS|FARO|FAROS|PARAGOLPE|CATALIZADOR|AUTOPARTE|AUTOPARTES)\b/;
+  const eventBelonging=/\b(?:CELULAR|TELEFONO|IPHONE|MOCHILA|BOLSO|MORRAL|CARTERA|BILLETERA|DOCUMENTACION|DOCUMENTOS|HERRAMIENTA|HERRAMIENTAS|PERTENENCIA|PERTENENCIAS|DINERO|EFECTIVO|MERCADERIA|PAQUETE|PAQUETES)\b/;
+  const eventOtherObject=/\b(?:BICICLETA|BICI)\b/;
   const eventTheft=/\b(?:SUSTRAE|SUSTRAEN|SUSTRAJO|SUSTRAJERON|SUSTRAIDO|SUSTRAIDA|ROBA|ROBAN|ROBO|ROBARON|ROBADO|ROBADA|APODERA|APODERAN|APODERO|APODERARON|SE LLEVA|SE LLEVAN|SE LLEVO|SE LLEVARON|DESPOJA|DESPOJAN|DESPOJARON)\b/;
 
-  // Acciones reales de recuperación. Los estados "se halla/se encontraba" no son acciones.
   const recoveryActive=/\b(?:HALLAN|HALLARON|LOCALIZA|LOCALIZAN|LOCALIZARON|RECUPERA|RECUPERAN|RECUPERARON|ENCUENTRAN|ENCONTRARON|DAN CON|DIERON CON|LOGRAN DAR CON|LOGRARON DAR CON)\b/;
   const recoveryResult=/\b(?:FUE|ES|RESULTA|HABIA SIDO|HABRIA SIDO|HA SIDO)\s+(?:HALLADO|HALLADA|LOCALIZADO|LOCALIZADA|RECUPERADO|RECUPERADA|ENCONTRADO|ENCONTRADA|HABIDO|HABIDA)\b/;
-  const recoveryParticipial=/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD)\b.{0,100}\b(?:HALLADO|HALLADA|LOCALIZADO|LOCALIZADA|RECUPERADO|RECUPERADA|ENCONTRADO|ENCONTRADA|ABANDONADO|ABANDONADA)\b/;
+  const recoveryParticipial=/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD|MOTOVEHICULO|MOTOCICLETA|MOTO)\b.{0,100}\b(?:HALLADO|HALLADA|LOCALIZADO|LOCALIZADA|RECUPERADO|RECUPERADA|ENCONTRADO|ENCONTRADA|ABANDONADO|ABANDONADA)\b/;
 
   const eventSource=/\b(?:INFORMA|INFORMAN|INFORMARON|AVISA|AVISAN|AVISARON|COMUNICA|COMUNICAN|COMUNICARON|MODULA|MODULAN|MODULARON|DAN AVISO|DIO AVISO|VIA RADIAL|RADIAL|911|PERSONAL POLICIAL|MOVIL)\b/;
   const eventTemporal=/\b(?:POSTERIORMENTE|LUEGO|DESPUES|MINUTOS DESPUES|HORAS DESPUES|MOMENTOS DESPUES|A CONTINUACION|SEGUIDAMENTE|MIENTRAS|AL MOMENTO|EN EL TRANSCURSO)\b/;
-  const eventSameVehicle=/\b(?:(?:DICHO|MISMO|MENCIONADO|REFERIDO|SU|EL|LA)\s+(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD)|(?:VEHICULO|RODADO) EN CUESTION)\b/;
+  const eventSameVehicle=/\b(?:(?:DICHO|MISMO|MENCIONADO|REFERIDO|SU|EL|LA)\s+(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD|MOTOVEHICULO|MOTOCICLETA|MOTO)|(?:VEHICULO|RODADO) EN CUESTION)\b/;
   const vehicleIdentity=/\b(?:DOMINIO|PATENTE|CHASIS|MOTOR|MARCA|MODELO)\b/;
 
   const eventNodes=segments.map((seg,i)=>{
     const active=recoveryActive.test(seg), result=recoveryResult.test(seg), participial=recoveryParticipial.test(seg);
-    const vehicle=eventVehicle.test(seg), otherObject=eventOtherObject.test(seg);
-    return {i,s:seg,vehicle,otherObject,theft:eventTheft.test(seg),
-      recovery:active||result||participial,source:eventSource.test(seg),temporal:eventTemporal.test(seg),
+    return {
+      i,s:seg,
+      vehicle:eventVehicle.test(seg),
+      autoPart:eventAutoPart.test(seg),
+      belonging:eventBelonging.test(seg),
+      otherObject:eventOtherObject.test(seg),
+      theft:eventTheft.test(seg),
+      recovery:active||result||participial,
+      source:eventSource.test(seg),temporal:eventTemporal.test(seg),
       sameVehicle:eventSameVehicle.test(seg),identity:vehicleIdentity.test(seg),
       negated:negRecovery.test(seg),searching:searchState.test(seg),
-      questioned:questionRecovery.test(seg),hypothetical:hypotheticalRecovery.test(seg)};
+      questioned:questionRecovery.test(seg),hypothetical:hypotheticalRecovery.test(seg)
+    };
   });
 
   const sourceForRecovery=re=>{
@@ -105,13 +115,37 @@ function f2(r){
     return !!(prev&&prev.source&&!prev.theft&&!prev.recovery);
   };
 
-  // Detectamos primero que la sustracción tenga realmente al automotor como objeto.
-  const vehicleTheftNodes=eventNodes.filter((e,i)=>{
-    if(!e.theft)return false;
-    if(e.vehicle&&!e.otherObject)return true;
-    const next=eventNodes[i+1], prev=eventNodes[i-1];
-    return !!((next&&next.vehicle&&!next.otherObject)||(prev&&prev.vehicle&&!prev.otherObject));
-  });
+  // Clasificador de OBJETO DEL DELITO.
+  // No decide por una palabra aislada: pondera el objeto alrededor de la acción de sustracción.
+  const theftObjectEvidence=eventNodes.map((e,i)=>{
+    if(!e.theft)return null;
+    const window=eventNodes.slice(Math.max(0,i-1),Math.min(eventNodes.length,i+2));
+    let vehicleScore=0, partScore=0, belongingScore=0, otherScore=0;
+
+    for(const x of window){
+      if(x.vehicle) vehicleScore += (x.i===i ? 3 : 1);
+      if(x.sameVehicle||x.identity) vehicleScore += 2;
+      if(x.autoPart) partScore += (x.i===i ? 4 : 2);
+      if(x.belonging) belongingScore += (x.i===i ? 4 : 2);
+      if(x.otherObject) otherScore += (x.i===i ? 4 : 2);
+    }
+
+    // Si una parte/pertenencia aparece ligada a la misma acción, el vehículo mencionado
+    // puede ser contexto/contenedor y no el objeto sustraído.
+    let role="INDETERMINADO";
+    const nonVehicle=Math.max(partScore,belongingScore,otherScore);
+    if(vehicleScore>=3 && vehicleScore>=nonVehicle+2) role="VEHICULO_COMPLETO";
+    else if(partScore>=3 && partScore>=vehicleScore) role="AUTOPARTE";
+    else if(belongingScore>=3 && belongingScore>=vehicleScore) role="PERTENENCIA";
+    else if(otherScore>=3 && otherScore>=vehicleScore) role="OTRO";
+    else if(vehicleScore>=2 && nonVehicle===0) role="VEHICULO_COMPLETO";
+
+    return {i,role,vehicleScore,partScore,belongingScore,otherScore};
+  }).filter(Boolean);
+
+  const vehicleTheftEvidence=theftObjectEvidence.filter(x=>x.role==="VEHICULO_COMPLETO");
+  const nonVehicleTheftEvidence=theftObjectEvidence.filter(x=>x.role==="AUTOPARTE"||x.role==="PERTENENCIA"||x.role==="OTRO");
+  const ambiguousTheftEvidence=theftObjectEvidence.filter(x=>x.role==="INDETERMINADO");
 
   const strictRecoveryEvent=eventNodes.some(e=>e.recovery&&!e.negated&&!e.searching&&!e.questioned);
   const sourcedRecovery=eventNodes.some(e=>e.recovery&&!e.negated&&!e.searching&&!e.questioned&&sourceForRecovery(e));
@@ -119,27 +153,23 @@ function f2(r){
   let linkedRecoveryAfterTheft=false;
   const recoveryNodes=eventNodes.filter(e=>e.recovery&&!e.negated&&!e.searching&&!e.questioned);
 
-  for(const te of vehicleTheftNodes){
+  // Solo buscamos recuperación del automotor después de demostrar que el objeto sustraído
+  // fue el vehículo completo.
+  for(const teInfo of vehicleTheftEvidence){
+    const te=eventNodes[teInfo.i];
     for(const re of recoveryNodes){
       if(re.i<te.i)continue;
       const gap=re.i-te.i, bridge=eventNodes.slice(te.i,re.i+1);
 
-      // V9.18: identidad positiva del objeto recuperado.
       const recoveryNamesVehicle=re.vehicle||re.sameVehicle||re.identity;
       const bridgeNamesSameVehicle=bridge.slice(1).some(x=>x.sameVehicle||x.identity);
 
-      // Si la recuperación nombra solo otro objeto, no puede cerrar el automotor.
-      const recoveryLooksOtherOnly=re.otherObject&&!recoveryNamesVehicle;
-      if(recoveryLooksOtherOnly)continue;
+      // Recuperación de una parte/pertenencia/otro objeto no recupera al automotor.
+      const recoveryNamesCompetingObject=re.autoPart||re.belonging||re.otherObject;
+      if(recoveryNamesCompetingObject&&!recoveryNamesVehicle)continue;
 
-      // Para distancias mayores exigimos referencia explícita al mismo automotor.
-      const objectIdentity = recoveryNamesVehicle ||
-        (gap<=2 && bridgeNamesSameVehicle);
-
-      // Orden temporal explícito, o continuidad inmediata con identidad del automotor.
-      const temporalLink = re.temporal || bridge.some(x=>x.temporal) ||
-        (gap<=1 && recoveryNamesVehicle);
-
+      const objectIdentity=recoveryNamesVehicle||(gap<=2&&bridgeNamesSameVehicle);
+      const temporalLink=re.temporal||bridge.some(x=>x.temporal)||(gap<=1&&recoveryNamesVehicle);
       const asserted=!re.hypothetical||sourceForRecovery(re);
 
       if(objectIdentity&&temporalLink&&asserted){
