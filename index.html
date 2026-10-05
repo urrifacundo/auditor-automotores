@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V11.0 · Motor Semántico Unificado de Automotores</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V11.0</h1><p class="lead">Motor semántico unificado · objeto → eventos → identidad → cronología → decisión única.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar V11</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V11.1 · Motor Semántico Unificado de Automotores · Pre-BETA</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V11.1 · Pre-BETA</h1><p class="lead">Motor semántico unificado · universo → objetos/roles → eventos → identidad → cronología → árbitro único.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar V11</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[],completedRows=[],sourceFileName="";
 const $=id=>document.getElementById(id), status=$("status");
@@ -6,52 +6,177 @@ const norm=s=>(s??"").toString().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
 const get=(r,names)=>{for(const n of names){const k=Object.keys(r).find(k=>norm(k)===norm(n));if(k)return r[k]}return ""};
 const txt=r=>norm(get(r,["relato","descripcion","narrativa","hecho"])), car=r=>norm(get(r,["analisis_caratula","caratula"]));
 const RX={
- auto:/\b(AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|FURGON|SEDAN|COCHE)\b/, generic:/\b(VEHICULO|RODADO|UNIDAD)\b/,
- moto:/\b(MOTO|MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR|SCOOTER)\b/, bici:/\b(BICICLETA|BICI)\b/,
+ auto:/\b(AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|FURGON|SEDAN|COCHE|PICK\s?UP)\b/,
+ generic:/\b(VEHICULO|RODADO|UNIDAD)\b/,
+ moto:/\b(MOTO|MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR|SCOOTER)\b/,
+ bici:/\b(BICICLETA|BICI)\b/,
  parte:/\b(RUEDA(?:S)?|NEUMATICO(?:S)?|CUBIERTA(?:S)?|AUXILIO|LLANTA(?:S)?|BATERIA|PATENTE|CHAPA PATENTE|ESTEREO|OPTICA(?:S)?|ESPEJO(?:S)?|FARO(?:S)?|PARAGOLPE|CATALIZADOR|AUTOPARTE(?:S)?)\b/,
- pert:/\b(CELULAR|TELEFONO|IPHONE|MOCHILA|BOLSO|MORRAL|CARTERA|BILLETERA|DOCUMENTACION|DOCUMENTOS|HERRAMIENTA(?:S)?|PERTENENCIA(?:S)?|DINERO|EFECTIVO|MERCADERIA)\b/,
+ pert:/\b(CELULAR|TELEFONO|IPHONE|MOCHILA|BOLSO|MORRAL|CARTERA|BILLETERA|DOCUMENTACION|DOCUMENTOS|HERRAMIENTA(?:S)?|PERTENENCIA(?:S)?|DINERO|EFECTIVO|MERCADERIA|LLAVE(?:S)?)\b/,
  theft:/\b(SUSTRAE|SUSTRAEN|SUSTRAJO|SUSTRAJERON|SUSTRAIDO|SUSTRAIDA|ROBA|ROBAN|ROBO|ROBARON|ROBADO|ROBADA|APODERA|APODERAN|APODERO|APODERARON|SE LLEVA|SE LLEVAN|SE LLEVO|SE LLEVARON|DESPOJA|DESPOJAN|DESPOJARON)\b/,
- recover:/\b(HALLAN|HALLARON|HALLADO|HALLADA|LOCALIZAN|LOCALIZARON|LOCALIZADO|LOCALIZADA|RECUPERAN|RECUPERARON|RECUPERADO|RECUPERADA|ENCUENTRAN|ENCONTRARON|ENCONTRADO|ENCONTRADA|DAN CON|DIERON CON|APARECIO|HABIDO|HABIDA)\b/,
- procedure:/\b(ACTA DE PROCEDIMIENTO|ACTA DE PROCEDI|RECORRIDA|COMANDO DE PATRULLAS|MOVIL POLICIAL|SOMOS COMISIONADOS|ALERTADOS POR 911|OPERADOR DE RADIO)\b/,
- later:/\b(POSTERIORMENTE|LUEGO|DESPUES|MINUTOS DESPUES|HORAS DESPUES|MOMENTOS DESPUES|A CONTINUACION|SEGUIDAMENTE|MIENTRAS|EN EL TRANSCURSO)\b/,
- tracking:/\b(LOJACK|STRIX|GPS|GEOLOCALIZACION|RASTREO|RASTREADOR|POSICIONAMIENTO)\b/
+ recover:/\b(HALLAN|HALLARON|HALLADO|HALLADA|HALLAZGO|LOCALIZAN|LOCALIZARON|LOCALIZADO|LOCALIZADA|RECUPERAN|RECUPERARON|RECUPERADO|RECUPERADA|ENCUENTRAN|ENCONTRARON|ENCONTRADO|ENCONTRADA|DAN CON|DIERON CON|APARECIO|HABIDO|HABIDA|UBICAN|UBICARON|UBICADO|UBICADA)\b/,
+ procedure:/\b(ACTA DE PROCEDIMIENTO|ACTA DE PROCEDI|RECORRIDA|COMANDO DE PATRULLAS|MOVIL POLICIAL|SOMOS COMISIONADOS|ALERTADOS POR 911|OPERADOR DE RADIO|PERSONAL POLICIAL|PROCEDIMIENTO)\b/,
+ complaint:/\b(DENUNCIA|DENUNCIANTE|VICTIMA|COMPARECE|SE HACE PRESENTE|MANIFIESTA|REFIERE)\b/,
+ later:/\b(POSTERIORMENTE|LUEGO|DESPUES|MINUTOS DESPUES|HORAS DESPUES|MOMENTOS DESPUES|A CONTINUACION|SEGUIDAMENTE|MAS TARDE|AL CABO)\b/,
+ tracking:/\b(LOJACK|STRIX|GPS|GEOLOCALIZACION|RASTREO|RASTREADOR|POSICIONAMIENTO|SATELITAL)\b/,
+ prior:/\b(PEDIDO DE SECUESTRO|POSEE PEDIDO|REGISTRA PEDIDO|PEDIDO ACTIVO|DENUNCIA PREVIA|SUSTRAIDO CON ANTERIORIDAD|HABIA SIDO SUSTRAIDO|HABIA SIDO ROBADO|ANTECEDENTE)\b/,
+ offenderMoto:/\b(AUTORES?|SUJETOS?|MASCULINOS?|MALVIVIENTES?|IMPUTADOS?)\b.{0,90}\b(MOTO|MOTOCICLETA|MOTOVEHICULO)\b|\b(MOTO|MOTOCICLETA|MOTOVEHICULO)\b.{0,90}\b(AUTORES?|SUJETOS?|MASCULINOS?|MALVIVIENTES?|IMPUTADOS?)\b/,
+ flee:/\b(HUYEN|HUYERON|FUGA|SE DAN A LA FUGA|ESCAPAN|ESCAPARON|RETIRAN|RETIRARON)\b/,
+ parked:/\b(ESTACIONADO|ESTACIONADA|APARCADO|APARCADA|DEJO SU|DEJA SU|HABIA DEJADO)\b/,
+ absent:/\b(NO SE ENCONTRABA|YA NO ESTABA|NO ESTABA|FALTABA|CONSTATA LA SUSTRACCION|ADVIERTE LA SUSTRACCION)\b/,
+ negativeRecovery:/\b(NO FUE HALLADO|NO FUE LOCALIZADO|NO FUE RECUPERADO|SIN RESULTADO|RESULTADO NEGATIVO|NO LOGRAN HALLAR|NO LOGRAN LOCALIZAR|NO SE LOGRO HALLAR|NO SE LOGRO LOCALIZAR)\b/
 };
-const BRANDS=/\b(FIAT|FORD|RENAULT|PEUGEOT|CHEVROLET|VOLKSWAGEN|VW|TOYOTA|CITROEN|NISSAN|JEEP|MERCEDES(?: BENZ)?|IVECO|HYUNDAI|KIA|SUZUKI|CHERY|AUDI|BMW|DODGE|RAM)\b/;
+const BRANDS=/\b(FIAT|FORD|RENAULT|PEUGEOT|CHEVROLET|VOLKSWAGEN|VW|TOYOTA|CITROEN|NISSAN|JEEP|MERCEDES(?: BENZ)?|IVECO|HYUNDAI|KIA|SUZUKI|CHERY|AUDI|BMW|DODGE|RAM|HONDA|BAIC)\b/;
+const MOTO_BRANDS=/\b(ZANELLA|CORVEN|GILERA|KELLER|MONDIAL|MOTOMEL|CFMOTO|BAJAJ|BENELLI|GUERRERO|YAMAHA|KAWASAKI)\b/;
 const sentences=t=>t.split(/[.!?;\n]+/).map(x=>x.trim()).filter(Boolean);
 const domainOf=z=>{const m=z.match(/\b(?:DOMINIO|PATENTE|CHAPA PATENTE)?\s*(?:NRO|N°|NUMERO)?\s*[:\-]?\s*([A-Z]{2}\s?\d{3}\s?[A-Z]{2}|[A-Z]{3}\s?\d{3})\b/);return m?m[1].replace(/\s/g,""):""};
-const explicitAuto=z=>RX.auto.test(z)||BRANDS.test(z);
-function objectType(z){if(RX.bici.test(z))return "BICICLETA";if(RX.moto.test(z)&&!explicitAuto(z))return "MOTOVEHICULO";if(RX.parte.test(z)&&!explicitAuto(z))return "AUTOPARTE";if(RX.pert.test(z)&&!explicitAuto(z))return "PERTENENCIA";if(explicitAuto(z)||RX.generic.test(z))return "AUTOMOTOR";return "INDETERMINADO"}
-function localEvents(t){const out=[];for(const s of sentences(t)){const theft=RX.theft.test(s), rec=RX.recover.test(s);if(!theft&&!rec)continue;let type=objectType(s);const dom=domainOf(s);const negRec=/\b(NO|SIN)\b.{0,55}\b(ENCONTR|HALL|LOCALIZ|RECUPER)/.test(s)||/\b(BUSCA|BUSCAR|BUSCANDO|RASTRILLAJE|PARA ENCONTRAR|PARA HALLAR|PARA LOCALIZAR)\b/.test(s);if(theft)out.push({kind:"SUSTRACCION",type,dom,text:s});if(rec&&!negRec)out.push({kind:"RECUPERACION",type,dom,text:s});}return out}
-function completeAutoTheft(t,ev){
- if(ev.some(e=>e.kind==="SUSTRACCION"&&e.type==="AUTOMOTOR"))return true;
- return /\b(DEJO|DEJA|HABIA DEJADO)\b.{0,120}\b(ESTACIONADO|ESTACIONADA)\b.{0,320}\b(NO SE ENCONTRABA|YA NO ESTABA|NO ESTABA|FALTABA)\b/.test(t)||/\b(SUBEN|SUBIERON|ABORDAN|ABORDARON)\b.{0,100}\b(VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA)\b.{0,180}\b(FUGA|HUYEN|RETIRAN|LLEVAN)\b/.test(t)||/\b(OBLIGA|OBLIGAN|INTIMA|INTIMAN)\b.{0,180}\bDESCEND/.test(t)&&/\b(VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA)\b/.test(t);
+const explicitAuto=z=>RX.auto.test(z)||(BRANDS.test(z)&&!MOTO_BRANDS.test(z));
+const explicitMoto=z=>RX.moto.test(z)||MOTO_BRANDS.test(z);
+const around=(s,re,n=140)=>{const m=re.exec(s);re.lastIndex=0;if(!m)return "";return s.slice(Math.max(0,m.index-n),Math.min(s.length,m.index+m[0].length+n))};
+function objectType(z){
+ if(RX.bici.test(z))return "BICICLETA";
+ if(explicitMoto(z)&&!explicitAuto(z))return "MOTOVEHICULO";
+ if(RX.parte.test(z)&&!explicitAuto(z))return "AUTOPARTE";
+ if(RX.pert.test(z)&&!explicitAuto(z)&&!RX.generic.test(z))return "PERTENENCIA";
+ if(explicitAuto(z))return "AUTOMOTOR";
+ if(RX.generic.test(z)&&!explicitMoto(z)&&!RX.bici.test(z))return "AUTOMOTOR_GENERICO";
+ return "INDETERMINADO";
 }
-function currentFindingFirst(t,ev){const firstRec=ev.findIndex(e=>e.kind==="RECUPERACION"),firstTheft=ev.findIndex(e=>e.kind==="SUSTRACCION");return RX.procedure.test(t)&&firstRec>=0&&(firstTheft<0||firstRec<firstTheft)}
-function identity(thefts,recs,t){for(const a of thefts)for(const b of recs){if(a.dom&&b.dom&&a.dom===b.dom)return {level:"ALTA",why:"mismo dominio "+a.dom};}if(thefts.length&&recs.length&&/\b(DICHO|MISMO|MISMA|EL RODADO|EL VEHICULO|LA UNIDAD|VEHICULO SUSTRAIDO|RODADO SUSTRAIDO)\b/.test(t))return {level:"MEDIA",why:"referencia narrativa al mismo rodado"};if(thefts.length&&recs.length&&RX.tracking.test(t))return {level:"MEDIA",why:"rastreo/localización vinculada al vehículo denunciado"};return {level:"BAJA",why:"sin identidad objetiva suficiente"}}
-function f1(r){const t=txt(r),c=car(r);if(!t)return null;const vehicle=explicitAuto(t)||RX.generic.test(t)||/AUTOMOTOR/.test(c);const event=RX.theft.test(t)||RX.recover.test(t)||/SUSTRA[C]?CION AUTOMOTOR|HALLAZGO AUTOMOTOR/.test(c);if(!vehicle||!event)return null;return {...r,ETAPA_1:"CANDIDATO",MOTIVO_1:"V11 · Mención vehicular + evento compatible. La pertenencia al universo se resuelve en auditoría semántica."}}
-function f2(r){
- const t=txt(r),c=car(r),ev=localEvents(t);
- const thefts=ev.filter(e=>e.kind==="SUSTRACCION"&&e.type==="AUTOMOTOR"), recs=ev.filter(e=>e.kind==="RECUPERACION"&&e.type==="AUTOMOTOR");
- const nonAutoVictim=ev.some(e=>["MOTOVEHICULO","BICICLETA"].includes(e.type))&&!ev.some(e=>e.type==="AUTOMOTOR");
- const autoComplete=completeAutoTheft(t,ev);
- const autoEvidence=explicitAuto(t)||thefts.length||recs.length||(/AUTOMOTOR/.test(c)&&!nonAutoVictim);
- const partOnly=ev.some(e=>["AUTOPARTE","PERTENENCIA"].includes(e.type))&&!autoComplete&&!thefts.length;
- const id=identity(thefts,recs,t);
- const findingFirst=currentFindingFirst(t,ev);
- let cond="DESCARTADO",ok=0,conf="MEDIA",why="";
- if(nonAutoVictim){why="Fuera del universo: el objeto víctima reconstruido es motovehículo/bicicleta.";}
- else if(partOnly){why="Fuera del universo: la sustracción recae sobre autoparte/pertenencia; el automotor es contexto.";}
- else if(!autoEvidence){why="Sin evidencia suficiente de automotor como objeto relevante.";}
- else if(findingFirst){cond="HALLAZGO";ok=1;conf=recs.length?"ALTA":"MEDIA";why="El hecho actual comienza con localización/hallazgo del automotor; el antecedente de sustracción es previo.";}
- else if(autoComplete&&recs.length){
-   if(id.level==="ALTA"||id.level==="MEDIA"){cond="INMEDIATO";ok=1;conf=id.level==="ALTA"?"ALTA":"MEDIA";why="Sustracción completa seguida de recuperación del mismo automotor ("+id.why+").";}
-   else {cond="REVISION HUMANA";ok=1;conf="MEDIA";why="Hay sustracción completa y recuperación posterior, pero la identidad del mismo automotor no alcanza confianza suficiente.";}
+function eventObject(sentence,kind){
+ const z=sentence;
+ const verb=kind==="SUSTRACCION"?RX.theft:RX.recover;
+ const w=around(z,verb,180)||z;
+ if(RX.bici.test(w))return "BICICLETA";
+ if(explicitMoto(w)&&!explicitAuto(w))return "MOTOVEHICULO";
+ if(RX.parte.test(w)&&!explicitAuto(w))return "AUTOPARTE";
+ if(RX.pert.test(w)&&!explicitAuto(w)&&!RX.generic.test(w))return "PERTENENCIA";
+ if(explicitAuto(w))return "AUTOMOTOR";
+ if(RX.generic.test(w)&&!explicitMoto(w))return "AUTOMOTOR_GENERICO";
+ return objectType(z);
+}
+function localEvents(t){
+ const out=[]; let pos=0;
+ for(const s of sentences(t)){
+   const theft=RX.theft.test(s), rec=RX.recover.test(s);
+   const dom=domainOf(s);
+   if(theft)out.push({kind:"SUSTRACCION",type:eventObject(s,"SUSTRACCION"),dom,text:s,pos:pos++});
+   if(rec){
+     const neg=RX.negativeRecovery.test(s)||/\b(BUSCA|BUSCAR|BUSCANDO|RASTRILLAJE|PARA ENCONTRAR|PARA HALLAR|PARA LOCALIZAR)\b/.test(s);
+     if(!neg)out.push({kind:"RECUPERACION",type:eventObject(s,"RECUPERACION"),dom,text:s,pos:pos++});
+   }
  }
- else if(autoComplete||thefts.length){cond="SUSTRAIDO";ok=1;conf=autoComplete?"ALTA":"MEDIA";why="Sustracción del automotor completo sin recuperación posterior confirmada del mismo vehículo.";}
- else if(recs.length){cond="HALLAZGO";ok=1;conf="MEDIA";why="Hallazgo/localización actual de automotor sin secuencia actual completa de sustracción→recuperación.";}
- else if(/AUTOMOTOR/.test(c)){cond="REVISION HUMANA";ok=1;conf="BAJA";why="Quirón refiere automotor, pero el relato no permite reconstruir con seguridad sustracción o hallazgo.";}
- const e1=ev[0]||{},e2=ev[1]||{};
- return {ok,cond,why,V11_UNIVERSO:ok?"AUTOMOTOR":"FUERA/INDETERMINADO",V11_OBJETO_PRINCIPAL:autoComplete||thefts.length||recs.length?"AUTOMOTOR":(nonAutoVictim?"NO AUTOMOTOR":"INDETERMINADO"),V11_EVENTO_1:e1.kind?(e1.kind+" · "+e1.type+(e1.dom?" · "+e1.dom:"")):"",V11_EVENTO_2:e2.kind?(e2.kind+" · "+e2.type+(e2.dom?" · "+e2.dom:"")):"",V11_IDENTIDAD:id.level+" · "+id.why,V11_CRONOLOGIA:findingFirst?"HALLAZGO ACTUAL → ANTECEDENTE":(autoComplete&&recs.length?"SUSTRACCION → RECUPERACION":(autoComplete?"SUSTRACCION":"SIN SECUENCIA COMPLETA")),V11_CONFIANZA:conf,V11_EVENTOS_DETECTADOS:ev.length};
+ return out;
+}
+function scene(r){
+ const t=txt(r),c=car(r),ev=localEvents(t);
+ const autoThefts=ev.filter(e=>e.kind==="SUSTRACCION"&&["AUTOMOTOR","AUTOMOTOR_GENERICO"].includes(e.type));
+ const autoRecs=ev.filter(e=>e.kind==="RECUPERACION"&&["AUTOMOTOR","AUTOMOTOR_GENERICO"].includes(e.type));
+ const nonAutoThefts=ev.filter(e=>e.kind==="SUSTRACCION"&&["MOTOVEHICULO","BICICLETA"].includes(e.type));
+ const partThefts=ev.filter(e=>e.kind==="SUSTRACCION"&&["AUTOPARTE","PERTENENCIA"].includes(e.type));
+ const offenderMoto=RX.offenderMoto.test(t)||(explicitMoto(t)&&RX.flee.test(t)&&explicitAuto(t));
+ const parkedGone=RX.parked.test(t)&&RX.absent.test(t)&&(explicitAuto(t)||RX.generic.test(t));
+ const forcedExit=/\b(OBLIGA|OBLIGAN|INTIMA|INTIMAN|HACE DESCENDER|HACEN DESCENDER)\b.{0,220}\b(DESCEND|BAJAR|BAJE|VEHICULO|RODADO|AUTO|CAMIONETA)\b/.test(t);
+ const takeVehicle=/\b(SUBEN|SUBIERON|ABORDAN|ABORDARON|TOMAN POSESION|SE APODERAN)\b.{0,160}\b(VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA)\b.{0,220}\b(FUGA|HUYEN|RETIRAN|LLEVAN|MARCHA)\b/.test(t);
+ const completeAuto=autoThefts.some(e=>e.type==="AUTOMOTOR")||parkedGone||forcedExit||takeVehicle;
+ const caratAuto=/SUSTRA[C]?CION AUTOMOTOR|HALLAZGO AUTOMOTOR|AUTOMOTOR/.test(c);
+ return {t,c,ev,autoThefts,autoRecs,nonAutoThefts,partThefts,offenderMoto,parkedGone,forcedExit,takeVehicle,completeAuto,caratAuto};
+}
+function universe(sc){
+ const {t,autoThefts,autoRecs,nonAutoThefts,partThefts,offenderMoto,completeAuto,caratAuto}=sc;
+ const explicitAutoEvidence=explicitAuto(t)||autoThefts.some(e=>e.type==="AUTOMOTOR")||autoRecs.some(e=>e.type==="AUTOMOTOR")||completeAuto;
+ const onlyNonAuto=nonAutoThefts.length>0&&!explicitAutoEvidence&&!offenderMoto;
+ const onlyParts=partThefts.length>0&&!completeAuto&&!autoThefts.length&&!autoRecs.length;
+ if(onlyNonAuto)return {in:false,principal:nonAutoThefts[0].type,why:"Objeto víctima no automotor."};
+ if(onlyParts)return {in:false,principal:partThefts[0].type,why:"Solo pertenencia/autoparte; el automotor es contexto."};
+ if(explicitAutoEvidence||caratAuto)return {in:true,principal:"AUTOMOTOR",why:offenderMoto?"Automotor víctima; la moto pertenece a autores/traslado.":"Automotor relevante confirmado."};
+ return {in:false,principal:"INDETERMINADO",why:"No se confirma automotor como objeto víctima/relevante."};
+}
+function identity(sc){
+ const {autoThefts,autoRecs,t}=sc;
+ for(const a of autoThefts)for(const b of autoRecs)if(a.dom&&b.dom&&a.dom===b.dom)return {level:"ALTA",why:"mismo dominio "+a.dom};
+ const domains=[...t.matchAll(/\b(?:[A-Z]{2}\d{3}[A-Z]{2}|[A-Z]{3}\d{3})\b/g)].map(m=>m[0]);
+ const repeated=domains.find((d,i)=>domains.indexOf(d)!==i);
+ if(repeated&&autoThefts.length&&autoRecs.length)return {level:"ALTA",why:"dominio repetido "+repeated};
+ if(autoThefts.length&&autoRecs.length&&/\b(DICHO|MISMO|MISMA|EL RODADO|EL VEHICULO|LA UNIDAD|VEHICULO SUSTRAIDO|RODADO SUSTRAIDO)\b/.test(t))return {level:"MEDIA",why:"correferencia al mismo automotor"};
+ if(autoThefts.length&&autoRecs.length&&RX.tracking.test(t))return {level:"MEDIA",why:"rastreo/localización vinculada al automotor"};
+ return {level:"BAJA",why:"sin continuidad objetiva suficiente"};
+}
+function positivePriorLink(sc){
+ const {t}=sc;
+ const positive=RX.prior.test(t)||/\b(SUSTRAIDO|ROBADO)\b.{0,100}\b(DOMINIO|VEHICULO|RODADO|AUTO|AUTOMOTOR)\b/.test(t)||/\b(DOMINIO|VEHICULO|RODADO|AUTO|AUTOMOTOR)\b.{0,100}\b(PEDIDO DE SECUESTRO|SUSTRAIDO|ROBADO)\b/.test(t);
+ const negative=/\b(NO POSEE|NO REGISTRA|SIN)\b.{0,60}\b(PEDIDO DE SECUESTRO|PEDIDO ACTIVO|IMPEDIMENTO)\b/.test(t);
+ return positive&&!negative;
+}
+function chronology(sc){
+ const {t,ev}=sc;
+ const firstRec=ev.findIndex(e=>e.kind==="RECUPERACION"&&["AUTOMOTOR","AUTOMOTOR_GENERICO"].includes(e.type));
+ const firstTheft=ev.findIndex(e=>e.kind==="SUSTRACCION"&&["AUTOMOTOR","AUTOMOTOR_GENERICO"].includes(e.type));
+ const procedure=RX.procedure.test(t);
+ const prior=positivePriorLink(sc);
+ const findingFirst=procedure&&firstRec>=0&&(firstTheft<0||firstRec<firstTheft)&&prior;
+ const theftThenRecovery=firstTheft>=0&&firstRec>=0&&firstTheft<firstRec;
+ const reportTheftThenTracked=sc.completeAuto&&sc.autoRecs.length&&RX.tracking.test(t)&&!findingFirst;
+ return {findingFirst,theftThenRecovery:theftThenRecovery||reportTheftThenTracked,prior,procedure};
+}
+function recoveryStrength(sc){
+ const {t,autoRecs}=sc;
+ if(!autoRecs.length)return {yes:false,level:"NINGUNA",why:"sin recuperación positiva"};
+ if(RX.negativeRecovery.test(t))return {yes:false,level:"NINGUNA",why:"rastreo/hallazgo negativo"};
+ if(autoRecs.some(e=>e.dom))return {yes:true,level:"ALTA",why:"recuperación con dominio"};
+ if(RX.tracking.test(t)||/\b(HABIDO|RECUPERADO|HALLADO|APARECIO|DIERON CON|DAN CON)\b/.test(t))return {yes:true,level:"ALTA",why:"recuperación/localización afirmativa"};
+ return {yes:true,level:"MEDIA",why:"evento de recuperación detectado"};
+}
+function classify(sc){
+ const u=universe(sc),id=identity(sc),ch=chronology(sc),rec=recoveryStrength(sc);
+ const evidence=[],contra=[];
+ if(sc.completeAuto)evidence.push("sustracción completa");
+ if(rec.yes)evidence.push(rec.why);
+ if(id.level!=="BAJA")evidence.push(id.why);
+ if(ch.prior)evidence.push("antecedente positivo vinculado");
+ if(sc.offenderMoto)evidence.push("moto de autores, no objeto víctima");
+ if(!u.in)return {ok:0,cond:"DESCARTADO",conf:"ALTA",why:u.why,u,id,ch,rec,evidence,contra};
+ if(ch.findingFirst){
+   return {ok:1,cond:"HALLAZGO",conf:id.level==="ALTA"?"ALTA":"MEDIA",why:"El hecho actual abre con hallazgo/localización y existe antecedente positivo de sustracción/pedido del automotor.",u,id,ch,rec,evidence,contra};
+ }
+ if(sc.completeAuto&&rec.yes&&ch.theftThenRecovery){
+   if(id.level==="ALTA"||id.level==="MEDIA")return {ok:1,cond:"INMEDIATO",conf:id.level==="ALTA"?"ALTA":"MEDIA",why:"Sustracción completa seguida de recuperación del mismo automotor ("+id.why+").",u,id,ch,rec,evidence,contra};
+   contra.push("identidad insuficiente entre sustracción y recuperación");
+   return {ok:1,cond:"REVISION HUMANA",conf:"MEDIA",why:"Hay sustracción completa y recuperación, pero falta continuidad suficiente para afirmar que es el mismo automotor.",u,id,ch,rec,evidence,contra};
+ }
+ if(sc.completeAuto||sc.autoThefts.length){
+   return {ok:1,cond:"SUSTRAIDO",conf:sc.completeAuto?"ALTA":"MEDIA",why:"Sustracción del automotor sin recuperación posterior confirmada del mismo vehículo.",u,id,ch,rec,evidence,contra};
+ }
+ if(rec.yes&&ch.prior){
+   return {ok:1,cond:"HALLAZGO",conf:"MEDIA",why:"Hallazgo/localización de automotor con antecedente positivo vinculado.",u,id,ch,rec,evidence,contra};
+ }
+ if(rec.yes&&!ch.prior){
+   contra.push("recuperación/hallazgo sin antecedente positivo suficiente");
+   return {ok:1,cond:"REVISION HUMANA",conf:"BAJA",why:"Hay una localización/hallazgo vehicular, pero falta confirmar el vínculo positivo con una sustracción previa.",u,id,ch,rec,evidence,contra};
+ }
+ if(sc.caratAuto){
+   contra.push("carátula vehicular sin evento narrativo concluyente");
+   return {ok:1,cond:"REVISION HUMANA",conf:"BAJA",why:"Quirón refiere automotor, pero el relato no permite reconstruir con seguridad sustracción o hallazgo.",u,id,ch,rec,evidence,contra};
+ }
+ return {ok:0,cond:"DESCARTADO",conf:"BAJA",why:"Sin hecho automotor clasificable.",u,id,ch,rec,evidence,contra};
+}
+function f1(r){
+ const t=txt(r),c=car(r);if(!t)return null;
+ const vehicle=explicitAuto(t)||explicitMoto(t)||RX.bici.test(t)||RX.generic.test(t)||/AUTOMOTOR/.test(c);
+ const event=RX.theft.test(t)||RX.recover.test(t)||RX.prior.test(t)||/SUSTRA[C]?CION AUTOMOTOR|HALLAZGO AUTOMOTOR/.test(c);
+ if(!vehicle||!event)return null;
+ return {...r,ETAPA_1:"CANDIDATO",MOTIVO_1:"V11.1 · candidato vehicular; universo, objeto víctima y dirección se resuelven en el motor semántico."};
+}
+function f2(r){
+ const sc=scene(r),d=classify(sc),e1=sc.ev[0]||{},e2=sc.ev[1]||{};
+ return {ok:d.ok,cond:d.cond,why:d.why,
+ V11_UNIVERSO:d.u.in?"AUTOMOTOR":"FUERA/INDETERMINADO",
+ V11_OBJETO_PRINCIPAL:d.u.principal,
+ V11_EVENTO_1:e1.kind?(e1.kind+" · "+e1.type+(e1.dom?" · "+e1.dom:"")):"",
+ V11_EVENTO_2:e2.kind?(e2.kind+" · "+e2.type+(e2.dom?" · "+e2.dom:"")):"",
+ V11_IDENTIDAD:d.id.level+" · "+d.id.why,
+ V11_CRONOLOGIA:d.ch.findingFirst?"HALLAZGO ACTUAL → ANTECEDENTE":(d.ch.theftThenRecovery?"SUSTRACCION → RECUPERACION":(sc.completeAuto?"SUSTRACCION":"SIN SECUENCIA COMPLETA")),
+ V11_CONFIANZA:d.conf,V11_EVENTOS_DETECTADOS:sc.ev.length,
+ V11_EVIDENCIAS:d.evidence.join(" | "),V11_CONTRADICCIONES:d.contra.join(" | "),
+ V11_MOTO_AUTORES:sc.offenderMoto?"SI":"NO",V11_ANTECEDENTE_POSITIVO:d.ch.prior?"SI":"NO"};
 }
 function extract(r){
  const t=txt(r);
@@ -99,7 +224,7 @@ function dl(name,sheets){const wb=XLSX.utils.book_new();sheets.forEach(([n,r])=>
 status.textContent="✅ Aplicación lista. Seleccioná el Excel de Cassandra.";
 $("file").addEventListener("change",async function(){const f=this.files[0];if(!f)return;try{status.textContent="Leyendo "+f.name+"…";const wb=XLSX.read(await f.arrayBuffer(),{type:"array"});src=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""});sourceFileName=f.name;cand=[];accepted=[];rejected=[];finalRows=[];completedRows=[];$("f1").disabled=!src.length;["f2","f3","f4"].forEach(x=>$(x).disabled=true);["d1","d2","d3","d4"].forEach(x=>$(x).disabled=true);status.textContent="✅ "+src.length.toLocaleString("es-AR")+" denuncias cargadas. Presioná 1️⃣ Detectar candidatos."}catch(e){status.textContent="❌ "+e.message}});
 $("f1").addEventListener("click",async()=>{cand=[];$("f1").disabled=true;for(let i=0;i<src.length;i++){const x=f1(src[i]);if(x)cand.push(x);if(i%250===0){status.textContent="🔎 Filtro 1 procesando… "+Math.round(100*i/src.length)+"%";await tick()}}$("f1").disabled=false;$("f2").disabled=!cand.length;$("d1").disabled=!cand.length;show(cand,"ETAPA_1","✅ Filtro 1 terminado: "+cand.length.toLocaleString("es-AR")+" candidatos de "+src.length.toLocaleString("es-AR")+".")});
-$("f2").addEventListener("click",async()=>{accepted=[];rejected=[];$("f2").disabled=true;for(let i=0;i<cand.length;i++){const r=cand[i],x=f2(r),z={...r,CONDICION_AUDITOR:x.cond||"DESCARTADO",MOTIVO_2:x.why,V11_UNIVERSO:x.V11_UNIVERSO||"",V11_OBJETO_PRINCIPAL:x.V11_OBJETO_PRINCIPAL||"",V11_EVENTO_1:x.V11_EVENTO_1||"",V11_EVENTO_2:x.V11_EVENTO_2||"",V11_IDENTIDAD:x.V11_IDENTIDAD||"",V11_CRONOLOGIA:x.V11_CRONOLOGIA||"",V11_CONFIANZA:x.V11_CONFIANZA||"",V11_EVENTOS_DETECTADOS:x.V11_EVENTOS_DETECTADOS||0};(x.ok?accepted:rejected).push(z);if(i%150===0){status.textContent="🧠 V11 procesando… "+Math.round(100*i/cand.length)+"%";await tick()}}$("f2").disabled=false;$("f3").disabled=!accepted.length;$("f4").disabled=true;$("d2").disabled=false;show(accepted,"CONDICION_AUDITOR","✅ V11: "+accepted.length.toLocaleString("es-AR")+" aceptados / "+rejected.length.toLocaleString("es-AR")+" descartados.")});
+$("f2").addEventListener("click",async()=>{accepted=[];rejected=[];$("f2").disabled=true;for(let i=0;i<cand.length;i++){const r=cand[i],x=f2(r),z={...r,CONDICION_AUDITOR:x.cond||"DESCARTADO",MOTIVO_2:x.why,V11_UNIVERSO:x.V11_UNIVERSO||"",V11_OBJETO_PRINCIPAL:x.V11_OBJETO_PRINCIPAL||"",V11_EVENTO_1:x.V11_EVENTO_1||"",V11_EVENTO_2:x.V11_EVENTO_2||"",V11_IDENTIDAD:x.V11_IDENTIDAD||"",V11_CRONOLOGIA:x.V11_CRONOLOGIA||"",V11_CONFIANZA:x.V11_CONFIANZA||"",V11_EVENTOS_DETECTADOS:x.V11_EVENTOS_DETECTADOS||0,V11_EVIDENCIAS:x.V11_EVIDENCIAS||"",V11_CONTRADICCIONES:x.V11_CONTRADICCIONES||"",V11_MOTO_AUTORES:x.V11_MOTO_AUTORES||"",V11_ANTECEDENTE_POSITIVO:x.V11_ANTECEDENTE_POSITIVO||""};(x.ok?accepted:rejected).push(z);if(i%150===0){status.textContent="🧠 V11 procesando… "+Math.round(100*i/cand.length)+"%";await tick()}}$("f2").disabled=false;$("f3").disabled=!accepted.length;$("f4").disabled=true;$("d2").disabled=false;show(accepted,"CONDICION_AUDITOR","✅ V11: "+accepted.length.toLocaleString("es-AR")+" aceptados / "+rejected.length.toLocaleString("es-AR")+" descartados.")});
 $("f3").addEventListener("click",async()=>{
  status.textContent="📊 Armando Excel final operativo…";await tick();
  finalRows=accepted.map(cleanFinal);
