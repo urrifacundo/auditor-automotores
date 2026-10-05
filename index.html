@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.1 · Lector Independiente</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.1 · Lector Independiente</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.2 · Diagnóstico del Lector</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.2 · Diagnóstico del Lector</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[];
 const $=id=>document.getElementById(id), status=$("status");
@@ -232,7 +232,9 @@ function f2(r){
    evento_1:"",evento_2:"",evento_3:"",
    secuencia:"",corresponde_automotor:"INDETERMINADO",
    sustraido_completo:"INDETERMINADO",recuperacion:"INDETERMINADO",
-   estado_inferido:"INDETERMINADO",confianza:"BAJA"
+   estado_inferido:"INDETERMINADO",confianza:"BAJA",
+   diag_texto_recibido:"",diag_longitud:0,diag_oraciones:0,
+   diag_verbos_sustraccion:0,diag_verbos_recuperacion:0,diag_objetos:""
  };
 
  const v10Sent=t.split(/[.!?;\n]+/).map(x=>x.trim()).filter(Boolean);
@@ -253,6 +255,20 @@ function f2(r){
    later:/\b(?:POSTERIORMENTE|LUEGO|DESPUES|MINUTOS DESPUES|HORAS DESPUES|MOMENTOS DESPUES|A CONTINUACION|SEGUIDAMENTE|MIENTRAS|EN EL TRANSCURSO)\b/,
    badRecovery:/\b(?:NO|SIN)\b.{0,50}\b(?:HALLAR|HALLADO|ENCONTRAR|ENCONTRADO|LOCALIZAR|LOCALIZADO|RECUPERAR|RECUPERADO)\b|\b(?:BUSCAR|BUSCANDO|RASTRILLAJE|PARA ENCONTRAR|PARA HALLAR)\b/
  };
+ // V10.2 — DIAGNÓSTICO PURO DEL INPUT.
+ ficha.diag_texto_recibido=t||"";
+ ficha.diag_longitud=(t||"").length;
+ ficha.diag_oraciones=v10Sent.length;
+ ficha.diag_verbos_sustraccion=((t||"").match(new RegExp(RX.theft.source,"g"))||[]).length;
+ ficha.diag_verbos_recuperacion=((t||"").match(new RegExp(RX.recover.source,"g"))||[]).length;
+ const diagObjs=[];
+ if(RX.auto.test(t||""))diagObjs.push("AUTOMOTOR");
+ if(RX.moto.test(t||""))diagObjs.push("MOTOVEHICULO");
+ if(RX.bici.test(t||""))diagObjs.push("BICICLETA");
+ if(RX.parte.test(t||""))diagObjs.push("AUTOPARTE");
+ if(RX.pert.test(t||""))diagObjs.push("PERTENENCIA");
+ ficha.diag_objetos=diagObjs.join(" | ")||"NINGUNO";
+
  const tipoLocal=z=>{
    if(RX.bici.test(z))return "BICICLETA";
    if(RX.moto.test(z))return "MOTOVEHICULO";
@@ -636,7 +652,10 @@ function dl(name,sheets){const wb=XLSX.utils.book_new();sheets.forEach(([n,r])=>
 status.textContent="✅ Aplicación lista. Seleccioná el Excel de Cassandra.";
 $("file").addEventListener("change",async function(){const f=this.files[0];if(!f)return;try{status.textContent="Leyendo "+f.name+"…";const wb=XLSX.read(await f.arrayBuffer(),{type:"array"});src=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""});cand=[];accepted=[];rejected=[];finalRows=[];$("f1").disabled=!src.length;$("f2").disabled=$("f3").disabled=true;["d1","d2","d3"].forEach(x=>$(x).disabled=true);status.textContent="✅ "+src.length.toLocaleString("es-AR")+" denuncias cargadas. Presioná 1️⃣ Detectar candidatos."}catch(e){status.textContent="❌ "+e.message}});
 $("f1").addEventListener("click",async()=>{cand=[];$("f1").disabled=true;for(let i=0;i<src.length;i++){const x=f1(src[i]);if(x)cand.push(x);if(i%250===0){status.textContent="🔎 Filtro 1 procesando… "+Math.round(100*i/src.length)+"%";await tick()}}$("f1").disabled=false;$("f2").disabled=!cand.length;$("d1").disabled=!cand.length;show(cand,"ETAPA_1","✅ Filtro 1 terminado: "+cand.length.toLocaleString("es-AR")+" candidatos de "+src.length.toLocaleString("es-AR")+".")});
-$("f2").addEventListener("click",async()=>{accepted=[];rejected=[];$("f2").disabled=true;for(let i=0;i<cand.length;i++){const r=cand[i],x=f2(r),fd=x.ficha_detalle||{},z={...r,CONDICION_AUDITOR:x.cond||"DESCARTADO",MOTIVO_2:x.why,FICHA_OBJETO_PRINCIPAL:fd.objeto_principal||"",FICHA_TIPO_OBJETO:fd.tipo_objeto||"",FICHA_ROL_OBJETO:fd.rol_objeto||"",FICHA_ENTIDAD_1:fd.entidad_1||"",FICHA_ENTIDAD_2:fd.entidad_2||"",FICHA_ENTIDAD_3:fd.entidad_3||"",FICHA_RELACION_1:fd.relacion_1||"",FICHA_RELACION_2:fd.relacion_2||"",FICHA_RELACION_3:fd.relacion_3||"",FICHA_EVENTO_1:fd.evento_1||"",FICHA_EVENTO_2:fd.evento_2||"",FICHA_EVENTO_3:fd.evento_3||"",FICHA_SECUENCIA:fd.secuencia||"",FICHA_CORRESPONDE_AUTOMOTOR:fd.corresponde_automotor||"",FICHA_SUSTRACCION_COMPLETA:fd.sustraido_completo||"",FICHA_RECUPERACION:fd.recuperacion||"",FICHA_ESTADO_INFERIDO:fd.estado_inferido||"",FICHA_CONFIANZA:fd.confianza||"",FICHA_RESUMEN:x.ficha_semantica||""};(x.ok?accepted:rejected).push(z);if(i%150===0){status.textContent="🧠 Filtro 2 procesando… "+Math.round(100*i/cand.length)+"%";await tick()}}$("f2").disabled=false;$("f3").disabled=!accepted.length;$("d2").disabled=false;show(accepted,"CONDICION_AUDITOR","✅ Filtro 2: "+accepted.length.toLocaleString("es-AR")+" aceptados / "+rejected.length.toLocaleString("es-AR")+" descartados.")});
+$("f2").addEventListener("click",async()=>{accepted=[];rejected=[];$("f2").disabled=true;for(let i=0;i<cand.length;i++){const r=cand[i],x=f2(r),fd=x.ficha_detalle||{},z={...r,CONDICION_AUDITOR:x.cond||"DESCARTADO",MOTIVO_2:x.why,FICHA_OBJETO_PRINCIPAL:fd.objeto_principal||"",FICHA_TIPO_OBJETO:fd.tipo_objeto||"",FICHA_ROL_OBJETO:fd.rol_objeto||"",FICHA_ENTIDAD_1:fd.entidad_1||"",FICHA_ENTIDAD_2:fd.entidad_2||"",FICHA_ENTIDAD_3:fd.entidad_3||"",FICHA_RELACION_1:fd.relacion_1||"",FICHA_RELACION_2:fd.relacion_2||"",FICHA_RELACION_3:fd.relacion_3||"",FICHA_EVENTO_1:fd.evento_1||"",FICHA_EVENTO_2:fd.evento_2||"",FICHA_EVENTO_3:fd.evento_3||"",FICHA_SECUENCIA:fd.secuencia||"",FICHA_CORRESPONDE_AUTOMOTOR:fd.corresponde_automotor||"",FICHA_SUSTRACCION_COMPLETA:fd.sustraido_completo||"",FICHA_RECUPERACION:fd.recuperacion||"",FICHA_ESTADO_INFERIDO:fd.estado_inferido||"",FICHA_CONFIANZA:fd.confianza||"",FICHA_RESUMEN:x.ficha_semantica||"",
+V10_TEXTO_RECIBIDO:fd.diag_texto_recibido||"",V10_LONGITUD_TEXTO:fd.diag_longitud||0,
+V10_ORACIONES_DETECTADAS:fd.diag_oraciones||0,V10_VERBOS_SUSTRACCION:fd.diag_verbos_sustraccion||0,
+V10_VERBOS_RECUPERACION:fd.diag_verbos_recuperacion||0,V10_OBJETOS_DETECTADOS:fd.diag_objetos||""};(x.ok?accepted:rejected).push(z);if(i%150===0){status.textContent="🧠 Filtro 2 procesando… "+Math.round(100*i/cand.length)+"%";await tick()}}$("f2").disabled=false;$("f3").disabled=!accepted.length;$("d2").disabled=false;show(accepted,"CONDICION_AUDITOR","✅ Filtro 2: "+accepted.length.toLocaleString("es-AR")+" aceptados / "+rejected.length.toLocaleString("es-AR")+" descartados.")});
 $("f3").addEventListener("click",async()=>{status.textContent="🧾 Filtro 3 completando datos…";await tick();finalRows=accepted.map(extract);$("d3").disabled=!finalRows.length;show(finalRows,"CONDICION_AUDITOR","✅ Filtro 3 terminado: "+finalRows.length.toLocaleString("es-AR")+" casos finales.")});
 $("d1").onclick=()=>dl("FILTRO_1_CANDIDATOS.xlsx",[["CANDIDATOS",cand]]);
 $("d2").onclick=()=>dl("FILTRO_2_AUDITORIA.xlsx",[["ACEPTADOS",accepted],["DESCARTADOS",rejected]]);
