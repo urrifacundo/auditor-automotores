@@ -285,12 +285,22 @@ function construirFichaV10(textoEntrada){
  }
 
  const robos=uniq.filter(r=>r.ac==="SUSTRAE"&&r.obj!=="INDETERMINADO");
+ // V10.23.2 — JERARQUIA DE OBJETOS CONCURRENTES.
+ // Una pertenencia puede coexistir con el robo del vehiculo completo. En ese
+ // caso no compiten como objetos equivalentes: si la narracion acredita que
+ // los autores se apoderan / se llevan / huyen con el automotor, el automotor
+ // es el objeto principal del auditor y las pertenencias quedan subordinadas.
+ // A la inversa, mencionar un auto, sus llaves o elementos dentro del mismo no
+ // demuestra por si solo sustraccion completa.
+ const v10232WholeVehicleTaken=z=>{
+   z=String(z||"");
+   const veh='(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|FURGON|UNIDAD)';
+   const act='(?:SUSTRAE(?:N|JO|JERON)?|ROBA(?:N|RON)?|APODERA(?:N|RON)?|SE\s+APODERA(?:N|RON)?|SE\s+LLEVA(?:N|RON)?|DESPOJA(?:N|RON)?)';
+   return new RegExp('\\b'+act+'\\b[^.!?]{0,180}\\b'+veh+'\\b').test(z) ||
+          new RegExp('\\b'+veh+'\\b[^.!?]{0,150}\\b(?:SUSTRAID[OA]|ROBADO|ROBADA|SE\\s+LO\\s+LLEVARON|SE\\s+LA\\s+LLEVARON)\\b').test(z) ||
+          /\b(?:SE DAN A LA FUGA|SE DA A LA FUGA|HUYEN|HUYE|ESCAPAN|ESCAPA)\b[^.!?]{0,120}\b(?:CON|EN)\b[^.!?]{0,60}\b(?:EL|LA|SU)?\s*(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|FURGON|UNIDAD)\b/.test(z);
+ };
  const rankObjeto=r=>{
-   // V10.23.1: el objeto principal no se decide por una jerarquía fija
-   // AUTOMOTOR > MOTO > BICI. Se premia que sea el objeto directo del robo,
-   // que la identificación sea confiable y que no sea sólo una palabra
-   // genérica. Esto evita que una relación AUTOMOTOR débil tape una moto
-   // explícitamente sustraída.
    if(r.rol!=="OBJETO SUSTRAIDO") return -1;
    const conf=r.conf==="ALTA"?30:r.conf==="MEDIA"?15:0;
    const z=String(r.z||"");
@@ -301,7 +311,8 @@ function construirFichaV10(textoEntrada){
    else if(r.obj==="AUTOPARTE") spec=12;
    else if(r.obj==="PERTENENCIA") spec=8;
    const actual=r.tm==="ANTERIOR"?0:10;
-   return conf+spec+actual;
+   const wholeVehicle=(r.obj==="AUTOMOTOR" && v10232WholeVehicleTaken(z))?55:0;
+   return conf+spec+actual+wholeVehicle;
  };
  const principal=robos.slice().sort((a,b)=>
    rankObjeto(b)-rankObjeto(a) ||
@@ -509,7 +520,7 @@ function f2(r){
  };
  const conFicha=(o)=>Object.assign(o,__v10,v109Bridge(o,fichaPuenteV109()));
 
- // V10.23.1 — OBJETO VÍCTIMA + GATE SOBERANO DEL UNIVERSO AUTOMOTOR.
+ // V10.23.2 — OBJETO VÍCTIMA + GATE SOBERANO DEL UNIVERSO AUTOMOTOR.
  // La ficha semántica ya reconstruyó cuál es el objeto principal y su rol.
  // Si el objeto víctima/recuperado es explícitamente MOTOVEHICULO o BICICLETA,
  // ninguna rama posterior puede rescatarlo como SUSTRAIDO/HALLAZGO/INMEDIATO.
@@ -523,7 +534,7 @@ function f2(r){
  const __rolObjetoHecho=/OBJETO (?:SUSTRAIDO|RECUPERADO|HALLADO|PRINCIPAL)/.test(__rolUniverso);
  const __vetoUniverso=(__correspondeUniverso==='NO' && __rolObjetoHecho) || (__objetoNoAutomotor && __rolObjetoHecho);
  if(__vetoUniverso){
-   return conFicha({ok:0,cond:'DESCARTADO',why:'V10.23.1 · Fuera del universo del auditor de automotores: la reconstrucción semántica identifica '+(__tipoUniverso||'OBJETO NO AUTOMOTOR')+' como '+(__rolUniverso||'OBJETO PRINCIPAL')+'. El descarte es soberano y no puede ser revertido por reglas posteriores.'});
+   return conFicha({ok:0,cond:'DESCARTADO',why:'V10.23.2 · Fuera del universo del auditor de automotores: la reconstrucción semántica identifica '+(__tipoUniverso||'OBJETO NO AUTOMOTOR')+' como '+(__rolUniverso||'OBJETO PRINCIPAL')+'. El descarte es soberano y no puede ser revertido por reglas posteriores.'});
  }
 
  const autoWord=/\b(AUTOMOVIL|AUTO|CAMIONETA|CAMION|UTILITARIO|FURGON|SEDAN|COCHE)\b/.test(t);
