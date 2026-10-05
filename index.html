@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V10.20 Auditor de Automotores</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.20</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V10.21 Auditor de Automotores</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.21</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[],completedRows=[],sourceFileName="";
 const $=id=>document.getElementById(id), status=$("status");
@@ -990,7 +990,7 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
  // El especialista INMEDIATO tiene prioridad conceptual sobre HALLAZGO cuando
  // puede demostrar la secuencia actual completa. Si no puede, el flujo legacy
  // continua intacto y HALLAZGO/SUSTRAIDO conservan sus reglas.
- // V10.20 — IDENTIDAD DEL EVENTO ACTUAL ANTES DE PROMOVER INMEDIATO.
+ // V10.18 — IDENTIDAD DEL EVENTO ACTUAL ANTES DE PROMOVER INMEDIATO.
  // La ficha V10 puede reconstruir SUSTRACCION -> RECUPERACION aunque la sustraccion
  // sea solamente un antecedente contado despues dentro de un acta de hallazgo.
  // Por eso ordenamos tres hitos independientes del relato: apertura procedimental,
@@ -1006,7 +1006,7 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
    && (v1018IdxHallazgoFisico<0 || v1018IdxSustraccion<v1018IdxHallazgoFisico);
 
  if(v1018HallazgoAbreHecho && !v1018SustraccionAbreHecho)
-   return conFicha({ok:1,cond:"HALLAZGO",why:"V10.20 identifica el evento actual por orden narrativo: el expediente abre con un procedimiento y la observacion fisica de un automotor ya localizado; el pedido de secuestro/sustraccion aparece despues como antecedente. No corresponde promoverlo a INMEDIATO."});
+   return conFicha({ok:1,cond:"HALLAZGO",why:"V10.18 identifica el evento actual por orden narrativo: el expediente abre con un procedimiento y la observacion fisica de un automotor ya localizado; el pedido de secuestro/sustraccion aparece despues como antecedente. No corresponde promoverlo a INMEDIATO."});
 
  const promocionInmediatoV1013=promoverInmediatoV1013();
  if(promocionInmediatoV1013)return promocionInmediatoV1013;
@@ -1083,22 +1083,29 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
 function extract(r){
  const t=txt(r);
  const compact=v=>String(v||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
- const patenteValida=v=>{const x=compact(v);return /^[A-Z]{3}[0-9]{3}$/.test(x)||/^[A-Z]{2}[0-9]{3}[A-Z]{2}$/.test(x)};
- // Motor/chasis deben parecer identificadores: no aceptamos palabras corrientes ni etiquetas sueltas.
  const stop=new Set(["IZADA","ISTA","OLLA","NUMERO","SOBRE","SERIE","MOTOR","CHASIS","DOMINIO","MARCA","MODELO","COLOR","TIPO","VEHICULO","AUTOMOTOR","POSEE","POSEIA","PRESENTA","RESULTA","SIENDO","DICHO","MISMO"]);
- const idValido=(v,min,max)=>{const x=compact(v);if(x.length<min||x.length>max||stop.has(x))return false;if(!/^[A-Z0-9]+$/.test(x))return false;return /[0-9]/.test(x)};
- const buscar=(res,validar)=>{for(const re of res){const m=t.match(re);if(m){const v=m[1].trim();if(validar(v))return compact(v)}}return ""};
- const patente=buscar([
-  /\\bDOMINIO\\s*(?:NRO|N°|NUMERO)?\\s*[:\\-]?\\s*([A-Z]{2}\\s*\\d{3}\\s*[A-Z]{2})(?=\\b|[^A-Z0-9])/,
-  /\\bDOMINIO\\s*(?:NRO|N°|NUMERO)?\\s*[:\\-]?\\s*([A-Z]{3}\\s*\\d{3})(?=\\b|[^A-Z0-9])/
+ const patenteValida=v=>{const x=compact(v);return /^[A-Z]{3}[0-9]{3}$/.test(x)||/^[A-Z]{2}[0-9]{3}[A-Z]{2}$/.test(x)};
+ const idValido=(v,min,max)=>{const x=compact(v);return x.length>=min&&x.length<=max&&!stop.has(x)&&/^[A-Z0-9]+$/.test(x)&&/[0-9]/.test(x)};
+ const pick=(arr,validar)=>{for(const re of arr){const m=t.match(re);if(m&&validar(m[1]))return compact(m[1])}return ""};
+ const patente=pick([
+   /\b(?:DOMINIO|PATENTE|CHAPA PATENTE)\s*(?:NRO|N°|NUMERO)?\s*[:\-]?\s*([A-Z]{2}\s*\d{3}\s*[A-Z]{2})(?=\s|[,;.)]|$)/,
+   /\b(?:DOMINIO|PATENTE|CHAPA PATENTE)\s*(?:NRO|N°|NUMERO)?\s*[:\-]?\s*([A-Z]{3}\s*\d{3})(?=\s|[,;.)]|$)/
  ],patenteValida);
- const motor=buscar([
-  /\\b(?:NUMERO\\s+DE\\s+MOTOR|MOTOR(?:\\s+NRO|\\s+N°|\\s+NUMERO)?)\\s*[:\\-]?\\s*([A-Z0-9][A-Z0-9.\\-]{3,24})(?=\\s|[,;.)]|$)/
+ const motor=pick([
+   /\b(?:NUMERO\s+DE\s+MOTOR|MOTOR(?:\s+NRO|\s+N°|\s+NUMERO)?)\s*[:\-]?\s*([A-Z0-9][A-Z0-9.\-]{3,24})(?=\s|[,;.)]|$)/
  ],v=>idValido(v,4,25));
- const chasis=buscar([
-  /\\b(?:NUMERO\\s+DE\\s+CHASIS|CHASIS(?:\\s+NRO|\\s+N°|\\s+NUMERO)?|VIN)\\s*[:\\-]?\\s*([A-Z0-9][A-Z0-9.\\-]{5,29})(?=\\s|[,;.)]|$)/
+ const chasis=pick([
+   /\b(?:NUMERO\s+DE\s+CHASIS|CHASIS(?:\s+NRO|\s+N°|\s+NUMERO)?|VIN)\s*[:\-]?\s*([A-Z0-9][A-Z0-9.\-]{5,29})(?=\s|[,;.)]|$)/
  ],v=>idValido(v,6,30));
  return {...r,PATENTE:patente,MOTOR:motor,CHASIS:chasis};
+}
+function validarSalidaVehicular(r){
+ const compact=v=>String(v||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+ const stop=new Set(["IZADA","ISTA","OLLA","NUMERO","SOBRE","SERIE","MOTOR","CHASIS","DOMINIO","MARCA","MODELO","COLOR","TIPO","VEHICULO","AUTOMOTOR","POSEE","POSEIA","PRESENTA","RESULTA","SIENDO","DICHO","MISMO"]);
+ const p=compact(r.PATENTE),m=compact(r.MOTOR),c=compact(r.CHASIS);
+ const patente=/^(?:[A-Z]{3}[0-9]{3}|[A-Z]{2}[0-9]{3}[A-Z]{2})$/.test(p)?p:"";
+ const id=(x,min,max)=>x.length>=min&&x.length<=max&&!stop.has(x)&&/^[A-Z0-9]+$/.test(x)&&/[0-9]/.test(x);
+ return {...r,PATENTE:patente,MOTOR:id(m,4,25)?m:"",CHASIS:id(c,6,30)?c:""};
 }
 function cleanFinal(r){
  const cols=["delito_id","nro_registro","ipp","fecha_carga","hora_carga","dependencia","fecha_inicio_hecho","hora_inicio_hecho","partido_hecho","localidad_hecho","latitud","longitud","calle","altura","entre","calificaciones","relato"];
@@ -1131,7 +1138,7 @@ $("f3").addEventListener("click",async()=>{
 });
 $("f4").addEventListener("click",async()=>{
  status.textContent="🧾 Completando datos vehiculares…";await tick();
- completedRows=accepted.map(r=>cleanFinal(extract(r)));
+ completedRows=accepted.map(r=>cleanFinal(validarSalidaVehicular(extract(r))));
  $("d4").disabled=!completedRows.length;
  show(completedRows,"CONDICION","✅ Datos completados: "+completedRows.length.toLocaleString("es-AR")+" casos.");
 });
