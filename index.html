@@ -861,7 +861,7 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
    && !(historicalTheft && !victimComplaint && !evAbandonoPosterior);
 
  // V9.21: puerta graduada, no binaria.
- // V10.13 — ESPECIALISTA INMEDIATOS · V9 ↔ V10.
+ // V10.14 — ESPECIALISTA INMEDIATOS · V9 ↔ V10.
  // V9 conserva la deteccion/propuesta. V10 no lo reemplaza: valida o corrige
  // solamente cuando su ficha reconstruye el hecho con evidencia suficiente.
  const arbitrarInmediatoV1012=(why)=>{
@@ -916,6 +916,23 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
  // una puerta simetrica para promover un SUSTRAIDO/HALLAZGO cuando la ficha
  // reconstruia con fuerza la secuencia completa. Esta funcion agrega esa puerta.
  const promoverInmediatoV1013=()=>{
+   // V10.14 — PUERTA 1: identidad material del objeto.
+   // "Rodado" es un hiperónimo y no puede convertir una bicicleta en automotor.
+   // Si el relato identifica positivamente bicicleta/bici y no identifica además un
+   // automotor independiente, el especialista INMEDIATO no puede promover el caso.
+   const objetoBicicleta=RX.bici.test(t) && !/\b(?:AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|FURGON)\b/.test(t);
+   if(objetoBicicleta)return null;
+
+   // V10.14 — PUERTA 2: identidad del hecho actual.
+   // Si el relato nace como procedimiento sobre un vehículo ya hallado/localizado,
+   // una sustracción previa funciona como antecedente y corresponde evaluar HALLAZGO.
+   // En cambio, si el hecho nace con la denuncia actual de sustracción y después
+   // aparece la recuperación, sigue habilitado el camino a INMEDIATO.
+   const iniciaComoHallazgo=/\b(?:SOMOS COMISIONADOS|COMISIONADOS|ALERTADOS POR 911|RECIBEN MODULACION|MODULACION RADIAL|SE CONSTITUYEN|ARRIBAN|CONCURREN|EN RECORRIDA)\b.{0,420}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b.{0,180}\b(?:ABANDONAD[OA]|LOCALIZAD[OA]|HALLAD[OA]|ESTACIONAD[OA]|INTERCEPTAD[OA])\b/.test(t)
+     ||/\b(?:EMPRESA|LOJACK|STRIX|WISETRACK|911)\b.{0,260}\b(?:INFORMA|INFORMO|REPORTA|REPORTO|MODULA)\b.{0,180}\b(?:UBICACION|LOCALIZACION)\b.{0,180}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b/.test(t);
+   const denunciaActualPrimero=victimComplaint && theftStrong && !iniciaComoHallazgo;
+   if(iniciaComoHallazgo && !denunciaActualPrimero)return null;
+
    const f=fichaPuenteV109();
    const estado=String(f.FICHA_ESTADO_INFERIDO||"").toUpperCase();
    const conf=String(f.FICHA_CONFIANZA||"").toUpperCase();
@@ -927,7 +944,7 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
    const fichaCompleta=estado==="INMEDIATO" && conf==="ALTA" && rec==="SI"
      && obj==="AUTOMOTOR" && /SUSTRACCION/.test(sec) && /RECUPERACION/.test(sec);
    if(fichaCompleta)
-     return conFicha({ok:1,cond:"INMEDIATO",why:"V10.13 promueve a INMEDIATO: la ficha semantica reconstruye con confianza alta una sustraccion actual seguida por recuperacion del mismo automotor."});
+     return conFicha({ok:1,cond:"INMEDIATO",why:"V10.14 promueve a INMEDIATO: la ficha semantica reconstruye con confianza alta una sustraccion actual seguida por recuperacion del mismo automotor."});
 
    // Camino B: V9 detecta una cadena fuerte y V10 aporta compatibilidad semantica.
    // No alcanza una etiqueta 'secuestrado' ni un pedido de secuestro: debe existir
@@ -937,7 +954,7 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
      && (linkedRecoveryAfterTheft || immediateHigh)
      && (semanticRecoveryCompatible || rec==="SI" || strictRecoveryEvent);
    if(cadenaConjunta)
-     return governedImmediate("V10.13 especialista INMEDIATO: V9 detecta sustraccion seguida de recuperacion/localizacion positiva y V10 aporta continuidad semantica del mismo automotor.");
+     return governedImmediate("V10.14 especialista INMEDIATO: V9 detecta sustraccion seguida de recuperacion/localizacion positiva y V10 aporta continuidad semantica del mismo automotor.");
 
    return null;
  };
