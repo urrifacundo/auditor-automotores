@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.3 · Ficha Universal</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.3 · Ficha Universal</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.4 · Relaciones Corregidas</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.4 · Relaciones Corregidas</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[];
 const $=id=>document.getElementById(id), status=$("status");
@@ -117,8 +117,8 @@ function construirFichaV10(textoEntrada){
    if(RX.recover.test(z)&&!RX.badRecovery.test(z)){
      let obj=tipoLocal(z),conf=obj==="INDETERMINADO"?"BAJA":"ALTA";
      // Coreferencia se resuelve contra el último objeto vehicular sustraído ya leído.
-     const prev=[...rels].reverse().find(r=>r.i<=i&&r.accion==="SUSTRAE"&&(r.objeto==="AUTOMOTOR"||r.objeto==="MOTOVEHICULO"));
-     if((RX.coref.test(z)||/\b(?:EL|LA)\s+(?:RODADO|VEHICULO)\b/.test(z))&&prev){obj=prev.objeto;conf="ALTA";}
+     const prev=[...rels].reverse().find(r=>r.i<=i&&r.ac==="SUSTRAE"&&(r.obj==="AUTOMOTOR"||r.obj==="MOTOVEHICULO"));
+     if((RX.coref.test(z)||/\b(?:EL|LA)\s+(?:RODADO|VEHICULO)\b/.test(z))&&prev){obj=prev.obj;conf="ALTA";}
      add(i,sujeto(z),"RECUPERA/HALLA",obj,"OBJETO RECUPERADO",tiempo(z),conf,z);
    }
  });
@@ -126,68 +126,68 @@ function construirFichaV10(textoEntrada){
  // Quitar duplicados semánticos de una misma oración.
  const uniq=[];
  for(const r of rels){
-   if(!uniq.some(q=>q.i===r.i&&q.accion===r.accion&&q.objeto===r.objeto&&q.rol===r.rol))uniq.push(r);
+   if(!uniq.some(q=>q.i===r.i&&q.ac===r.ac&&q.obj===r.obj&&q.rol===r.rol))uniq.push(r);
  }
- uniq.sort((a,b)=>a.i-b.i || (a.accion==="SUSTRAE"?-1:1));
+ uniq.sort((a,b)=>a.i-b.i || (a.ac==="SUSTRAE"?-1:1));
 
- const robos=uniq.filter(r=>r.accion==="SUSTRAE"&&r.objeto!=="INDETERMINADO");
+ const robos=uniq.filter(r=>r.ac==="SUSTRAE"&&r.obj!=="INDETERMINADO");
  const principal=robos.find(r=>r.conf==="ALTA")||robos.find(r=>r.conf==="MEDIA")||null;
  const first=uniq[0]||null;
 
  if(principal){
-   ficha.objeto_principal=principal.objeto;
-   ficha.tipo_objeto=principal.objeto;
+   ficha.obj_principal=principal.obj;
+   ficha.tipo_objeto=principal.obj;
    ficha.rol_objeto="OBJETO SUSTRAIDO";
    ficha.confianza=principal.conf;
-   ficha.corresponde_automotor=principal.objeto==="AUTOMOTOR"?"SI":
-      (["MOTOVEHICULO","BICICLETA","AUTOPARTE","PERTENENCIA"].includes(principal.objeto)?"NO":"INDETERMINADO");
-   ficha.sustraido_completo=principal.objeto==="AUTOMOTOR"?"SI":
-      (["AUTOPARTE","PERTENENCIA"].includes(principal.objeto)?"NO":"INDETERMINADO");
- }else if(first&&first.accion==="RECUPERA/HALLA"){
-   ficha.objeto_principal=first.objeto; ficha.tipo_objeto=first.objeto;
+   ficha.corresponde_automotor=principal.obj==="AUTOMOTOR"?"SI":
+      (["MOTOVEHICULO","BICICLETA","AUTOPARTE","PERTENENCIA"].includes(principal.obj)?"NO":"INDETERMINADO");
+   ficha.sustraido_completo=principal.obj==="AUTOMOTOR"?"SI":
+      (["AUTOPARTE","PERTENENCIA"].includes(principal.obj)?"NO":"INDETERMINADO");
+ }else if(first&&first.ac==="RECUPERA/HALLA"){
+   ficha.obj_principal=first.obj; ficha.tipo_objeto=first.obj;
    ficha.rol_objeto="OBJETO RECUPERADO"; ficha.confianza=first.conf;
-   ficha.corresponde_automotor=first.objeto==="AUTOMOTOR"?"SI":"INDETERMINADO";
+   ficha.corresponde_automotor=first.obj==="AUTOMOTOR"?"SI":"INDETERMINADO";
  }
 
  // Vinculación independiente: orden + mismo tipo + coreferencia/temporalidad/fuente explícita en texto.
  let rec=null;
- if(principal&&(principal.objeto==="AUTOMOTOR"||principal.objeto==="MOTOVEHICULO")){
+ if(principal&&(principal.obj==="AUTOMOTOR"||principal.obj==="MOTOVEHICULO")){
    rec=uniq.find(r=>{
-     if(r.accion!=="RECUPERA/HALLA"||r.i<principal.i||r.objeto!==principal.objeto)return false;
+     if(r.ac!=="RECUPERA/HALLA"||r.i<principal.i||r.obj!==principal.obj)return false;
      const tramo=v10Sent.slice(principal.i,r.i+1).join(" ");
      return r.i===principal.i||r.tm==="POSTERIOR"||RX.coref.test(r.z)||
        /\b(?:INFORMA|INFORMAN|AVISA|AVISAN|COMUNICA|COMUNICAN|VIA RADIAL|RADIAL|911|PERSONAL POLICIAL)\b/.test(tramo);
    })||null;
  }
 
- const startsRecovery=!!(first&&first.accion==="RECUPERA/HALLA"&&first.tm!=="POSTERIOR");
- const theftNarratedLater=startsRecovery&&uniq.some(r=>r.accion==="SUSTRAE"&&r.i>first.i);
+ const startsRecovery=!!(first&&first.ac==="RECUPERA/HALLA"&&first.tm!=="POSTERIOR");
+ const theftNarratedLater=startsRecovery&&uniq.some(r=>r.ac==="SUSTRAE"&&r.i>first.i);
 
- if(startsRecovery&&first.objeto==="AUTOMOTOR"){
+ if(startsRecovery&&first.obj==="AUTOMOTOR"){
    ficha.recuperacion="SI";
    ficha.secuencia=theftNarratedLater?"HALLAZGO ACTUAL ← SUSTRACCION ANTERIOR":"HALLAZGO";
    ficha.estado_inferido="HALLAZGO";
- }else if(principal&&principal.objeto==="AUTOMOTOR"){
+ }else if(principal&&principal.obj==="AUTOMOTOR"){
    if(rec){ficha.recuperacion="SI";ficha.secuencia="SUSTRACCION → RECUPERACION";ficha.estado_inferido="INMEDIATO";}
    else{ficha.recuperacion="NO/NO VINCULADA";ficha.secuencia="SUSTRACCION";ficha.estado_inferido="SUSTRAIDO";}
  }else if(principal){
    ficha.recuperacion="NO/NO VINCULADA";
-   ficha.secuencia="SUSTRACCION · "+principal.objeto;
+   ficha.secuencia="SUSTRACCION · "+principal.obj;
    ficha.estado_inferido="FUERA/NO AUTOMOTOR COMPLETO";
  }
 
- const fmt=r=>r.su+" → "+r.accion+" → "+r.objeto+" ["+r.rol+"; "+r.tm+"; "+r.conf+"]";
+ const fmt=r=>r.su+" → "+r.ac+" → "+r.obj+" ["+r.rol+"; "+r.tm+"; "+r.conf+"]";
  ficha.relacion_1=uniq[0]?fmt(uniq[0]):"";
  ficha.relacion_2=uniq[1]?fmt(uniq[1]):"";
  ficha.relacion_3=uniq[2]?fmt(uniq[2]):"";
  ficha.evento_1=ficha.relacion_1; ficha.evento_2=ficha.relacion_2; ficha.evento_3=ficha.relacion_3;
 
  const ents=[];
- uniq.forEach(r=>{const x=r.objeto+" · "+r.rol;if(r.objeto!=="INDETERMINADO"&&!ents.includes(x))ents.push(x)});
+ uniq.forEach(r=>{const x=r.obj+" · "+r.rol;if(r.obj!=="INDETERMINADO"&&!ents.includes(x))ents.push(x)});
  ficha.entidad_1=ents[0]||"";ficha.entidad_2=ents[1]||"";ficha.entidad_3=ents[2]||"";
 
  const fichaTexto=[
-   "LECTOR=V10.3-UNIVERSAL","OBJETO="+ficha.tipo_objeto,"ROL="+ficha.rol_objeto,
+   "LECTOR=V10.4-RELACIONES","OBJETO="+ficha.tipo_objeto,"ROL="+ficha.rol_objeto,
    "REL1="+(ficha.relacion_1||"-"),"REL2="+(ficha.relacion_2||"-"),
    "AUTOMOTOR="+ficha.corresponde_automotor,"SUSTRAIDO_COMPLETO="+ficha.sustraido_completo,
    "RECUPERACION="+ficha.recuperacion,"SECUENCIA="+(ficha.secuencia||"INDETERMINADA"),
