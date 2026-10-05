@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V9.20</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V9.20</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V9.21</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V9.21</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[];
 const $=id=>document.getElementById(id), status=$("status");
@@ -180,18 +180,89 @@ function f2(r){
     if(linkedRecoveryAfterTheft)break;
   }
 
- // V9.20 — GOBIERNO UNICO DE INMEDIATO.
- // Las heuristicas historicas aportan evidencia, pero no pueden cerrar INMEDIATO
- // sin validar primero que la sustraccion recaiga sobre el VEHICULO COMPLETO.
+ // V9.21 — CONFIANZA SEMANTICA PARA INMEDIATO.
+ // No buscamos una frase obligatoria: acumulamos evidencia independiente.
  const semanticVehicleTheftConfirmed=vehicleTheftEvidence.length>0;
  const semanticOnlyNonVehicleTheft=
    nonVehicleTheftEvidence.length>0 && vehicleTheftEvidence.length===0 && ambiguousTheftEvidence.length===0;
  const semanticTheftObjectAmbiguous=
    ambiguousTheftEvidence.length>0 && vehicleTheftEvidence.length===0;
- const semanticImmediateAuthorized=
-   semanticVehicleTheftConfirmed && linkedRecoveryAfterTheft;
 
-  const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCALIZADO|LOCALIZADA|RECUPERA|RECUPERAN|RECUPERADO|RECUPERADA|ENCONTRADO|ENCONTRADA|HABIDO|HABIDA)\b/;
+ // Evidencia de continuidad de una denuncia actual de sustraccion hacia una recuperacion posterior.
+ const recoveryCandidates=eventNodes.filter(e=>e.recovery&&!e.negated&&!e.searching&&!e.questioned);
+ let semanticImmediateScore=0;
+ let semanticImmediateReasons=[];
+ let semanticRecoveryCompatible=false;
+
+ if(semanticVehicleTheftConfirmed){
+   semanticImmediateScore+=3;
+   semanticImmediateReasons.push("objeto sustraído: vehículo completo");
+ }
+
+ // La cadena estricta sigue siendo la evidencia de mayor valor.
+ if(linkedRecoveryAfterTheft){
+   semanticImmediateScore+=4;
+   semanticRecoveryCompatible=true;
+   semanticImmediateReasons.push("recuperación vinculada al mismo vehículo");
+ }
+
+ // Segunda vía: continuidad narrativa fuerte aunque el relato no repita todos
+ // los identificadores del rodado en la oración de recuperación.
+ if(semanticVehicleTheftConfirmed && !linkedRecoveryAfterTheft){
+   for(const teInfo of vehicleTheftEvidence){
+     const te=eventNodes[teInfo.i];
+     for(const re of recoveryCandidates){
+       if(re.i<=te.i)continue;
+       const gap=re.i-te.i;
+       const bridge=eventNodes.slice(te.i,re.i+1);
+       const recoveryNamesVehicle=re.vehicle||re.sameVehicle||re.identity;
+       const competingOnly=(re.autoPart||re.belonging||re.otherObject)&&!recoveryNamesVehicle;
+       if(competingOnly)continue;
+
+       let local=0;
+       let reasons=[];
+       if(recoveryNamesVehicle){local+=3;reasons.push("recuperación refiere al automotor");}
+       else if(gap<=2){local+=1;reasons.push("continuidad narrativa cercana");}
+
+       if(re.temporal||bridge.some(x=>x.temporal)){local+=2;reasons.push("orden temporal posterior");}
+       if(sourceForRecovery(re)){local+=1;reasons.push("fuente concreta de recuperación");}
+       if(re.sameVehicle||re.identity){local+=2;reasons.push("identidad/referencia del mismo rodado");}
+       if(gap<=2){local+=1;}
+       else if(gap<=5){local+=0.5;}
+
+       // El potencial informado ("habría sido hallado") no invalida por sí solo
+       // cuando existe una fuente concreta ligada a ese evento.
+       if(re.hypothetical&&!sourceForRecovery(re))local-=2;
+
+       if(local>=4){
+         semanticRecoveryCompatible=true;
+         semanticImmediateScore+=local;
+         semanticImmediateReasons.push(...reasons);
+         break;
+       }
+     }
+     if(semanticRecoveryCompatible)break;
+   }
+ }
+
+ // Conflictos de objeto reducen confianza; si solo hay autoparte/pertenencia,
+ // bloquean por completo INMEDIATO de automotor.
+ if(nonVehicleTheftEvidence.length>0 && vehicleTheftEvidence.length>0){
+   semanticImmediateScore-=2;
+   semanticImmediateReasons.push("hay objetos sustraídos competidores");
+ }
+ if(semanticOnlyNonVehicleTheft){
+   semanticImmediateScore=-99;
+   semanticRecoveryCompatible=false;
+ }
+
+ // Umbrales explicables:
+ // alta >=8; media 6-7.5; insuficiente <6.
+ const semanticImmediateConfidence=
+   semanticImmediateScore>=8 && semanticRecoveryCompatible ? "ALTA" :
+   semanticImmediateScore>=6 && semanticRecoveryCompatible ? "MEDIA" : "BAJA";
+
+const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCALIZADO|LOCALIZADA|RECUPERA|RECUPERAN|RECUPERADO|RECUPERADA|ENCONTRADO|ENCONTRADA|HABIDO|HABIDA)\b/;
  const recoveryStrong=
    /\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION)\b.{0,220}\b(?:FUE|ES|RESULTA|SIENDO)? ?(?:HALLADO|HALLADA|LOCALIZADO|LOCALIZADA|RECUPERADO|RECUPERADA|ENCONTRADO|ENCONTRADA|HABIDO|HABIDA)\b/.test(t)
    ||/\b(?:HALLAN|HALLA|LOCALIZAN|LOCALIZA|RECUPERAN|RECUPERA|ENCONTRARON|HALLADO|LOCALIZADO|RECUPERADO)\b.{0,220}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION)\b/.test(t)
@@ -268,11 +339,16 @@ function f2(r){
    && !negativeAbsence && !historicalRecoveryBeforeCurrent
    && !(historicalTheft && !victimComplaint && !evAbandonoPosterior);
 
- // Unica puerta de salida para INMEDIATO.
+ // V9.21: puerta graduada, no binaria.
  const governedImmediate=(why)=>{
-   if(semanticImmediateAuthorized)return {ok:1,cond:"INMEDIATO",why};
-   if(semanticTheftObjectAmbiguous)
-     return {ok:1,cond:"REVISION HUMANA",why:"Hay indicios de sustracción y recuperación, pero no alcanza la evidencia para afirmar que el objeto sustraído y recuperado sea el automotor completo."};
+   if(semanticImmediateConfidence==="ALTA")
+     return {ok:1,cond:"INMEDIATO",why:why+" Confianza semántica alta: "+semanticImmediateReasons.join("; ")+"."};
+   if(semanticImmediateConfidence==="MEDIA")
+     return {ok:1,cond:"INMEDIATO",why:why+" Confianza semántica media-alta: "+semanticImmediateReasons.join("; ")+"."};
+   if(semanticRecoveryCompatible||semanticTheftObjectAmbiguous)
+     return {ok:1,cond:"REVISION HUMANA",why:"Hay evidencia de sustracción y posible recuperación, pero la relación entre objeto, secuencia e identidad no alcanza el umbral para afirmar INMEDIATO."};
+   return null;
+ };
    return null;
  };
 
