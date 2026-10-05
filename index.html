@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.4 · Relaciones Corregidas</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.4 · Relaciones Corregidas</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.5 · Identidad y Jerarquía de Entidades</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.5 · Identidad y Jerarquía de Entidades</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[];
 const $=id=>document.getElementById(id), status=$("status");
@@ -71,7 +71,27 @@ function construirFichaV10(textoEntrada){
  const tiempo=z=>RX.past.test(z)?"ANTERIOR":(RX.later.test(z)?"POSTERIOR":"ACTUAL");
  const sujeto=z=>RX.police.test(z)?"POLICIA":(RX.authors.test(z)?"AUTORES":"NO EXPRESO");
  const rels=[];
- const add=(i,su,ac,obj,rol,tm,conf,z)=>rels.push({i,su,ac,obj,rol,tm,conf,z});
+ let v10EntitySeq=0;
+ const v10Entities=[];
+ const entityFor=(tipo,rol,z,i)=>{
+   // Entity identity is semantic: crime-object entities are distinct from offender transport
+   // and from parts/belongings, even when mentioned in the same sentence.
+   const family=(rol==="VEHICULO DE AUTORES")?"AUTOR_TRANSPORTE":
+     (rol==="OBJETO SUSTRAIDO"?"OBJETO_DELITO":
+     (rol==="OBJETO RECUPERADO"?"OBJETO_RECUPERADO":"CONTEXTO"));
+   // Reuse a prior stolen vehicle for a recovered vehicle only when type agrees.
+   if(rol==="OBJETO RECUPERADO"&&(tipo==="AUTOMOTOR"||tipo==="MOTOVEHICULO")){
+     const prior=[...v10Entities].reverse().find(e=>e.i<=i&&e.family==="OBJETO_DELITO"&&e.tipo===tipo);
+     if(prior) return prior.id;
+   }
+   const id="E"+(++v10EntitySeq);
+   v10Entities.push({id,tipo,rol,family,i,texto:z});
+   return id;
+ };
+ const add=(i,su,ac,obj,rol,tm,conf,z)=>{
+   const eid=entityFor(obj,rol,z,i);
+   rels.push({i,su,ac,obj,rol,tm,conf,z,eid});
+ };
 
  // Cada oración se lee por sí misma. La cercanía entre verbo y objeto define la relación.
  v10Sent.forEach((z,i)=>{
@@ -131,7 +151,21 @@ function construirFichaV10(textoEntrada){
  uniq.sort((a,b)=>a.i-b.i || (a.ac==="SUSTRAE"?-1:1));
 
  const robos=uniq.filter(r=>r.ac==="SUSTRAE"&&r.obj!=="INDETERMINADO");
- const principal=robos.find(r=>r.conf==="ALTA")||robos.find(r=>r.conf==="MEDIA")||null;
+ const rankObjeto=r=>{
+   // Main crime object hierarchy is role/action based, not mere word presence.
+   if(r.rol!=="OBJETO SUSTRAIDO") return -1;
+   if(r.obj==="AUTOMOTOR") return 50;
+   if(r.obj==="MOTOVEHICULO") return 45;
+   if(r.obj==="BICICLETA") return 40;
+   if(r.obj==="AUTOPARTE") return 30;
+   if(r.obj==="PERTENENCIA") return 20;
+   return 0;
+ };
+ const principal=robos.slice().sort((a,b)=>
+   rankObjeto(b)-rankObjeto(a) ||
+   (b.conf==="ALTA"?2:b.conf==="MEDIA"?1:0)-(a.conf==="ALTA"?2:a.conf==="MEDIA"?1:0) ||
+   a.i-b.i
+ )[0]||null;
  const first=uniq[0]||null;
 
  if(principal){
@@ -154,6 +188,8 @@ function construirFichaV10(textoEntrada){
  if(principal&&(principal.obj==="AUTOMOTOR"||principal.obj==="MOTOVEHICULO")){
    rec=uniq.find(r=>{
      if(r.ac!=="RECUPERA/HALLA"||r.i<principal.i||r.obj!==principal.obj)return false;
+     // A recovered part/belonging cannot close a whole-vehicle theft.
+     if(principal.obj==="AUTOMOTOR"&&r.obj!=="AUTOMOTOR")return false;
      const tramo=v10Sent.slice(principal.i,r.i+1).join(" ");
      return r.i===principal.i||r.tm==="POSTERIOR"||RX.coref.test(r.z)||
        /\b(?:INFORMA|INFORMAN|AVISA|AVISAN|COMUNICA|COMUNICAN|VIA RADIAL|RADIAL|911|PERSONAL POLICIAL)\b/.test(tramo);
@@ -176,18 +212,18 @@ function construirFichaV10(textoEntrada){
    ficha.estado_inferido="FUERA/NO AUTOMOTOR COMPLETO";
  }
 
- const fmt=r=>r.su+" → "+r.ac+" → "+r.obj+" ["+r.rol+"; "+r.tm+"; "+r.conf+"]";
+ const fmt=r=>(r.eid?r.eid+" · ":"")+r.su+" → "+r.ac+" → "+r.obj+" ["+r.rol+"; "+r.tm+"; "+r.conf+"]";
  ficha.relacion_1=uniq[0]?fmt(uniq[0]):"";
  ficha.relacion_2=uniq[1]?fmt(uniq[1]):"";
  ficha.relacion_3=uniq[2]?fmt(uniq[2]):"";
  ficha.evento_1=ficha.relacion_1; ficha.evento_2=ficha.relacion_2; ficha.evento_3=ficha.relacion_3;
 
  const ents=[];
- uniq.forEach(r=>{const x=r.obj+" · "+r.rol;if(r.obj!=="INDETERMINADO"&&!ents.includes(x))ents.push(x)});
+ uniq.forEach(r=>{const x=(r.eid?r.eid+" · ":"")+r.obj+" · "+r.rol;if(r.obj!=="INDETERMINADO"&&!ents.includes(x))ents.push(x)});
  ficha.entidad_1=ents[0]||"";ficha.entidad_2=ents[1]||"";ficha.entidad_3=ents[2]||"";
 
  const fichaTexto=[
-   "LECTOR=V10.4-RELACIONES","OBJETO="+ficha.tipo_objeto,"ROL="+ficha.rol_objeto,
+   "LECTOR=V10.5-ENTIDADES","OBJETO="+ficha.tipo_objeto,"ROL="+ficha.rol_objeto,
    "REL1="+(ficha.relacion_1||"-"),"REL2="+(ficha.relacion_2||"-"),
    "AUTOMOTOR="+ficha.corresponde_automotor,"SUSTRAIDO_COMPLETO="+ficha.sustraido_completo,
    "RECUPERACION="+ficha.recuperacion,"SECUENCIA="+(ficha.secuencia||"INDETERMINADA"),
