@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V10.23 Auditor de Automotores V10.13 · Arbitraje semántico V9 + V10</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.23 · Identidad del evento actual</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V10.23.4 · V10.23 Auditor de Automotores V10.13 · Arbitraje semántico V9 + V10</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.23.4 · Identidad del evento actual</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[],completedRows=[],sourceFileName="";
 const $=id=>document.getElementById(id), status=$("status");
@@ -1107,6 +1107,29 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
    && !v1018HallazgoAbreHecho && !accessoryOnly && !negativeAbsence
    && !historicalRecoveryBeforeCurrent && !recoveryOnlyNonAsserted;
 
+ // V10.23.4 — ARBITRO DE IDENTIDAD OBJETIVA.
+ // V10.23.3 detectaba correctamente la continuidad, pero devolvia la evidencia al
+ // mismo arbitro legacy que habia producido la duda. Esta capa le da autoridad
+ // SOLO a una identidad material verdaderamente vinculada a una ficha ya completa.
+ // No crea la cadena: exige que V10 ya haya reconstruido SUSTRACCION -> RECUPERACION.
+ const v10234Dominios=(t.match(/\b(?:[A-Z]{2}\d{3}[A-Z]{2}|[A-Z]{3}\d{3})\b/g)||[]);
+ const v10234CuentaDominios=v10234Dominios.reduce((m,d)=>{m[d]=(m[d]||0)+1;return m;},{});
+ const v10234MismoDominio=Object.keys(v10234CuentaDominios).some(d=>v10234CuentaDominios[d]>=2);
+ const v10234IdentidadObjetiva=v10234MismoDominio || (v10233Coref && v10233Rastreo);
+ const v10234Autoridad=v10233SecuenciaCompleta && v10234IdentidadObjetiva
+   && !procedureStartsWithVehicle && !v1018HallazgoAbreHecho
+   && !accessoryOnly && !negativeAbsence && !historicalRecoveryBeforeCurrent
+   && !recoveryOnlyNonAsserted && !relationOnlyNonVehicle;
+
+ if(v10234Autoridad){
+   const evidencia=v10234MismoDominio
+     ? "el mismo dominio aparece vinculado en la cadena del hecho"
+     : "coreferencia explicita y rastreo/localizacion vinculados al mismo rodado";
+   return conFicha({ok:1,cond:"INMEDIATO",why:"V10.23.4 arbitra por identidad objetiva: la ficha ya reconstruye sustraccion completa seguida de recuperacion del automotor y "+evidencia+". Esta continuidad material resuelve la duda residual del arbitro sin crear un INMEDIATO desde cero."});
+ }
+
+ // Se conserva la puerta V10.23.3 como respaldo no soberano para los casos
+ // de identidad semantica fuerte que no alcanzan el nuevo umbral objetivo.
  if(v10233Promocion){
    const evidencia=[v10233Dominio?"identificador material del automotor":"",v10233Coref?"coreferencia explicita al mismo rodado":"",v10233Rastreo?"rastreo/localizacion vinculada":""].filter(Boolean).join(", ");
    const _g=governedImmediate("V10.23.3 resuelve identidad y continuidad: la ficha ya reconstruye sustraccion completa seguida de recuperacion del automotor y existe "+evidencia+". La identidad concreta destraba la duda del arbitro sin crear un INMEDIATO desde cero.");
