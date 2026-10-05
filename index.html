@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.8 · Acción y Objeto</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.8 · Acción y Objeto</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.9 · Puente V9 ↔ V10</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.9 · Puente V9 ↔ V10</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[];
 const $=id=>document.getElementById(id), status=$("status");
@@ -335,7 +335,7 @@ function construirFichaV10(textoEntrada){
  ficha.entidad_1=ents[0]||"";ficha.entidad_2=ents[1]||"";ficha.entidad_3=ents[2]||"";
 
  const fichaTexto=[
-   "LECTOR=V10.8-ACCION-OBJETO","OBJETO="+ficha.tipo_objeto,"ROL="+ficha.rol_objeto,
+   "LECTOR=V10.9-PUENTE-V9-V10","OBJETO="+ficha.tipo_objeto,"ROL="+ficha.rol_objeto,
    "REL1="+(ficha.relacion_1||"-"),"REL2="+(ficha.relacion_2||"-"),
    "AUTOMOTOR="+ficha.corresponde_automotor,"SUSTRAIDO_COMPLETO="+ficha.sustraido_completo,
    "RECUPERACION="+ficha.recuperacion,"SECUENCIA="+(ficha.secuencia||"INDETERMINADA"),
@@ -347,7 +347,53 @@ function construirFichaV10(textoEntrada){
 function f2(r){
  const t=txt(r), c=car(r), cf=calif(r);
  const __v10=construirFichaV10(t);
- const conFicha=(o)=>Object.assign(o,__v10);
+
+ // V10.9 — PUENTE EXPERIMENTAL V9 ↔ V10.
+ // Importante: NO cambia todavía la decisión oficial de V9.
+ // Sólo deja visible qué haría una futura capa híbrida.
+ const v109Bridge=(legacy,ficha)=>{
+   const leg=String((legacy&&legacy.cond)||"").toUpperCase();
+   const ft=String((ficha&&ficha.FICHA_TIPO_OBJETO)||"").toUpperCase();
+   const fe=String((ficha&&ficha.FICHA_ESTADO_INFERIDO)||"").toUpperCase();
+   const fc=String((ficha&&ficha.FICHA_CONFIANZA)||"").toUpperCase();
+   const fr=String((ficha&&ficha.FICHA_RECUPERACION)||"").toUpperCase();
+
+   let acuerdo="SIN COMPARAR", sugerencia=leg||"REVISION HUMANA", motivo="V9 conserva gobierno";
+   const v10Fuerte=fc==="ALTA";
+   const fueraCompleto=/AUTOPARTE|PERTENENCIA|BICICLETA|MOTOVEHICULO/.test(ft);
+
+   if(fe && fe!=="INDETERMINADO" && leg===fe){
+     acuerdo="ACUERDO";
+     motivo="V9 y V10 coinciden";
+   }else if(fueraCompleto && v10Fuerte){
+     acuerdo="CONFLICTO OBJETO";
+     sugerencia="REVISION HUMANA";
+     motivo="V10 identifica con alta confianza un objeto distinto de automotor completo";
+   }else if(fe==="INMEDIATO" && fr==="SI" && v10Fuerte){
+     acuerdo=leg==="INMEDIATO"?"ACUERDO":"V10 FUERTE";
+     sugerencia="INMEDIATO";
+     motivo="V10 reconstruye sustracción y recuperación vinculada con confianza alta";
+   }else if(fe==="HALLAZGO" && v10Fuerte){
+     acuerdo=leg==="HALLAZGO"?"ACUERDO":"V10 FUERTE";
+     sugerencia="HALLAZGO";
+     motivo="V10 reconstruye hallazgo con confianza alta";
+   }else if(fe==="SUSTRAIDO" && v10Fuerte && !fueraCompleto){
+     acuerdo=leg==="SUSTRAIDO"?"ACUERDO":"V10 FUERTE";
+     sugerencia="SUSTRAIDO";
+     motivo="V10 identifica automotor sustraído sin recuperación vinculada";
+   }else if(fe && fe!=="INDETERMINADO" && leg && leg!==fe){
+     acuerdo="CONFLICTO";
+     sugerencia="REVISION HUMANA";
+     motivo="V9 y V10 difieren sin evidencia suficiente para desempatar";
+   }
+   return {
+     V109_ACUERDO:acuerdo,
+     V109_SUGERENCIA:sugerencia,
+     V109_MOTIVO:motivo,
+     V109_GOBIERNA:"NO"
+   };
+ };
+ const conFicha=(o)=>Object.assign(o,__v10,v109Bridge(o,__v10));
 
  const autoWord=/\b(AUTOMOVIL|AUTO|CAMIONETA|CAMION|UTILITARIO|FURGON|SEDAN|COCHE)\b/.test(t);
  const genericVehicle=/\b(VEHICULO|RODADO)\b/.test(t);
