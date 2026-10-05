@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V10.23.4 · V10.23 Auditor de Automotores V10.13 · Arbitraje semántico V9 + V10</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.23.4 · Identidad del evento actual</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V10.23.5 · V10.23 Auditor de Automotores V10.13 · Arbitraje semántico V9 + V10</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.23.5 · Identidad del evento actual</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[],completedRows=[],sourceFileName="";
 const $=id=>document.getElementById(id), status=$("status");
@@ -509,6 +509,11 @@ function f2(r){
    const rels=fd.relaciones||[];
    const ent=fd.entidades||[];
    return {
+     // V10.23.5 — PUENTE SEMANTICO COMPLETO.
+     // Estos campos ya existian en ficha_detalle y en la exportacion, pero no
+     // viajaban al arbitro. Sin ellos, las capas de identidad recibian vacios.
+     FICHA_OBJETO_PRINCIPAL:fd.objeto_principal||"",
+     FICHA_SUSTRACCION_COMPLETA:fd.sustraido_completo||"",
      FICHA_TIPO_OBJETO:fd.tipo_objeto||"",
      FICHA_ESTADO_INFERIDO:fd.estado_inferido||"",
      FICHA_CONFIANZA:fd.confianza||"",
