@@ -814,6 +814,20 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
    ||/\bSUSTRAID[OA].{0,2500}\b(?:PROCEDEMOS|PROCEDEN) A LA INCAUTACION DEL (?:AUTOMOTOR|RODADO|VEHICULO)\b/.test(t);
  const currentFinding=((recoveryStrong && (!recoveryOnlyNonAsserted||(strictRecoveryEvent&&sourcedRecovery)||linkedRecoveryAfterTheft)) || (procedure&&existingSeizure&&policePossession)) && /\b(VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|DOMINIO|CHASIS|MOTOR)\b/.test(t);
 
+ // V10.19 — VINCULO POSITIVO PARA HALLAZGO.
+ // Un procedimiento sobre un automotor no es HALLAZGO por si mismo.
+ // Debe existir una sustraccion/pedido previo afirmado y vinculable al mismo rodado.
+ const v1019NegacionAntecedente=/\b(?:NO|SIN)\b.{0,90}\b(?:POSEE|REGISTRA|SURGE|ARROJA|TIENE|PESA|CUENTA CON)?\b.{0,60}\b(?:PEDIDO (?:ACTIVO )?(?:DE )?SECUESTRO|PEDIDO DE SECUESTRO ACTIVO|DENUNCIA (?:DE )?SUSTRACCION|SUSTRAID[OA]|ROBADO)\b/.test(t)
+   ||/\b(?:PEDIDO (?:ACTIVO )?(?:DE )?SECUESTRO|PEDIDO DE SECUESTRO ACTIVO)\b.{0,80}\b(?:NEGATIVO|INEXISTENTE|NO VIGENTE|SIN NOVEDAD)\b/.test(t);
+ const v1019AntecedentePositivo=!v1019NegacionAntecedente && (
+   existingSeizure || historicalTheft
+   ||/\b(?:SURGE|ARROJA|INFORMA|REGISTRA|POSEE|TENIA|TENÍA|PESA)\b.{0,160}\b(?:SUSTRAID[OA]|ROBADO|PEDIDO (?:ACTIVO )?(?:DE )?SECUESTRO)\b/.test(t)
+   ||/\b(?:PEDIDO (?:ACTIVO )?(?:DE )?SECUESTRO|PEDIDO DE SECUESTRO ACTIVO)\b.{0,160}\b(?:POR|A RAIZ DE|CORRESPONDIENTE A|FECHA|SOLICITADO|REQUERIDO)\b/.test(t)
+ );
+ const v1019HallazgoVinculado=procedure && v1019AntecedentePositivo && (
+   policePossession || recoveryStrong || v1018HallazgoAbreHecho
+ );
+
  // Motor de evidencias temporales: una tecnología o palabra aislada nunca define INMEDIATO.
  const evDuranteDenuncia=/\b(?:MIENTRAS|AL MOMENTO|EN MOMENTOS QUE).{0,100}\b(?:RADICABA|REALIZABA|FORMULABA|EFECTUABA).{0,80}\bDENUNCIA\b.{0,260}\b(?:HALLAD[OA]|HABID[OA]|LOCALIZAD[OA]|RECUPERAD[OA]|APARECIDO)\b/.test(t);
  const rastreoNegado=/\b(?:NO POSEE|NO TIENE|NO CUENTA CON|CARECE DE|DESCONOCE SI POSEE|SE ENCONTRABA INACTIVO)\b.{0,70}\b(?:LOJACK|GPS|GEOLOCALIZACION|RASTREO SATELITAL|UBICACION SATELITAL)\b/.test(t)
@@ -990,7 +1004,7 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
  // El especialista INMEDIATO tiene prioridad conceptual sobre HALLAZGO cuando
  // puede demostrar la secuencia actual completa. Si no puede, el flujo legacy
  // continua intacto y HALLAZGO/SUSTRAIDO conservan sus reglas.
- // V10.18 — IDENTIDAD DEL EVENTO ACTUAL ANTES DE PROMOVER INMEDIATO.
+ // V10.19 — HALLAZGO CON VÍNCULO POSITIVO ANTES DE PROMOVER INMEDIATO.
  // La ficha V10 puede reconstruir SUSTRACCION -> RECUPERACION aunque la sustraccion
  // sea solamente un antecedente contado despues dentro de un acta de hallazgo.
  // Por eso ordenamos tres hitos independientes del relato: apertura procedimental,
@@ -1005,7 +1019,7 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
  const v1018SustraccionAbreHecho=victimComplaint && v1018IdxSustraccion>=0
    && (v1018IdxHallazgoFisico<0 || v1018IdxSustraccion<v1018IdxHallazgoFisico);
 
- if(v1018HallazgoAbreHecho && !v1018SustraccionAbreHecho)
+ if(v1018HallazgoAbreHecho && !v1018SustraccionAbreHecho && v1019AntecedentePositivo)
    return conFicha({ok:1,cond:"HALLAZGO",why:"V10.18 identifica el evento actual por orden narrativo: el expediente abre con un procedimiento y la observacion fisica de un automotor ya localizado; el pedido de secuestro/sustraccion aparece despues como antecedente. No corresponde promoverlo a INMEDIATO."});
 
  const promocionInmediatoV1013=promoverInmediatoV1013();
@@ -1024,11 +1038,11 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
 
  // Si el relato actual nace de un procedimiento sobre un rodado ya localizado/interceptado,
  // la sustracción funciona como antecedente: HALLAZGO. Una denuncia de robo que luego recupera sigue siendo INMEDIATO.
- if(procedureStartsWithVehicle && !currentTheftComplaintFirst && (recoveryStrong||existingSeizure||historicalTheft))
+ if(procedureStartsWithVehicle && !currentTheftComplaintFirst && v1019AntecedentePositivo)
    return conFicha({ok:1,cond:"HALLAZGO",why:"El hecho principal es un procedimiento actual sobre un automotor ya localizado/interceptado; la sustracción aparece como antecedente."});
 
  // Un procedimiento actual sobre un vehículo abandonado con sustracción/pedido previo es HALLAZGO.
- if(abandonedPriorTheft)
+ if(abandonedPriorTheft && v1019AntecedentePositivo)
    return conFicha({ok:1,cond:"HALLAZGO",why:"El hecho actual es el hallazgo de un automotor abandonado con sustracción/pedido previo."});
 
  // INMEDIATO de alta confianza: sustracción actual + recuperación inequívoca del mismo rodado.
@@ -1038,14 +1052,15 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
  }
 
  // La calificación original de Hallazgo sólo refuerza cuando el relato también es un procedimiento actual sobre el rodado.
- if(hallazgoProcedure)
+ if(hallazgoProcedure && v1019AntecedentePositivo)
    return conFicha({ok:1,cond:"HALLAZGO",why:"La calificación original indica hallazgo de automotor y el relato confirma un procedimiento actual sobre el rodado; la sustracción mencionada se trata como antecedente."});
 
  // En actas de procedimiento, la sustracción relatada suele ser antecedente del hallazgo actual.
  if(currentFinding){
    if(recoveryStrong && theftStrong && victimComplaint && !procedure)
      return conFicha({ok:1,cond:"REVISION HUMANA",why:"Hay sustracción y recuperación, pero no puede establecerse con seguridad si pertenecen a la misma secuencia."});
-   return conFicha({ok:1,cond:"HALLAZGO",why:"El hecho actual es un procedimiento de hallazgo/localización; la eventual sustracción narrada funciona como antecedente."});
+   if(v1019AntecedentePositivo)
+     return conFicha({ok:1,cond:"HALLAZGO",why:"V10.19 confirma hallazgo/localización actual y un antecedente positivo de sustracción o pedido de secuestro vinculado al automotor."});
  }
 
  // Pedido de secuestro por sí solo no es recuperación.
@@ -1070,9 +1085,11 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
  }
 
  if((recoveryStrong && !recoveryOnlyNonAsserted) || (existingSeizure&&policePossession)){
-   if(procedure||/HALLAZGO AUTOMOTOR|ENCUBRIMIENTO/.test(c)||existingSeizure)
-     return conFicha({ok:1,cond:"HALLAZGO",why:existingSeizure?"El automotor es hallado/interceptado en el hecho actual y registra un pedido de secuestro previo.":"Predomina evidencia de hallazgo/localización del automotor."});
-   return conFicha({ok:1,cond:"REVISION HUMANA",why:"El automotor tiene evidencia de recuperación/hallazgo, pero el tipo de hecho actual no queda suficientemente definido."});
+   if((procedure||/HALLAZGO AUTOMOTOR|ENCUBRIMIENTO/.test(c)||existingSeizure) && v1019AntecedentePositivo)
+     return conFicha({ok:1,cond:"HALLAZGO",why:"V10.19 acredita hallazgo/localización actual y vínculo positivo del mismo automotor con una sustracción o pedido de secuestro previo."});
+   if(procedure && v1019NegacionAntecedente)
+     return conFicha({ok:0,why:"V10.19: procedimiento sobre automotor sin antecedente positivo de sustracción; el relato niega pedido de secuestro/sustracción vinculada. No corresponde HALLAZGO."});
+   return conFicha({ok:1,cond:"REVISION HUMANA",why:"El automotor tiene evidencia de recuperación/hallazgo, pero falta acreditar un antecedente positivo de sustracción vinculado al mismo rodado."});
  }
 
  if(quironAuto && (theftStrong||recoveryStrong))
