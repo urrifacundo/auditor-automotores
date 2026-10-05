@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.14</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.14</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V10.15 Auditor de Automotores V10.13 · Arbitraje semántico V9 + V10</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.13 · Arbitraje semántico V9 + V10</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[],completedRows=[],sourceFileName="";
 const $=id=>document.getElementById(id), status=$("status");
@@ -954,7 +954,26 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
      && (linkedRecoveryAfterTheft || immediateHigh)
      && (semanticRecoveryCompatible || rec==="SI" || strictRecoveryEvent);
    if(cadenaConjunta)
-     return governedImmediate("V10.14 especialista INMEDIATO: V9 detecta sustraccion seguida de recuperacion/localizacion positiva y V10 aporta continuidad semantica del mismo automotor.");
+     return governedImmediate("V10.15 especialista INMEDIATO: V9 detecta sustraccion seguida de recuperacion/localizacion positiva y V10 aporta continuidad semantica del mismo automotor.");
+
+   // V10.15 — MEMORIA POSITIVA DE V9.10, VALIDADA POR V10.
+   // V9.10 era mas sensible a formas narrativas reales de recuperacion (aviso,
+   // rastreo, abandono posterior, 'dan con', constatacion positiva, durante denuncia).
+   // No copiamos su decision: usamos esas evidencias como segunda opinion y exigimos
+   // que V10 confirme objeto automotor, recuperacion y secuencia actual.
+   const memoriaV910=immediateEvidence>0 && (
+     evDuranteDenuncia || evRastreoPositivo || evAbandonoPosterior ||
+     evRecuperacionExplicita || evAvisoHallado || evDanCon ||
+     positiveConstata || evHallazgoDuranteDenuncia || immediateRecovery
+   );
+   const fichaSecuenciaActual=obj==="AUTOMOTOR" && rec==="SI"
+     && /SUSTRACCION/.test(sec) && /RECUPERACION/.test(sec)
+     && (conf==="ALTA" || conf==="MEDIA");
+   const validacionCruzadaV1015=theftStrong && memoriaV910 && fichaSecuenciaActual
+     && !accessoryOnly && !negativeAbsence && !historicalRecoveryBeforeCurrent
+     && !recoveryOnlyNonAsserted && !iniciaComoHallazgo;
+   if(validacionCruzadaV1015)
+     return conFicha({ok:1,cond:"INMEDIATO",why:"V10.15 recupera sensibilidad util de V9.10: existe evidencia positiva de recuperacion posterior y V10 confirma automotor, sustraccion, recuperacion y secuencia actual con confianza suficiente."});
 
    return null;
  };
