@@ -107,6 +107,36 @@ function construirFichaV10(textoEntrada){
  };
  const tiempo=z=>RX.past.test(z)?"ANTERIOR":(RX.later.test(z)?"POSTERIOR":"ACTUAL");
  const sujeto=z=>RX.police.test(z)?"POLICIA":(RX.authors.test(z)?"AUTORES":"NO EXPRESO");
+
+ // V10.11 — POLARIDAD DEL EVENTO.
+ // Un verbo de hallazgo no vale como recuperación positiva si está negado,
+ // hipotético, buscado o sólo expresa una finalidad. Se evalúa el entorno
+ // local del verbo, no una frase exacta ni un expediente particular.
+ const v1011RecoveryPolarity=(z,idx)=>{
+   const a=Math.max(0,idx-95), b=Math.min(z.length,idx+120);
+   const w=z.slice(a,b);
+   const before=z.slice(a,idx);
+   const negative=/\b(?:NO|NUNCA|SIN)\b[^.;]{0,65}$/.test(before) ||
+     /\b(?:NO SE LOGR[AO]|NO LOGR[AO]N?|NO PUD[OIERAN]*|SIN RESULTADO|RESULTADO NEGATIVO|INFRUCTUOS[OA])\b/.test(w);
+   const search=/\b(?:BUSCA(?:R|N|BAN|NDO)?|RASTRILLAJE|RECORRIDA|OPERATIVO|COMISIONAD[OA]S?|A FIN DE|PARA|CON EL OBJETO DE)\b[^.;]{0,90}$/.test(before);
+   const conditional=/\b(?:PODRIA|HABRIA QUE|INTENTAN|INTENTARON|PROCURAN|PROCURARON)\b/.test(before);
+   if(negative)return "NEGATIVA";
+   if(search||conditional)return "NO AFIRMADA";
+   return "POSITIVA";
+ };
+
+ // V10.11 — DIRECCIÓN TEMPORAL DEL HECHO.
+ // Distingue el evento actual de un antecedente citado para explicar el
+ // procedimiento presente.
+ const v1011Temporalidad=(z,action)=>{
+   if(action==="SUSTRAE" &&
+      /\b(?:HABIA SIDO|HABRIA SIDO|POSEIA PEDIDO|PEDIDO DE SECUESTRO|DENUNCIA PREVIA|DENUNCIAD[OA] COMO SUSTRAID[OA]|SUSTRAID[OA] CON FECHA|HECHO OCURRIDO|FECHA ANTERIOR)\b/.test(z))
+     return "ANTERIOR";
+   if(action==="RECUPERA/HALLA" &&
+      /\b(?:EN LA FECHA|DIA DE LA FECHA|EN CIRCUNSTANCIAS QUE|PERSONAL POLICIAL|COMISIONADOS|RECORRIENDO|PATRULLANDO|OBSERVAN|DIVISAN|CONSTATA)\b/.test(z))
+     return RX.later.test(z)?"POSTERIOR":"ACTUAL";
+   return tiempo(z);
+ };
  const rels=[];
  let v10EntitySeq=0;
  const v10Entities=[];
@@ -181,7 +211,7 @@ function construirFichaV10(textoEntrada){
      // Coreferencia sólo completa un objeto indeterminado; no desplaza un
      // objeto explícito de la cláusula.
      if(obj==="INDETERMINADO" && RX.coref.test(z)){obj="AUTOMOTOR";conf="MEDIA";}
-     add(i,sujeto(z),"SUSTRAE",obj,"OBJETO SUSTRAIDO",tiempo(z),conf,z);
+     add(i,sujeto(z),"SUSTRAE",obj,"OBJETO SUSTRAIDO",v1011Temporalidad(z,"SUSTRAE"),conf,z);
    }
 
    // Levantamiento narrado sin verbo "sustraer": estacionado -> desaparece.
@@ -197,16 +227,16 @@ function construirFichaV10(textoEntrada){
    }
 
    const recMatches=[...z.matchAll(new RegExp(RX.recover.source,"g"))];
-   if(recMatches.length&&!RX.badRecovery.test(z)){
-     for(const rm of recMatches){
-       const sel=v10ChooseActionObject(z,rm.index,"RECUPERA/HALLA");
-       let obj=sel.tipo,conf=sel.conf;
-       const prev=[...rels].reverse().find(r=>r.i<=i&&r.ac==="SUSTRAE"&&(r.obj==="AUTOMOTOR"||r.obj==="MOTOVEHICULO"));
-       if((obj==="INDETERMINADO"||RX.coref.test(z))&&prev){
-         obj=prev.obj; conf=obj==="INDETERMINADO"?"MEDIA":"ALTA";
-       }
-       add(i,sujeto(z),"RECUPERA/HALLA",obj,"OBJETO RECUPERADO",tiempo(z),conf,z);
+   for(const rm of recMatches){
+     const pol=v1011RecoveryPolarity(z,rm.index);
+     if(pol!=="POSITIVA") continue;
+     const sel=v10ChooseActionObject(z,rm.index,"RECUPERA/HALLA");
+     let obj=sel.tipo,conf=sel.conf;
+     const prev=[...rels].reverse().find(r=>r.i<=i&&r.ac==="SUSTRAE"&&(r.obj==="AUTOMOTOR"||r.obj==="MOTOVEHICULO"));
+     if((obj==="INDETERMINADO"||RX.coref.test(z))&&prev){
+       obj=prev.obj; conf=obj==="INDETERMINADO"?"MEDIA":"ALTA";
      }
+     add(i,sujeto(z),"RECUPERA/HALLA",obj,"OBJETO RECUPERADO",v1011Temporalidad(z,"RECUPERA/HALLA"),conf,z);
    }
  });
 
@@ -295,20 +325,29 @@ function construirFichaV10(textoEntrada){
    })||null;
  }
 
- const startsRecovery=!!(first&&first.ac==="RECUPERA/HALLA"&&first.tm!=="POSTERIOR");
- const theftNarratedLater=startsRecovery&&uniq.some(r=>
-   r.ac==="SUSTRAE"&&r.i>first.i&&(r.tm==="ANTERIOR"||explicitTemporalAnterior(r.z))
- );
- const historicalTheftBeforeRecovery=!!(principal&&principal.tm==="ANTERIOR"&&
-   uniq.some(r=>r.ac==="RECUPERA/HALLA"&&r.i<=principal.i));
+ const autoRecoveries=uniq.filter(r=>r.ac==="RECUPERA/HALLA"&&r.obj==="AUTOMOTOR");
+ const currentRecovery=autoRecoveries.find(r=>r.tm==="ACTUAL")||null;
+ const currentTheft=uniq.find(r=>r.ac==="SUSTRAE"&&r.obj==="AUTOMOTOR"&&r.tm!=="ANTERIOR")||null;
+ const antecedentTheft=uniq.find(r=>r.ac==="SUSTRAE"&&r.obj==="AUTOMOTOR"&&
+   (r.tm==="ANTERIOR"||explicitTemporalAnterior(r.z)))||null;
 
- if(startsRecovery&&first.obj==="AUTOMOTOR"){
+ // Si el foco actual es recuperar/hallar y la sustracción sólo aparece como
+ // antecedente, el relato es HALLAZGO aunque el antecedente se mencione antes.
+ const currentHallazgoFocus=!!(currentRecovery && antecedentTheft && !currentTheft);
+
+ if(currentHallazgoFocus){
    ficha.recuperacion="SI";
-   ficha.secuencia=theftNarratedLater?"HALLAZGO ACTUAL ← SUSTRACCION ANTERIOR":"HALLAZGO";
+   ficha.secuencia="HALLAZGO ACTUAL ← SUSTRACCION ANTERIOR";
    ficha.estado_inferido="HALLAZGO";
  }else if(principal&&principal.obj==="AUTOMOTOR"){
    if(rec){ficha.recuperacion="SI";ficha.secuencia="SUSTRACCION → RECUPERACION";ficha.estado_inferido="INMEDIATO";}
    else{ficha.recuperacion="NO/NO VINCULADA";ficha.secuencia="SUSTRACCION";ficha.estado_inferido="SUSTRAIDO";}
+ }else if(autoRecoveries.length && !principal){
+   ficha.obj_principal="AUTOMOTOR"; ficha.tipo_objeto="AUTOMOTOR";
+   ficha.rol_objeto="OBJETO RECUPERADO"; ficha.corresponde_automotor="SI";
+   ficha.sustraido_completo="INDETERMINADO"; ficha.recuperacion="SI";
+   ficha.secuencia="HALLAZGO"; ficha.estado_inferido="HALLAZGO";
+   ficha.confianza=autoRecoveries[0].conf;
  }else if(principal){
    ficha.recuperacion="NO/NO VINCULADA";
    ficha.secuencia="SUSTRACCION · "+principal.obj;
@@ -364,6 +403,8 @@ function f2(r){
  ].filter(Boolean).map(v10102ParseRelacion).filter(Boolean);
  const v10102TipoRelato=(ficha)=>{
    const rels=v10102Relaciones(ficha);
+   const seq=String((ficha&&ficha.FICHA_SECUENCIA)||"").toUpperCase();
+   const estado=String((ficha&&ficha.FICHA_ESTADO_INFERIDO)||"").toUpperCase();
    const theft=rels.filter(r=>r.ac==="SUSTRAE");
    const rec=rels.filter(r=>r.ac==="RECUPERA/HALLA");
    const autoTheft=theft.filter(r=>r.obj==="AUTOMOTOR");
@@ -443,7 +484,7 @@ function f2(r){
      FICHA_TIPO_OBJETO:fd.tipo_objeto||"",
      FICHA_ESTADO_INFERIDO:fd.estado_inferido||"",
      FICHA_CONFIANZA:fd.confianza||"",
-     FICHA_RECUPERACION:fd.recuperacion||"",
+     FICHA_RECUPERACION:fd.recuperacion||"",FICHA_SECUENCIA:fd.secuencia||"",
      FICHA_RELACIONES:rels,
      FICHA_ENTIDADES:ent,
      FICHA_RELACION_1:fd.relacion_1||"",FICHA_RELACION_2:fd.relacion_2||"",FICHA_RELACION_3:fd.relacion_3||""
