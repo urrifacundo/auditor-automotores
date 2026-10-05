@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V9.26.1 FICHA VISIBLE</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V9.26.1 FICHA VISIBLE</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.0 FICHA VISIBLE</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V9.26.1 FICHA VISIBLE</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[];
 const $=id=>document.getElementById(id), status=$("status");
@@ -222,154 +222,152 @@ function f2(r){
    frameNonVehicle.length>0 && frameWholeVehicle.length===0 && frameAmbiguous.length===0;
 
 
- // V9.26.2 — FICHA SEMÁNTICA: ENTIDADES + ROLES + VINCULACIÓN.
- // Sigue trabajando EN PARALELO: no modifica la decisión consolidada del auditor.
- // Objetivo de esta etapa: representar primero el hecho y recién después inferir un estado.
+ // V10.0 — MOTOR SEMÁNTICO: SUJETO + ACCIÓN + OBJETO + ROL.
+ // El motor V9 estable sigue tomando la decisión oficial.
+ // V10 construye una representación paralela del relato para poder validarla antes de gobernar.
  const ficha={
    objeto_principal:"INDETERMINADO", tipo_objeto:"INDETERMINADO", rol_objeto:"INDETERMINADO",
    entidad_1:"", entidad_2:"", entidad_3:"",
+   relacion_1:"", relacion_2:"", relacion_3:"",
    evento_1:"", evento_2:"", evento_3:"",
    secuencia:"", corresponde_automotor:"INDETERMINADO",
    sustraido_completo:"INDETERMINADO", recuperacion:"INDETERMINADO",
    estado_inferido:"INDETERMINADO", confianza:"BAJA"
  };
 
- const F_MOTO=/\b(?:MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR|SCOOTER|MOTO)\b/;
- const F_BICI=/\b(?:BICICLETA|BICI)\b/;
- const F_PARTE=/\b(?:RUEDA(?:S)?(?: DE AUXILIO)?|NEUMATICO(?:S)?|CUBIERTA(?:S)?|AUXILIO|LLANTA(?:S)?|BATERIA|PATENTE|CHAPA PATENTE|ESTEREO|OPTICA(?:S)?|ESPEJO(?:S)?|FARO(?:S)?|PARAGOLPE|CATALIZADOR|AUTOPARTE(?:S)?)\b/;
- const F_PERT=/\b(?:CELULAR|TELEFONO|IPHONE|MOCHILA|BOLSO|MORRAL|CARTERA|BILLETERA|DOCUMENTACION|DOCUMENTOS|HERRAMIENTA(?:S)?|PERTENENCIA(?:S)?|DINERO|EFECTIVO|MERCADERIA|PAQUETE(?:S)?)\b/;
- const F_AUTO=/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|FURGON|UNIDAD)\b/;
- const F_COREF=/\b(?:DICHO|DICHA|MISMO|MISMA|MENCIONADO|MENCIONADA|REFERIDO|REFERIDA)\s+(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b|\b(?:VEHICULO|RODADO)\s+EN\s+CUESTION\b/;
- const F_ANT=/\b(?:AYER|DIA\s+ANTERIOR|DIAS\s+ANTES|HORAS\s+ANTES|ANTERIORMENTE|CON\s+FECHA\s+ANTERIOR|DENUNCIA\s+PREVIA)\b/;
- const F_POST=/\b(?:POSTERIORMENTE|LUEGO|DESPUES|MINUTOS\s+DESPUES|HORAS\s+DESPUES|MOMENTOS\s+DESPUES|A\s+CONTINUACION|SEGUIDAMENTE|MIENTRAS|EN\s+EL\s+TRANSCURSO)\b/;
+ const V10={
+   moto:/\b(?:MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR|SCOOTER|MOTO)\b/,
+   bici:/\b(?:BICICLETA|BICI)\b/,
+   parte:/\b(?:RUEDA(?:S)?(?: DE AUXILIO)?|NEUMATICO(?:S)?|CUBIERTA(?:S)?|AUXILIO|LLANTA(?:S)?|BATERIA|PATENTE|CHAPA PATENTE|ESTEREO|OPTICA(?:S)?|ESPEJO(?:S)?|FARO(?:S)?|PARAGOLPE|CATALIZADOR|AUTOPARTE(?:S)?)\b/,
+   pertenencia:/\b(?:CELULAR|TELEFONO|IPHONE|MOCHILA|BOLSO|MORRAL|CARTERA|BILLETERA|DOCUMENTACION|DOCUMENTOS|HERRAMIENTA(?:S)?|PERTENENCIA(?:S)?|DINERO|EFECTIVO|MERCADERIA|PAQUETE(?:S)?)\b/,
+   auto:/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|FURGON|UNIDAD)\b/,
+   autores:/\b(?:AUTOR(?:ES)?|SUJETO(?:S)?|MASCULINO(?:S)?|MALVIVIENTE(?:S)?|IMPUTADO(?:S)?|DELINCUENTE(?:S)?|NN)\b/,
+   victima:/\b(?:VICTIMA|DENUNCIANTE|DAMNIFICAD[OA]|PROPIETARI[OA]|CONDUCTOR[OA])\b/,
+   policia:/\b(?:PERSONAL POLICIAL|EFECTIVO(?:S)?|MOVIL|COMANDO|CP|POLICIA)\b/,
+   robo:/\b(?:SUSTRAJERON|SUSTRAJO|SUSTRAE|SUSTRAEN|SUSTRAIDO|SUSTRAIDA|ROBARON|ROBO|APODERARON|APODERO|LLEVARON|LLEVO|DESAPODERA(?:N|RON)?)\b/,
+   recupera:/\b(?:HALLADO|HALLADA|HALLARON|HALLA|RECUPERADO|RECUPERADA|RECUPERAN|ENCONTRADO|ENCONTRADA|ENCUENTRAN|LOCALIZADO|LOCALIZADA|LOCALIZAN|UBICADO|UBICADA|ABANDONADO|ABANDONADA)\b/,
+   trasladoAutores:/\b(?:CIRCULABAN|SE MOVILIZABAN|ARRIBARON|LLEGARON|HUYERON|FUGARON|ESCAPARON|SE DIERON A LA FUGA)\b/,
+   coref:/\b(?:DICHO|DICHA|MISMO|MISMA|MENCIONADO|MENCIONADA|REFERIDO|REFERIDA)\s+(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b|\b(?:VEHICULO|RODADO)\s+EN\s+CUESTION\b/,
+   anterior:/\b(?:AYER|DIA\s+ANTERIOR|DIAS\s+ANTES|HORAS\s+ANTES|ANTERIORMENTE|CON\s+FECHA\s+ANTERIOR|DENUNCIA\s+PREVIA)\b/,
+   posterior:/\b(?:POSTERIORMENTE|LUEGO|DESPUES|MINUTOS\s+DESPUES|HORAS\s+DESPUES|MOMENTOS\s+DESPUES|A\s+CONTINUACION|SEGUIDAMENTE|MIENTRAS|EN\s+EL\s+TRANSCURSO)\b/
+ };
 
- const tipoSegmento=z=>{
-   if(F_BICI.test(z)) return "BICICLETA";
-   if(F_MOTO.test(z)) return "MOTOVEHICULO";
-   if(F_PARTE.test(z) && !F_AUTO.test(z)) return "AUTOPARTE";
-   if(F_AUTO.test(z)) return "AUTOMOTOR";
-   if(F_PERT.test(z)) return "PERTENENCIA";
+ const v10Tipo=z=>{
+   if(V10.bici.test(z))return "BICICLETA";
+   if(V10.moto.test(z))return "MOTOVEHICULO";
+   if(V10.parte.test(z) && !V10.auto.test(z))return "AUTOPARTE";
+   if(V10.auto.test(z))return "AUTOMOTOR";
+   if(V10.pertenencia.test(z))return "PERTENENCIA";
    return "INDETERMINADO";
  };
- const tiempoSegmento=z=>F_ANT.test(z)?"ANTERIOR":(F_POST.test(z)?"POSTERIOR":"ACTUAL");
-
- // 1) ENTIDADES: nacen de evidencia local, no de la carátula/modalidad del operador.
- const entidades=[];
- const addEntidad=(tipo,rol,idx,detalle)=>{
-   if(!tipo||tipo==="INDETERMINADO")return;
-   const key=tipo+"|"+rol;
-   if(entidades.some(e=>e.key===key))return;
-   entidades.push({key,tipo,rol,idx,detalle:detalle||""});
+ const v10Tiempo=z=>V10.anterior.test(z)?"ANTERIOR":(V10.posterior.test(z)?"POSTERIOR":"ACTUAL");
+ const v10Sujeto=z=>{
+   if(V10.policia.test(z))return "POLICIA";
+   if(V10.autores.test(z))return "AUTORES";
+   if(V10.victima.test(z))return "VICTIMA/DENUNCIANTE";
+   return "NO EXPRESO";
  };
+
+ // Relaciones semánticas. Cada una conserva sujeto, acción, objeto, rol y tiempo.
+ const relaciones=[];
+ const pushRel=(idx,sujeto,accion,objeto,rol,tiempo,conf,texto)=>{
+   relaciones.push({idx,sujeto,accion,objeto,rol,tiempo,conf,texto});
+ };
+
+ // A. Sustracciones: partimos de la evidencia local del motor estable,
+ // pero V10 transforma esa evidencia en una relación, no en una decisión.
+ for(const ev of theftObjectEvidence){
+   const e=eventNodes[ev.i], z=e.s||"";
+   let obj="INDETERMINADO", rol="OBJETO SUSTRAIDO", conf="BAJA";
+   if(ev.role==="VEHICULO_COMPLETO"){
+     obj=V10.moto.test(z)?"MOTOVEHICULO":"AUTOMOTOR";
+     conf=ev.vehicleScore>=4?"ALTA":"MEDIA";
+   }else if(ev.role==="AUTOPARTE"){obj="AUTOPARTE";conf="ALTA";}
+   else if(ev.role==="PERTENENCIA"){obj="PERTENENCIA";conf="ALTA";}
+   else if(ev.role==="OTRO"){obj=V10.bici.test(z)?"BICICLETA":"OTRO";conf="ALTA";}
+   else obj=v10Tipo(z);
+
+   // Si el mismo fragmento habla explícitamente de una pieza y de un auto,
+   // no convertimos automáticamente al auto en objeto robado.
+   if(V10.parte.test(z) && V10.auto.test(z) && ev.role!=="VEHICULO_COMPLETO"){
+     obj="AUTOPARTE"; conf="MEDIA";
+   }
+   pushRel(ev.i,v10Sujeto(z),"SUSTRAE",obj,rol,v10Tiempo(z),conf,z);
+ }
+
+ // B. Vehículo de autores: relación contextual, nunca objeto principal por sí sola.
  eventNodes.forEach((e,i)=>{
    const z=e.s||"";
-   if(e.autoPart) addEntidad("AUTOPARTE","OBJETO/PARTE MENCIONADA",i,"");
-   if(e.belonging) addEntidad("PERTENENCIA","OBJETO/PERTENENCIA MENCIONADA",i,"");
-   if(e.otherObject) addEntidad("BICICLETA","OBJETO MENCIONADO",i,"");
-   if(e.vehicle){
-     const t=F_MOTO.test(z)?"MOTOVEHICULO":"AUTOMOTOR";
-     addEntidad(t,"VEHICULO MENCIONADO",i,"");
+   if(V10.trasladoAutores.test(z) && V10.autores.test(z) && (V10.moto.test(z)||V10.auto.test(z))){
+     const obj=V10.moto.test(z)?"MOTOVEHICULO":"AUTOMOTOR";
+     pushRel(i,"AUTORES","SE MOVILIZAN EN",obj,"VEHICULO DE AUTORES",v10Tiempo(z),"MEDIA",z);
    }
  });
 
- // 2) ACCIÓN → OBJETO: reutilizamos la evidencia local ya construida por V9.22,
- // pero la convertimos en representación semántica, sin decidir todavía el resultado oficial.
- const semEvents=[];
- for(const ev of theftObjectEvidence){
-   const e=eventNodes[ev.i], z=e.s||"";
-   let tipo="INDETERMINADO", rol="OBJETO SUSTRAIDO", conf="BAJA";
-   if(ev.role==="VEHICULO_COMPLETO"){
-     tipo=F_MOTO.test(z)?"MOTOVEHICULO":"AUTOMOTOR";
-     conf=ev.vehicleScore>=4?"ALTA":"MEDIA";
-   }else if(ev.role==="AUTOPARTE"){tipo="AUTOPARTE";conf="ALTA";}
-   else if(ev.role==="PERTENENCIA"){tipo="PERTENENCIA";conf="ALTA";}
-   else if(ev.role==="OTRO"){tipo=F_BICI.test(z)?"BICICLETA":"OTRO";conf="ALTA";}
-   else{
-     // Si el clasificador previo quedó dudoso, conservamos la duda: NO inventamos.
-     tipo=tipoSegmento(z);
-     conf="BAJA";
-   }
-   semEvents.push({idx:ev.i,accion:"SUSTRACCION",tipo,rol,tiempo:tiempoSegmento(z),conf,texto:z});
-   addEntidad(tipo,rol,ev.i,"");
- }
-
- // 3) RECUPERACIONES: solo acciones afirmadas; "se hallaba" como estado no alcanza.
+ // C. Recuperaciones. Exigimos una acción de recuperación; estados como "se hallaba"
+ // no son suficientes si eventNodes no los reconoció como recuperación real.
  for(const e of eventNodes){
    if(!e.recovery||e.negated||e.searching||e.questioned)continue;
    const z=e.s||"";
-   let tipo=tipoSegmento(z);
-   // Coreferencia: si dice "dicho vehículo / el rodado en cuestión", hereda únicamente
-   // de un vehículo sustraído anterior; no de cualquier vehículo mencionado.
-   const prevThefts=semEvents.filter(x=>x.accion==="SUSTRACCION"&&x.idx<=e.i);
-   const prevVehicle=[...prevThefts].reverse().find(x=>x.tipo==="AUTOMOTOR"||x.tipo==="MOTOVEHICULO");
-   if((F_COREF.test(z)||e.sameVehicle) && prevVehicle) tipo=prevVehicle.tipo;
-   semEvents.push({
-     idx:e.i, accion:"RECUPERACION", tipo,
-     rol:"OBJETO RECUPERADO", tiempo:tiempoSegmento(z),
-     conf:(e.vehicle||e.sameVehicle||e.identity||F_COREF.test(z))?"ALTA":"MEDIA", texto:z
-   });
-   addEntidad(tipo,"OBJETO RECUPERADO",e.i,"");
- }
- semEvents.sort((a,b)=>a.idx-b.idx || (a.accion==="SUSTRACCION"?-1:1));
+   let obj=v10Tipo(z);
 
- // 4) OBJETO PRINCIPAL: prioridad a la acción de sustracción.
- const theftEvents=semEvents.filter(x=>x.accion==="SUSTRACCION");
- const strongTheft=theftEvents.find(x=>x.conf!=="BAJA")||theftEvents[0]||null;
- if(strongTheft){
-   ficha.tipo_objeto=strongTheft.tipo;
-   ficha.objeto_principal=strongTheft.tipo==="AUTOMOTOR"?"AUTOMOTOR DEL RELATO":
-                         strongTheft.tipo==="MOTOVEHICULO"?"MOTOVEHICULO DEL RELATO":
-                         strongTheft.tipo==="AUTOPARTE"?"AUTOPARTE DEL VEHICULO":
-                         strongTheft.tipo==="PERTENENCIA"?"PERTENENCIA":
-                         strongTheft.tipo==="BICICLETA"?"BICICLETA DEL RELATO":"OBJETO INDETERMINADO";
+   // Coreferencia controlada: hereda del último OBJETO SUSTRAÍDO vehicular,
+   // no de cualquier vehículo nombrado en el relato.
+   const anteriores=relaciones.filter(r=>r.idx<=e.i && r.accion==="SUSTRAE" &&
+     (r.objeto==="AUTOMOTOR"||r.objeto==="MOTOVEHICULO"));
+   const previo=anteriores.length?anteriores[anteriores.length-1]:null;
+   if((V10.coref.test(z)||e.sameVehicle) && previo)obj=previo.objeto;
+
+   pushRel(e.i,v10Sujeto(z),"RECUPERA/HALLA",obj,"OBJETO RECUPERADO",
+           v10Tiempo(z),(e.sameVehicle||e.identity||V10.coref.test(z)||e.vehicle)?"ALTA":"MEDIA",z);
+ }
+
+ relaciones.sort((a,b)=>a.idx-b.idx || (a.accion==="SUSTRAE"?-1:1));
+
+ // D. Selección del objeto principal: el objeto de la sustracción manda.
+ // Un vehículo de autores o un vehículo contextual no puede desplazarlo.
+ const robos=relaciones.filter(r=>r.accion==="SUSTRAE");
+ const roboFuerte=robos.find(r=>r.conf==="ALTA")||robos.find(r=>r.conf==="MEDIA")||robos[0]||null;
+ const hallazgoInicial=relaciones.find(r=>r.accion==="RECUPERA/HALLA")||null;
+
+ if(roboFuerte){
+   ficha.tipo_objeto=roboFuerte.objeto;
+   ficha.objeto_principal=roboFuerte.objeto;
    ficha.rol_objeto="OBJETO SUSTRAIDO";
-   ficha.corresponde_automotor=strongTheft.tipo==="AUTOMOTOR"?"SI":
-      (["MOTOVEHICULO","BICICLETA","AUTOPARTE","PERTENENCIA"].includes(strongTheft.tipo)?"NO":"INDETERMINADO");
-   ficha.sustraido_completo=strongTheft.tipo==="AUTOMOTOR"?"SI":
-      (["AUTOPARTE","PERTENENCIA"].includes(strongTheft.tipo)?"NO":"INDETERMINADO");
-   ficha.confianza=strongTheft.conf;
- }else{
-   const firstRecovery=semEvents.find(x=>x.accion==="RECUPERACION");
-   if(firstRecovery){
-     ficha.tipo_objeto=firstRecovery.tipo;
-     ficha.objeto_principal=firstRecovery.tipo==="AUTOMOTOR"?"AUTOMOTOR HALLADO/RECUPERADO":firstRecovery.tipo;
-     ficha.rol_objeto="OBJETO RECUPERADO";
-     ficha.corresponde_automotor=firstRecovery.tipo==="AUTOMOTOR"?"SI":"INDETERMINADO";
-     ficha.confianza=firstRecovery.conf;
-   }
+   ficha.confianza=roboFuerte.conf;
+   ficha.corresponde_automotor=roboFuerte.objeto==="AUTOMOTOR"?"SI":
+     (["MOTOVEHICULO","BICICLETA","AUTOPARTE","PERTENENCIA"].includes(roboFuerte.objeto)?"NO":"INDETERMINADO");
+   ficha.sustraido_completo=roboFuerte.objeto==="AUTOMOTOR"?"SI":
+     (["AUTOPARTE","PERTENENCIA"].includes(roboFuerte.objeto)?"NO":"INDETERMINADO");
+ }else if(hallazgoInicial){
+   ficha.tipo_objeto=hallazgoInicial.objeto;
+   ficha.objeto_principal=hallazgoInicial.objeto;
+   ficha.rol_objeto="OBJETO RECUPERADO";
+   ficha.confianza=hallazgoInicial.conf;
+   ficha.corresponde_automotor=hallazgoInicial.objeto==="AUTOMOTOR"?"SI":"INDETERMINADO";
  }
 
- // Entidades visibles: permiten diagnosticar "qué objeto confundió con cuál".
- const entTxt=e=>e.tipo+" · "+e.rol;
- ficha.entidad_1=entidades[0]?entTxt(entidades[0]):"";
- ficha.entidad_2=entidades[1]?entTxt(entidades[1]):"";
- ficha.entidad_3=entidades[2]?entTxt(entidades[2]):"";
-
- const evTxt=e=>e.accion+" · "+e.tipo+" · "+e.tiempo+" · "+e.conf;
- ficha.evento_1=semEvents[0]?evTxt(semEvents[0]):"";
- ficha.evento_2=semEvents[1]?evTxt(semEvents[1]):"";
- ficha.evento_3=semEvents[2]?evTxt(semEvents[2]):"";
-
- // 5) VINCULACIÓN: recuperación posterior debe corresponder al mismo TIPO de vehículo
- // y ocurrir después del robo. Si no podemos sostener esa relación, la ficha dice NO SÉ.
- const mainTheft=strongTheft;
- let linkedRecovery=null;
- if(mainTheft && (mainTheft.tipo==="AUTOMOTOR"||mainTheft.tipo==="MOTOVEHICULO")){
-   linkedRecovery=semEvents.find(x=>
-      x.accion==="RECUPERACION" && x.idx>=mainTheft.idx &&
-      x.tipo===mainTheft.tipo &&
-      (x.idx===mainTheft.idx || x.tiempo==="POSTERIOR" || eventNodes.slice(mainTheft.idx,x.idx+1).some(n=>n.temporal) ||
-       eventNodes[x.idx].sameVehicle || eventNodes[x.idx].identity || sourceForRecovery(eventNodes[x.idx]))
-   )||null;
+ // E. Vinculación robo-recuperación: mismo tipo + posterioridad narrativa + evidencia de enlace.
+ let vinculada=null;
+ if(roboFuerte && (roboFuerte.objeto==="AUTOMOTOR"||roboFuerte.objeto==="MOTOVEHICULO")){
+   vinculada=relaciones.find(r=>{
+     if(r.accion!=="RECUPERA/HALLA" || r.idx<roboFuerte.idx || r.objeto!==roboFuerte.objeto)return false;
+     const node=eventNodes[r.idx];
+     const tramo=eventNodes.slice(roboFuerte.idx,r.idx+1);
+     return r.idx===roboFuerte.idx || r.tiempo==="POSTERIOR" ||
+       node.sameVehicle || node.identity || V10.coref.test(r.texto) ||
+       tramo.some(n=>n.temporal) || sourceForRecovery(node);
+   })||null;
  }
 
- // 6) DIRECCIÓN NARRATIVA.
- const firstSem=semEvents[0]||null;
- const currentRecoveryFirst=firstSem&&firstSem.accion==="RECUPERACION"&&firstSem.tiempo!=="POSTERIOR";
- const theftAfterRecovery=currentRecoveryFirst && semEvents.some(x=>x.accion==="SUSTRACCION"&&x.idx>firstSem.idx);
+ // F. Dirección del relato: hallazgo actual con robo previo relatado como antecedente
+ // no debe transformarse en INMEDIATO.
+ const primera=relaciones[0]||null;
+ const empiezaHallazgo=!!(primera && primera.accion==="RECUPERA/HALLA" && primera.tiempo!=="POSTERIOR");
+ const roboNarradoDespues=empiezaHallazgo && relaciones.some(r=>r.accion==="SUSTRAE"&&r.idx>primera.idx);
 
- if(mainTheft && mainTheft.tipo==="AUTOMOTOR"){
-   if(linkedRecovery){
+ if(roboFuerte && roboFuerte.objeto==="AUTOMOTOR" && !empiezaHallazgo){
+   if(vinculada){
      ficha.recuperacion="SI";
      ficha.secuencia="SUSTRACCION → RECUPERACION";
      ficha.estado_inferido="INMEDIATO";
@@ -378,21 +376,39 @@ function f2(r){
      ficha.secuencia="SUSTRACCION";
      ficha.estado_inferido="SUSTRAIDO";
    }
- }else if(currentRecoveryFirst && firstSem.tipo==="AUTOMOTOR"){
+ }else if(empiezaHallazgo && primera.objeto==="AUTOMOTOR"){
    ficha.recuperacion="SI";
-   ficha.secuencia=theftAfterRecovery?"HALLAZGO ACTUAL ← SUSTRACCION ANTERIOR":"HALLAZGO";
+   ficha.secuencia=roboNarradoDespues?"HALLAZGO ACTUAL ← SUSTRACCION ANTERIOR":"HALLAZGO";
    ficha.estado_inferido="HALLAZGO";
- }else if(mainTheft && ["AUTOPARTE","PERTENENCIA","BICICLETA","MOTOVEHICULO"].includes(mainTheft.tipo)){
-   ficha.recuperacion=linkedRecovery?"SI":"NO/NO VINCULADA";
-   ficha.secuencia="SUSTRACCION · "+mainTheft.tipo;
+ }else if(roboFuerte && ["AUTOPARTE","PERTENENCIA","BICICLETA","MOTOVEHICULO"].includes(roboFuerte.objeto)){
+   ficha.recuperacion=vinculada?"SI":"NO/NO VINCULADA";
+   ficha.secuencia="SUSTRACCION · "+roboFuerte.objeto;
    ficha.estado_inferido="FUERA/NO AUTOMOTOR COMPLETO";
  }
+
+ // G. Salida visible: relaciones primero. Esto permite auditar el razonamiento del motor.
+ const relTxt=r=>r.sujeto+" → "+r.accion+" → "+r.objeto+" ["+r.rol+"; "+r.tiempo+"; "+r.conf+"]";
+ ficha.relacion_1=relaciones[0]?relTxt(relaciones[0]):"";
+ ficha.relacion_2=relaciones[1]?relTxt(relaciones[1]):"";
+ ficha.relacion_3=relaciones[2]?relTxt(relaciones[2]):"";
+ ficha.evento_1=ficha.relacion_1;
+ ficha.evento_2=ficha.relacion_2;
+ ficha.evento_3=ficha.relacion_3;
+
+ const entidades=[];
+ for(const r of relaciones){
+   const txt=r.objeto+" · "+r.rol;
+   if(r.objeto!=="INDETERMINADO"&&!entidades.includes(txt))entidades.push(txt);
+ }
+ ficha.entidad_1=entidades[0]||"";
+ ficha.entidad_2=entidades[1]||"";
+ ficha.entidad_3=entidades[2]||"";
 
  const fichaTexto=[
    "OBJETO="+ficha.tipo_objeto,
    "ROL="+ficha.rol_objeto,
-   "ENT1="+(ficha.entidad_1||"-"),
-   "ENT2="+(ficha.entidad_2||"-"),
+   "REL1="+(ficha.relacion_1||"-"),
+   "REL2="+(ficha.relacion_2||"-"),
    "AUTOMOTOR="+ficha.corresponde_automotor,
    "SUSTRAIDO_COMPLETO="+ficha.sustraido_completo,
    "RECUPERACION="+ficha.recuperacion,
@@ -651,7 +667,7 @@ function dl(name,sheets){const wb=XLSX.utils.book_new();sheets.forEach(([n,r])=>
 status.textContent="✅ Aplicación lista. Seleccioná el Excel de Cassandra.";
 $("file").addEventListener("change",async function(){const f=this.files[0];if(!f)return;try{status.textContent="Leyendo "+f.name+"…";const wb=XLSX.read(await f.arrayBuffer(),{type:"array"});src=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""});cand=[];accepted=[];rejected=[];finalRows=[];$("f1").disabled=!src.length;$("f2").disabled=$("f3").disabled=true;["d1","d2","d3"].forEach(x=>$(x).disabled=true);status.textContent="✅ "+src.length.toLocaleString("es-AR")+" denuncias cargadas. Presioná 1️⃣ Detectar candidatos."}catch(e){status.textContent="❌ "+e.message}});
 $("f1").addEventListener("click",async()=>{cand=[];$("f1").disabled=true;for(let i=0;i<src.length;i++){const x=f1(src[i]);if(x)cand.push(x);if(i%250===0){status.textContent="🔎 Filtro 1 procesando… "+Math.round(100*i/src.length)+"%";await tick()}}$("f1").disabled=false;$("f2").disabled=!cand.length;$("d1").disabled=!cand.length;show(cand,"ETAPA_1","✅ Filtro 1 terminado: "+cand.length.toLocaleString("es-AR")+" candidatos de "+src.length.toLocaleString("es-AR")+".")});
-$("f2").addEventListener("click",async()=>{accepted=[];rejected=[];$("f2").disabled=true;for(let i=0;i<cand.length;i++){const r=cand[i],x=f2(r),fd=x.ficha_detalle||{},z={...r,CONDICION_AUDITOR:x.cond||"DESCARTADO",MOTIVO_2:x.why,FICHA_OBJETO_PRINCIPAL:fd.objeto_principal||"",FICHA_TIPO_OBJETO:fd.tipo_objeto||"",FICHA_ROL_OBJETO:fd.rol_objeto||"",FICHA_ENTIDAD_1:fd.entidad_1||"",FICHA_ENTIDAD_2:fd.entidad_2||"",FICHA_ENTIDAD_3:fd.entidad_3||"",FICHA_EVENTO_1:fd.evento_1||"",FICHA_EVENTO_2:fd.evento_2||"",FICHA_EVENTO_3:fd.evento_3||"",FICHA_SECUENCIA:fd.secuencia||"",FICHA_CORRESPONDE_AUTOMOTOR:fd.corresponde_automotor||"",FICHA_SUSTRACCION_COMPLETA:fd.sustraido_completo||"",FICHA_RECUPERACION:fd.recuperacion||"",FICHA_ESTADO_INFERIDO:fd.estado_inferido||"",FICHA_CONFIANZA:fd.confianza||"",FICHA_RESUMEN:x.ficha_semantica||""};(x.ok?accepted:rejected).push(z);if(i%150===0){status.textContent="🧠 Filtro 2 procesando… "+Math.round(100*i/cand.length)+"%";await tick()}}$("f2").disabled=false;$("f3").disabled=!accepted.length;$("d2").disabled=false;show(accepted,"CONDICION_AUDITOR","✅ Filtro 2: "+accepted.length.toLocaleString("es-AR")+" aceptados / "+rejected.length.toLocaleString("es-AR")+" descartados.")});
+$("f2").addEventListener("click",async()=>{accepted=[];rejected=[];$("f2").disabled=true;for(let i=0;i<cand.length;i++){const r=cand[i],x=f2(r),fd=x.ficha_detalle||{},z={...r,CONDICION_AUDITOR:x.cond||"DESCARTADO",MOTIVO_2:x.why,FICHA_OBJETO_PRINCIPAL:fd.objeto_principal||"",FICHA_TIPO_OBJETO:fd.tipo_objeto||"",FICHA_ROL_OBJETO:fd.rol_objeto||"",FICHA_ENTIDAD_1:fd.entidad_1||"",FICHA_ENTIDAD_2:fd.entidad_2||"",FICHA_ENTIDAD_3:fd.entidad_3||"",FICHA_RELACION_1:fd.relacion_1||"",FICHA_RELACION_2:fd.relacion_2||"",FICHA_RELACION_3:fd.relacion_3||"",FICHA_EVENTO_1:fd.evento_1||"",FICHA_EVENTO_2:fd.evento_2||"",FICHA_EVENTO_3:fd.evento_3||"",FICHA_SECUENCIA:fd.secuencia||"",FICHA_CORRESPONDE_AUTOMOTOR:fd.corresponde_automotor||"",FICHA_SUSTRACCION_COMPLETA:fd.sustraido_completo||"",FICHA_RECUPERACION:fd.recuperacion||"",FICHA_ESTADO_INFERIDO:fd.estado_inferido||"",FICHA_CONFIANZA:fd.confianza||"",FICHA_RESUMEN:x.ficha_semantica||""};(x.ok?accepted:rejected).push(z);if(i%150===0){status.textContent="🧠 Filtro 2 procesando… "+Math.round(100*i/cand.length)+"%";await tick()}}$("f2").disabled=false;$("f3").disabled=!accepted.length;$("d2").disabled=false;show(accepted,"CONDICION_AUDITOR","✅ Filtro 2: "+accepted.length.toLocaleString("es-AR")+" aceptados / "+rejected.length.toLocaleString("es-AR")+" descartados.")});
 $("f3").addEventListener("click",async()=>{status.textContent="🧾 Filtro 3 completando datos…";await tick();finalRows=accepted.map(extract);$("d3").disabled=!finalRows.length;show(finalRows,"CONDICION_AUDITOR","✅ Filtro 3 terminado: "+finalRows.length.toLocaleString("es-AR")+" casos finales.")});
 $("d1").onclick=()=>dl("FILTRO_1_CANDIDATOS.xlsx",[["CANDIDATOS",cand]]);
 $("d2").onclick=()=>dl("FILTRO_2_AUDITORIA.xlsx",[["ACEPTADOS",accepted],["DESCARTADOS",rejected]]);
