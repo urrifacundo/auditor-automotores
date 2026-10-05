@@ -349,9 +349,6 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
      return {ok:1,cond:"REVISION HUMANA",why:"Hay evidencia de sustracción y posible recuperación, pero la relación entre objeto, secuencia e identidad no alcanza el umbral para afirmar INMEDIATO."};
    return null;
  };
-   return null;
- };
-
 
  const procedureStartsWithVehicle=/\b(?:SOMOS COMISIONADOS|COMISIONADOS|ALERTADOS POR 911|RECIBEN MODULACION|MODULACION RADIAL|SE CONSTITUYEN|ARRIBAN|CONCURREN)\b.{0,420}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b.{0,180}\b(?:ABANDONAD[OA]|LOCALIZAD[OA]|HALLAD[OA]|ESTACIONAD[OA]|INTERCEPTAD[OA])\b/.test(t)
    ||/\b(?:EMPRESA|LOJACK|STRIX|WISETRACK|911)\b.{0,260}\b(?:INFORMA|INFORMO|REPORTA|REPORTO|MODULA)\b.{0,180}\b(?:UBICACION|LOCALIZACION)\b.{0,180}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b/.test(t);
