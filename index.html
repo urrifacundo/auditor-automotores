@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V10.22.1 · V10.21 Auditor de Automotores V10.13 · Arbitraje semántico V9 + V10</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.21 · Identidad del evento actual</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V10.23 Auditor de Automotores V10.13 · Arbitraje semántico V9 + V10</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.23 · Identidad del evento actual</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[],completedRows=[],sourceFileName="";
 const $=id=>document.getElementById(id), status=$("status");
@@ -492,30 +492,36 @@ function f2(r){
  };
  const conFicha=(o)=>Object.assign(o,__v10,v109Bridge(o,fichaPuenteV109()));
 
- // V10.22.1 — UNIVERSO: SOLO AUTOMOTORES, RESUELTO POR ROL DEL OBJETO.
- // La etiqueta estructurada AUTOmotor de Quirón no alcanza para convertir una moto/bici
- // en automóvil. Manda el objeto sobre el que recae la sustracción/hallazgo/recuperación.
+ // V10.23 — GATE SOBERANO DEL UNIVERSO AUTOMOTOR.
+ // La ficha semántica ya reconstruyó cuál es el objeto principal y su rol.
+ // Si el objeto víctima/recuperado es explícitamente MOTOVEHICULO o BICICLETA,
+ // ninguna rama posterior puede rescatarlo como SUSTRAIDO/HALLAZGO/INMEDIATO.
+ // No se activa por la mera mención de una moto: sólo cuando V10 la identifica
+ // como objeto principal del hecho. Así se preserva el caso autores-en-moto -> roban auto.
+ const __fdUniverso=__v10.ficha_detalle||{};
+ const __tipoUniverso=String(__fdUniverso.tipo_objeto||__fdUniverso.objeto_principal||'').toUpperCase();
+ const __rolUniverso=String(__fdUniverso.rol_objeto||'').toUpperCase();
+ const __correspondeUniverso=String(__fdUniverso.corresponde_automotor||'').toUpperCase();
+ const __objetoNoAutomotor=/^(?:MOTOVEHICULO|BICICLETA)$/.test(__tipoUniverso);
+ const __rolObjetoHecho=/OBJETO (?:SUSTRAIDO|RECUPERADO|HALLADO|PRINCIPAL)/.test(__rolUniverso);
+ const __vetoUniverso=(__correspondeUniverso==='NO' && __rolObjetoHecho) || (__objetoNoAutomotor && __rolObjetoHecho);
+ if(__vetoUniverso){
+   return conFicha({ok:0,cond:'DESCARTADO',why:'V10.23 · Fuera del universo del auditor de automotores: la reconstrucción semántica identifica '+(__tipoUniverso||'OBJETO NO AUTOMOTOR')+' como '+(__rolUniverso||'OBJETO PRINCIPAL')+'. El descarte es soberano y no puede ser revertido por reglas posteriores.'});
+ }
+
  const autoWord=/\b(AUTOMOVIL|AUTO|CAMIONETA|CAMION|UTILITARIO|FURGON|SEDAN|COCHE)\b/.test(t);
  const genericVehicle=/\b(VEHICULO|RODADO)\b/.test(t);
  const moto=M.test(t);
  const quironAuto=/AUTOMOTOR/.test(c);
- const accionObjeto='(?:SUSTRA(?:E|EN|JO|JERON)|ROBA(?:N|RON)?|HALLA(?:N|RON)?|RECUPERA(?:N|RON)?|LOCALIZA(?:N|RON)?|ENCUENTRA(?:N|RON)?|SECUESTRA(?:N|RON)?|APODERA(?:N|RON)?)';
- const autoVictimaExplicito=new RegExp(accionObjeto+'[^.!?]{0,170}\\b(?:AUTOMOVIL|AUTO|CAMIONETA|CAMION|UTILITARIO|FURGON|SEDAN|COCHE)\\b').test(t)
-   ||/\b(?:AUTOMOVIL|AUTO|CAMIONETA|CAMION|UTILITARIO|FURGON|SEDAN|COCHE)\b[^.!?]{0,170}(?:SUSTRAID[OA]|ROBADO|ROBADA|HALLAD[OA]|RECUPERAD[OA]|LOCALIZAD[OA]|ENCONTRAD[OA]|SECUESTRAD[OA])\b/.test(t);
- const vehiculoGenericoVictima=new RegExp(accionObjeto+'[^.!?]{0,150}\\b(?:VEHICULO|RODADO|UNIDAD)\\b').test(t)
-   ||/\b(?:VEHICULO|RODADO|UNIDAD)\b[^.!?]{0,150}(?:SUSTRAID[OA]|ROBADO|ROBADA|HALLAD[OA]|RECUPERAD[OA]|LOCALIZAD[OA]|ENCONTRAD[OA])\b/.test(t);
- const motoAsObject=new RegExp(accionObjeto+'[^.!?]{0,150}\\b(?:MOTO|MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR|SCOOTER)\\b').test(t)
-   ||/\b(?:MOTO|MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR|SCOOTER)\b[^.!?]{0,150}(?:SUSTRAID[OA]|ROBADA|HALLAD[OA]|RECUPERAD[OA]|LOCALIZAD[OA]|ENCONTRAD[OA]|SECUESTRAD[OA])\b/.test(t);
- const biciAsObject=new RegExp(accionObjeto+'[^.!?]{0,150}\\b(?:BICICLETA|BICI)\\b').test(t)
-   ||/\b(?:BICICLETA|BICI)\b[^.!?]{0,150}(?:SUSTRAID[OA]|ROBADA|HALLAD[OA]|RECUPERAD[OA]|LOCALIZAD[OA]|ENCONTRAD[OA]|SECUESTRAD[OA])\b/.test(t);
- const motoAsMeans=/\b(?:AUTORES?|SUJETOS?|MASCULINOS?|FEMENINAS?)\b[^.!?]{0,180}\b(?:A BORDO DE|EN|MEDIANTE|UTILIZANDO)\b[^.!?]{0,60}\b(?:MOTO|MOTOCICLETA|MOTOVEHICULO)\b/.test(t)
-   ||/\b(?:HUYEN|HUYE|ESCAPAN|ESCAPA|SE DAN A LA FUGA|SE DA A LA FUGA)\b[^.!?]{0,120}\b(?:EN|A BORDO DE)\b[^.!?]{0,50}\b(?:MOTO|MOTOCICLETA|MOTOVEHICULO)\b/.test(t);
- // Si moto/bici es el objeto del hecho, se excluye aunque Quirón diga AUTOMOTOR.
- // Sólo se conserva cuando existe evidencia independiente de un automóvil víctima.
- if((motoAsObject||biciAsObject) && !autoVictimaExplicito && !vehiculoGenericoVictima)
-   return conFicha({ok:0,why:"V10.22.1 excluye el registro: el objeto sustraído/hallado/recuperado es bicicleta o motovehículo, fuera del universo de automotores."});
- const wholeAuto=autoVictimaExplicito || vehiculoGenericoVictima || autoWord || (genericVehicle&&!motoAsObject&&!biciAsObject) || (quironAuto&&!motoAsObject&&!biciAsObject);
- if(!wholeAuto)return conFicha({ok:0,why:"No hay evidencia suficiente de que el objeto principal del hecho sea un automotor completo."});
+ const wholeAuto=autoWord || (genericVehicle&&!moto) || quironAuto;
+ if(!wholeAuto)return conFicha({ok:0,why:"No hay evidencia suficiente de que el objeto principal sea un automotor completo."});
+
+ const motoAsObject=/(?:SUSTRA(?:E|EN|JO|JERON)|ROBA(?:N|RON)?|HALLA(?:N|RON)?|RECUPERA(?:N|RON)?|LOCALIZA(?:N|RON)?)[^.!?]{0,140}\b(?:MOTO|MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR)\b/.test(t)
+   ||/\b(?:MOTO|MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR)\b[^.!?]{0,140}(?:SUSTRAID[OA]|ROBADA|HALLAD[OA]|RECUPERAD[OA]|LOCALIZAD[OA])\b/.test(t);
+ const motoAsMeans=/\b(?:A BORDO DE|EN|MEDIANTE|UTILIZANDO) (?:UN |UNA )?(?:MOTO|MOTOCICLETA|MOTOVEHICULO)\b/.test(t)
+   ||/\b(?:AUTORES?|SUJETOS?|MASCULINOS?)\b.{0,160}\b(?:MOTO|MOTOCICLETA|MOTOVEHICULO)\b/.test(t);
+ if(motoAsObject && !autoWord && !quironAuto)
+   return conFicha({ok:0,why:"El objeto sustraído/hallado es un motovehículo; queda fuera del auditor de automotores."});
 
  const wholeAutoTheftObject=/\b(?:SUSTRAE|SUSTRAEN|SUSTRAJO|SUSTRAJERON|ROBA|ROBAN|ROBO|ROBARON|APODERA|APODERAN|APODERO|APODERARON|SE LLEVA|SE LLEVAN|SE LLEVO|SE LLEVARON)\b[^.!?]{0,150}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD)\b/.test(t)
    ||/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD)\b[^.!?]{0,150}\b(?:SUSTRAID[OA]|ROBADO|ROBADA|SE LO LLEVARON|SE LA LLEVARON)\b/.test(t)
