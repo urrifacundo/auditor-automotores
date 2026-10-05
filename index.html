@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V9.19</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V9.19</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V9.20</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V9.20</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[];
 const $=id=>document.getElementById(id), status=$("status");
@@ -180,6 +180,17 @@ function f2(r){
     if(linkedRecoveryAfterTheft)break;
   }
 
+ // V9.20 — GOBIERNO UNICO DE INMEDIATO.
+ // Las heuristicas historicas aportan evidencia, pero no pueden cerrar INMEDIATO
+ // sin validar primero que la sustraccion recaiga sobre el VEHICULO COMPLETO.
+ const semanticVehicleTheftConfirmed=vehicleTheftEvidence.length>0;
+ const semanticOnlyNonVehicleTheft=
+   nonVehicleTheftEvidence.length>0 && vehicleTheftEvidence.length===0 && ambiguousTheftEvidence.length===0;
+ const semanticTheftObjectAmbiguous=
+   ambiguousTheftEvidence.length>0 && vehicleTheftEvidence.length===0;
+ const semanticImmediateAuthorized=
+   semanticVehicleTheftConfirmed && linkedRecoveryAfterTheft;
+
   const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCALIZADO|LOCALIZADA|RECUPERA|RECUPERAN|RECUPERADO|RECUPERADA|ENCONTRADO|ENCONTRADA|HABIDO|HABIDA)\b/;
  const recoveryStrong=
    /\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION)\b.{0,220}\b(?:FUE|ES|RESULTA|SIENDO)? ?(?:HALLADO|HALLADA|LOCALIZADO|LOCALIZADA|RECUPERADO|RECUPERADA|ENCONTRADO|ENCONTRADA|HABIDO|HABIDA)\b/.test(t)
@@ -257,6 +268,15 @@ function f2(r){
    && !negativeAbsence && !historicalRecoveryBeforeCurrent
    && !(historicalTheft && !victimComplaint && !evAbandonoPosterior);
 
+ // Unica puerta de salida para INMEDIATO.
+ const governedImmediate=(why)=>{
+   if(semanticImmediateAuthorized)return {ok:1,cond:"INMEDIATO",why};
+   if(semanticTheftObjectAmbiguous)
+     return {ok:1,cond:"REVISION HUMANA",why:"Hay indicios de sustracción y recuperación, pero no alcanza la evidencia para afirmar que el objeto sustraído y recuperado sea el automotor completo."};
+   return null;
+ };
+
+
  const procedureStartsWithVehicle=/\b(?:SOMOS COMISIONADOS|COMISIONADOS|ALERTADOS POR 911|RECIBEN MODULACION|MODULACION RADIAL|SE CONSTITUYEN|ARRIBAN|CONCURREN)\b.{0,420}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b.{0,180}\b(?:ABANDONAD[OA]|LOCALIZAD[OA]|HALLAD[OA]|ESTACIONAD[OA]|INTERCEPTAD[OA])\b/.test(t)
    ||/\b(?:EMPRESA|LOJACK|STRIX|WISETRACK|911)\b.{0,260}\b(?:INFORMA|INFORMO|REPORTA|REPORTO|MODULA)\b.{0,180}\b(?:UBICACION|LOCALIZACION)\b.{0,180}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b/.test(t);
  const currentTheftComplaintFirst=victimComplaint && theftStrong && !procedureStartsWithVehicle;
@@ -278,9 +298,10 @@ function f2(r){
    return {ok:1,cond:"HALLAZGO",why:"El hecho actual es el hallazgo de un automotor abandonado con sustracción/pedido previo."};
 
  // INMEDIATO de alta confianza: sustracción actual + recuperación inequívoca del mismo rodado.
- if(immediateHigh)
-   return {ok:1,cond:"INMEDIATO",why:"Confianza alta: sustracción actual + recuperación posterior vinculada al mismo automotor ("+
-     [evDuranteDenuncia||evHallazgoDuranteDenuncia?"durante la denuncia":"",evRastreoPositivo?"rastreo con localización positiva":"",evAvisoHallado?"aviso posterior de hallazgo":"",evDanCon?"localización efectiva del rodado":"",positiveConstata?"constatación positiva posterior del rodado":"",evAbandonoPosterior?"abandono posterior":"",evRecuperacionExplicita?"recuperación temporal explícita":""].filter(Boolean).join(", ")+")."};
+ if(immediateHigh){
+   const _g=governedImmediate("Confianza alta: sustracción actual + recuperación posterior vinculada al mismo automotor ("+
+     [evDuranteDenuncia||evHallazgoDuranteDenuncia?"durante la denuncia":"",evRastreoPositivo?"rastreo con localización positiva":"",evAvisoHallado?"aviso posterior de hallazgo":"",evDanCon?"localización efectiva del rodado":"",positiveConstata?"constatación positiva posterior del rodado":"",evAbandonoPosterior?"abandono posterior":"",evRecuperacionExplicita?"recuperación temporal explícita":""].filter(Boolean).join(", ")+")."); if(_g)return _g;
+ }
 
  // La calificación original de Hallazgo sólo refuerza cuando el relato también es un procedimiento actual sobre el rodado.
  if(hallazgoProcedure)
@@ -298,15 +319,19 @@ function f2(r){
    return {ok:1,cond:"SUSTRAIDO",why:newSeizure?"Sustracción actual acreditada; el pedido de secuestro se genera a raíz de este hecho y no implica recuperación.":"Sustracción del automotor acreditada sin recuperación posterior."};
 
  // V9.16 — cadena vinculada del mismo automotor.
-  if(theftStrong && linkedRecoveryAfterTheft)
-    return {ok:1,cond:"INMEDIATO",why:"Cadena coherente del hecho: sustracción del automotor seguida por hallazgo/recuperación posterior del mismo objeto, vinculada por continuidad narrativa, temporal y referencial."};
+  if(theftStrong && linkedRecoveryAfterTheft){
+    const _g=governedImmediate("Cadena coherente del hecho: sustracción del automotor seguida por hallazgo/recuperación posterior del mismo objeto, vinculada por continuidad narrativa, temporal y referencial.");
+    if(_g)return _g;
+  }
 
   if(theftStrong && recoveryStrong && !recoveryOnlyNonAsserted){
    const theftIdx=t.search(S), recIdx=t.search(recoveryAction);
    const sameSequence=/\b(?:POSTERIORMENTE|LUEGO|MINUTOS DESPUES|HORAS DESPUES|MIENTRAS.{0,80}DENUNCIA|RASTREO SATELITAL|GPS|LOJACK|PERSECUCION|SEGUIMIENTO)\b/.test(t)
       ||/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION)\b.{0,100}\b(?:ES|FUE) HABID[OA]\b/.test(t);
-   if(recIdx>=0 && theftIdx>=0 && recIdx>theftIdx && sameSequence)
-     return {ok:1,cond:"INMEDIATO",why:"Sustracción actual seguida por una recuperación/hallazgo posterior dentro de la misma secuencia del hecho."};
+   if(recIdx>=0 && theftIdx>=0 && recIdx>theftIdx && sameSequence){
+     const _g=governedImmediate("Sustracción actual seguida por una recuperación/hallazgo posterior dentro de la misma secuencia del hecho.");
+     if(_g)return _g;
+   }
    return {ok:1,cond:"REVISION HUMANA",why:"Hay evidencia fuerte de sustracción y recuperación, pero el orden o la relación entre ambos eventos no es suficientemente claro."};
  }
 
