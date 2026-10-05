@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.11 · Tipo de relato conectado</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.11 · Tipo de relato conectado</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.12 · Arbitraje semántico V9 + V10</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.12 · Arbitraje semántico V9 + V10</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[],completedRows=[],sourceFileName="";
 const $=id=>document.getElementById(id), status=$("status");
@@ -108,7 +108,7 @@ function construirFichaV10(textoEntrada){
  const tiempo=z=>RX.past.test(z)?"ANTERIOR":(RX.later.test(z)?"POSTERIOR":"ACTUAL");
  const sujeto=z=>RX.police.test(z)?"POLICIA":(RX.authors.test(z)?"AUTORES":"NO EXPRESO");
 
- // V10.11 — POLARIDAD DEL EVENTO.
+ // V10.12 — POLARIDAD DEL EVENTO.
  // Un verbo de hallazgo no vale como recuperación positiva si está negado,
  // hipotético, buscado o sólo expresa una finalidad. Se evalúa el entorno
  // local del verbo, no una frase exacta ni un expediente particular.
@@ -125,7 +125,7 @@ function construirFichaV10(textoEntrada){
    return "POSITIVA";
  };
 
- // V10.11 — DIRECCIÓN TEMPORAL DEL HECHO.
+ // V10.12 — DIRECCIÓN TEMPORAL DEL HECHO.
  // Distingue el evento actual de un antecedente citado para explicar el
  // procedimiento presente.
  const v1011Temporalidad=(z,action)=>{
@@ -861,8 +861,47 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
    && !(historicalTheft && !victimComplaint && !evAbandonoPosterior);
 
  // V9.21: puerta graduada, no binaria.
+ // V10.12 — ARBITRAJE SEMANTICO V9 ↔ V10 PARA INMEDIATO.
+ // V9 conserva la deteccion/propuesta. V10 no lo reemplaza: valida o corrige
+ // solamente cuando su ficha reconstruye el hecho con evidencia suficiente.
+ const arbitrarInmediatoV1012=(why)=>{
+   const f=fichaPuenteV109();
+   const estado=String(f.FICHA_ESTADO_INFERIDO||"").toUpperCase();
+   const conf=String(f.FICHA_CONFIANZA||"").toUpperCase();
+   const rec=String(f.FICHA_RECUPERACION||"").toUpperCase();
+   const sec=String(f.FICHA_SECUENCIA||"").toUpperCase();
+   const obj=String(f.FICHA_TIPO_OBJETO||"").toUpperCase();
+
+   // Acuerdo positivo: V9 propone INMEDIATO y V10 reconstruye la misma cadena.
+   const confirmaInmediato=estado==="INMEDIATO" && rec==="SI"
+     && /SUSTRACCION/.test(sec) && /RECUPERACION/.test(sec)
+     && obj==="AUTOMOTOR" && (conf==="ALTA"||conf==="MEDIA");
+   if(confirmaInmediato)
+     return conFicha({ok:1,cond:"INMEDIATO",why:why+" V10.12 confirma semanticamente sustraccion y recuperacion vinculada del mismo automotor."});
+
+   // Correccion fuerte: la ficha ve automotor sustraido, sin recuperacion vinculada.
+   // Solo gobierna automaticamente con confianza ALTA.
+   const corrigeASustraido=estado==="SUSTRAIDO" && conf==="ALTA"
+     && obj==="AUTOMOTOR" && rec!=="SI" && !/RECUPERACION/.test(sec);
+   if(corrigeASustraido)
+     return conFicha({ok:1,cond:"SUSTRAIDO",why:"V10.12 corrige la propuesta INMEDIATO de V9: la ficha semantica reconstruye con confianza alta una sustraccion de automotor sin recuperacion positiva vinculada."});
+
+   // Si V10 contradice a V9 pero no llega a confianza alta, no fuerza una clase.
+   if(estado==="SUSTRAIDO" || estado==="INDETERMINADO" || conf==="BAJA")
+     return conFicha({ok:1,cond:"REVISION HUMANA",why:"V10.12 no confirma la propuesta INMEDIATO de V9 y la evidencia semantica no alcanza para corregir automaticamente el estado final."});
+
+   return null;
+ };
+
  const governedImmediate=(why)=>{
    if(relationOnlyNonVehicle)return null;
+
+   // V10.12: toda propuesta INMEDIATO pasa primero por el arbitraje conjunto.
+   const arbitraje=arbitrarInmediatoV1012(why);
+   if(arbitraje)return arbitraje;
+
+   // Respaldo legacy: se conserva para casos donde V10 no produjo una ficha
+   // util para arbitrar. Asi V10 complementa a V9 sin sustituir su motor.
    if(semanticImmediateConfidence==="ALTA")
      return conFicha({ok:1,cond:"INMEDIATO",why:why+" Confianza semántica alta: "+semanticImmediateReasons.join("; ")+"."});
    if(semanticImmediateConfidence==="MEDIA")
