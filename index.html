@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.6 · Continuidad de Entidad y Temporalidad</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.6 · Continuidad de Entidad y Temporalidad</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.7 · Identidad del Vehículo</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.7 · Identidad del Vehículo</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[];
 const $=id=>document.getElementById(id), status=$("status");
@@ -29,6 +29,43 @@ function construirFichaV10(textoEntrada){
  };
 
  const v10Sent=t.split(/[.!?;\n]+/).map(x=>x.trim()).filter(Boolean);
+ // V10.7 — IDENTIDAD CONCRETA DEL VEHÍCULO.
+ // Extrae atributos como evidencia de identidad; no decide por marca/modelo por sí solos.
+ const V10_MARCAS=["FIAT","FORD","RENAULT","PEUGEOT","CHEVROLET","VOLKSWAGEN","VW","TOYOTA",
+   "CITROEN","CITROËN","NISSAN","HONDA","JEEP","MERCEDES BENZ","MERCEDES-BENZ","IVECO",
+   "HYUNDAI","KIA","SUZUKI","CHERY","AUDI","BMW","DODGE","RAM"];
+ const v10VehAttrs=z=>{
+   z=z||"";
+   let marca="";
+   for(const x of V10_MARCAS){ if(new RegExp("\\\\b"+x.replace("-","[- ]")+"\\\\b").test(z)){marca=x.replace("VW","VOLKSWAGEN");break;} }
+   // Dominio argentino: se exige contexto de dominio/patente o formatos fuertes para reducir falsos positivos.
+   let dominio="";
+   const dm=z.match(/\b(?:DOMINIO|PATENTE|CHAPA(?: PATENTE)?)\s*(?:NRO|N°|NUMERO)?\s*[:\-]?\s*([A-Z]{2}\s?\d{3}\s?[A-Z]{2}|[A-Z]{3}\s?\d{3})\b/);
+   if(dm) dominio=dm[1].replace(/\s/g,"");
+   else{
+     const strong=z.match(/\b([A-Z]{2}\d{3}[A-Z]{2}|[A-Z]{3}\d{3})\b/);
+     if(strong) dominio=strong[1];
+   }
+   let modelo="";
+   if(marca){
+     const mm=z.match(new RegExp("\\\\b"+marca.replace("VOLKSWAGEN","(?:VOLKSWAGEN|VW)").replace("-","[- ]")+"\\\\b\\\\s+([A-Z0-9][A-Z0-9 .-]{1,24})"));
+     if(mm){
+       modelo=mm[1].split(/\b(?:DOMINIO|PATENTE|COLOR|MODELO AÑO|AÑO|QUE|EL CUAL|LA CUAL|CON)\b/)[0].trim();
+       modelo=modelo.replace(/\s+/g," ").slice(0,24);
+     }
+   }
+   return {marca,modelo,dominio};
+ };
+ const v10SameVehicle=(a,b)=>{
+   if(!a||!b)return false;
+   if(a.dominio&&b.dominio)return a.dominio===b.dominio;
+   if(a.marca&&b.marca&&a.marca!==b.marca)return false;
+   if(a.marca&&b.marca&&a.modelo&&b.modelo){
+     return a.marca===b.marca && (a.modelo===b.modelo || a.modelo.includes(b.modelo) || b.modelo.includes(a.modelo));
+   }
+   return false;
+ };
+
  const RX={
    auto:/\b(?:AUTO|AUTOMOVIL|VEHICULO|RODADO|CAMIONETA|CAMION|UTILITARIO|FURGON|UNIDAD)\b/,
    moto:/\b(?:MOTO|MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR|SCOOTER)\b/,
@@ -80,12 +117,14 @@ function construirFichaV10(textoEntrada){
    // V10.6: no se hereda identidad sólo porque ambos objetos sean "AUTOMOTOR".
    // La continuidad se resuelve luego con antecedente + referencia + cronología.
    const id="E"+(++v10EntitySeq);
-   v10Entities.push({id,tipo,rol,family,i,texto:z});
+   const attrs=(tipo==="AUTOMOTOR"||tipo==="MOTOVEHICULO")?v10VehAttrs(z):{marca:"",modelo:"",dominio:""};
+   v10Entities.push({id,tipo,rol,family,i,texto:z,attrs});
    return id;
  };
  const add=(i,su,ac,obj,rol,tm,conf,z)=>{
    const eid=entityFor(obj,rol,z,i);
-   rels.push({i,su,ac,obj,rol,tm,conf,z,eid});
+   const ent=v10Entities.find(e=>e.id===eid);
+   rels.push({i,su,ac,obj,rol,tm,conf,z,eid,attrs:ent?ent.attrs:v10VehAttrs(z)});
  };
 
  // Cada oración se lee por sí misma. La cercanía entre verbo y objeto define la relación.
@@ -161,7 +200,9 @@ function construirFichaV10(textoEntrada){
    );
    if(!prev) continue;
    const tramo=v10Sent.slice(prev.i,r.i+1).join(" ");
+   const mismaIdentidad=v10SameVehicle(prev.attrs,r.attrs);
    const continuidad =
+     mismaIdentidad ||
      RX.coref.test(r.z) ||
      explicitTemporalPosterior(r.z) ||
      /\b(?:INFORMA|INFORMAN|AVISA|AVISAN|COMUNICA|COMUNICAN|VIA RADIAL|RADIAL|911|PERSONAL POLICIAL)\b/.test(tramo);
@@ -213,6 +254,7 @@ function construirFichaV10(textoEntrada){
      // La recuperación debe resolver a la MISMA entidad o traer evidencia
      // narrativa suficiente para hacerlo; no alcanza con compartir tipo.
      if(r.eid===principal.eid)return true;
+     if(v10SameVehicle(principal.attrs,r.attrs))return true;
      const tramo=v10Sent.slice(principal.i,r.i+1).join(" ");
      return (RX.coref.test(r.z)||explicitTemporalPosterior(r.z)) &&
        !explicitTemporalAnterior(r.z) &&
@@ -240,18 +282,27 @@ function construirFichaV10(textoEntrada){
    ficha.estado_inferido="FUERA/NO AUTOMOTOR COMPLETO";
  }
 
- const fmt=r=>(r.eid?r.eid+" · ":"")+r.su+" → "+r.ac+" → "+r.obj+" ["+r.rol+"; "+r.tm+"; "+r.conf+"]";
+ const fmt=r=>{
+   const a=r.attrs||{};
+   const ident=[a.marca,a.modelo,a.dominio].filter(Boolean).join(" ");
+   return (r.eid?r.eid+" · ":"")+r.su+" → "+r.ac+" → "+r.obj+
+     (ident?" · "+ident:"")+" ["+r.rol+"; "+r.tm+"; "+r.conf+"]";
+ };
  ficha.relacion_1=uniq[0]?fmt(uniq[0]):"";
  ficha.relacion_2=uniq[1]?fmt(uniq[1]):"";
  ficha.relacion_3=uniq[2]?fmt(uniq[2]):"";
  ficha.evento_1=ficha.relacion_1; ficha.evento_2=ficha.relacion_2; ficha.evento_3=ficha.relacion_3;
 
  const ents=[];
- uniq.forEach(r=>{const x=(r.eid?r.eid+" · ":"")+r.obj+" · "+r.rol;if(r.obj!=="INDETERMINADO"&&!ents.includes(x))ents.push(x)});
+ uniq.forEach(r=>{
+   const a=r.attrs||{}; const ident=[a.marca,a.modelo,a.dominio].filter(Boolean).join(" ");
+   const x=(r.eid?r.eid+" · ":"")+r.obj+(ident?" · "+ident:"")+" · "+r.rol;
+   if(r.obj!=="INDETERMINADO"&&!ents.includes(x))ents.push(x)
+ });
  ficha.entidad_1=ents[0]||"";ficha.entidad_2=ents[1]||"";ficha.entidad_3=ents[2]||"";
 
  const fichaTexto=[
-   "LECTOR=V10.6-CONTINUIDAD","OBJETO="+ficha.tipo_objeto,"ROL="+ficha.rol_objeto,
+   "LECTOR=V10.7-IDENTIDAD-VEHICULO","OBJETO="+ficha.tipo_objeto,"ROL="+ficha.rol_objeto,
    "REL1="+(ficha.relacion_1||"-"),"REL2="+(ficha.relacion_2||"-"),
    "AUTOMOTOR="+ficha.corresponde_automotor,"SUSTRAIDO_COMPLETO="+ficha.sustraido_completo,
    "RECUPERACION="+ficha.recuperacion,"SECUENCIA="+(ficha.secuencia||"INDETERMINADA"),
