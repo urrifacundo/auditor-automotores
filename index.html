@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.10.1 · Tipo de Relato conectado</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.10.1 · Tipo de Relato conectado</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.10.2 · Tipo de relato conectado</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.10.2 · Tipo de relato conectado</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[],completedRows=[],sourceFileName="";
 const $=id=>document.getElementById(id), status=$("status");
@@ -351,35 +351,34 @@ function f2(r){
  // V10.9 — PUENTE EXPERIMENTAL V9 ↔ V10.
  // Importante: NO cambia todavía la decisión oficial de V9.
  // Sólo deja visible qué haría una futura capa híbrida.
- const v1010TipoRelato=(ficha)=>{
-   let rels=(ficha&&ficha.FICHA_RELACIONES)||[];
-   // Si por estructura interna no llega el array, reconstruimos desde la propia
-   // salida semántica visible del motor (E1 · SUJETO → ACCION → OBJETO [...]).
-   if(!Array.isArray(rels)) rels=[];
-   const txt=rels.map(r=>String(r.z||"")).join(" ");
+ const v10102ParseRelacion=(z)=>{
+   z=String(z||"").trim(); if(!z)return null;
+   const clean=z.replace(/^[^·\n]*·\s*/,"");
+   const p=clean.split("→").map(x=>x.trim()); if(p.length<3)return {z};
+   const su=p[0], ac=p[1], tail=p.slice(2).join("→").trim();
+   const m=tail.match(/^(.*?)(?:\s*·\s*([^\[]+))?\s*\[([^;\]]*);\s*([^;\]]*);\s*([^\]]*)\]\s*$/);
+   return m?{z,su,ac,obj:m[1].trim(),ident:(m[2]||"").trim(),rol:m[3].trim(),tm:m[4].trim(),conf:m[5].trim()}:{z,su,ac,obj:tail};
+ };
+ const v10102Relaciones=(ficha)=>[
+   ficha&&ficha.FICHA_RELACION_1,ficha&&ficha.FICHA_RELACION_2,ficha&&ficha.FICHA_RELACION_3
+ ].filter(Boolean).map(v10102ParseRelacion).filter(Boolean);
+ const v10102TipoRelato=(ficha)=>{
+   const rels=v10102Relaciones(ficha);
    const theft=rels.filter(r=>r.ac==="SUSTRAE");
    const rec=rels.filter(r=>r.ac==="RECUPERA/HALLA");
-
-   // No decide por una frase aislada: combina dirección temporal, sujeto,
-   // existencia de sustracción actual y resultado de la búsqueda.
-   const busquedaNegativa=/\b(?:NO (?:LOGRA|LOGRARON|PUDO|PUDIERON) (?:HALLAR|ENCONTRAR|DAR CON)|SIN (?:LOGRAR )?(?:HALLAR|ENCONTRAR)|RESULTADO NEGATIVO|NO FUE HALLADO|NO FUE ENCONTRADO)\b/.test(txt);
-   const hallazgoPolicial=rec.some(r=>r.su==="POLICIA" && (r.tm==="ACTUAL"||r.tm==="POSTERIOR"));
-   const sustraccionAnterior=theft.some(r=>r.tm==="ANTERIOR");
-   const sustraccionActual=theft.some(r=>r.tm==="ACTUAL"||r.tm==="POSTERIOR");
-   const recuperacionPosterior=rec.some(r=>r.tm==="POSTERIOR");
-   const autoSustraido=theft.some(r=>r.obj==="AUTOMOTOR");
-   const soloContexto=!autoSustraido && /AUTOMOTOR/.test(String(ficha.FICHA_TIPO_OBJETO||""));
-
-   if(busquedaNegativa) return {tipo:"BUSQUEDA SIN EXITO",conf:"ALTA"};
-   if(hallazgoPolicial && sustraccionAnterior && !sustraccionActual)
-     return {tipo:"PROCEDIMIENTO DE HALLAZGO",conf:"ALTA"};
-   if(sustraccionActual && recuperacionPosterior)
-     return {tipo:"DENUNCIA SUSTRACCION + RECUPERACION",conf:"ALTA"};
-   if(sustraccionActual)
-     return {tipo:"DENUNCIA DE SUSTRACCION",conf:"MEDIA"};
-   if(soloContexto)
-     return {tipo:"AUTOMOTOR COMO CONTEXTO",conf:"MEDIA"};
-   return {tipo:"INDETERMINADO",conf:"BAJA"};
+   const autoTheft=theft.filter(r=>r.obj==="AUTOMOTOR");
+   const autoRec=rec.filter(r=>r.obj==="AUTOMOTOR");
+   const actual=autoTheft.some(r=>r.tm==="ACTUAL"||r.tm==="POSTERIOR");
+   const anterior=autoTheft.some(r=>r.tm==="ANTERIOR");
+   const recPosterior=autoRec.some(r=>r.tm==="POSTERIOR");
+   const recActual=autoRec.some(r=>r.tm==="ACTUAL"||r.tm==="ANTERIOR");
+   const neg=rels.some(r=>/NO (?:LOGRA|LOGRARON|PUDO|PUDIERON).*?(?:HALLAR|ENCONTRAR)|SIN (?:LOGRAR )?(?:HALLAR|ENCONTRAR)|RESULTADO NEGATIVO|NO FUE (?:HALLADO|ENCONTRADO)/.test(String(r.z||"")));
+   if(neg&&autoTheft.length)return {tipo:"BUSQUEDA SIN EXITO",conf:"ALTA",n:rels.length};
+   if(recActual&&anterior&&!actual)return {tipo:"PROCEDIMIENTO DE HALLAZGO",conf:"ALTA",n:rels.length};
+   if(actual&&recPosterior)return {tipo:"DENUNCIA SUSTRACCION + RECUPERACION",conf:"ALTA",n:rels.length};
+   if(actual)return {tipo:"DENUNCIA DE SUSTRACCION",conf:"MEDIA",n:rels.length};
+   if(rels.length)return {tipo:"OTRO RELATO ESTRUCTURADO",conf:"MEDIA",n:rels.length};
+   return {tipo:"INDETERMINADO",conf:"BAJA",n:0};
  };
 
  const v109Bridge=(legacy,ficha)=>{
@@ -390,7 +389,7 @@ function f2(r){
    const fe=String((ficha&&ficha.FICHA_ESTADO_INFERIDO)||"").toUpperCase();
    const fc=String((ficha&&ficha.FICHA_CONFIANZA)||"").toUpperCase();
    const fr=String((ficha&&ficha.FICHA_RECUPERACION)||"").toUpperCase();
-   const tr=v1010TipoRelato(ficha);
+   const tr=v10102TipoRelato(ficha);
 
    let acuerdo="SIN COMPARAR", sugerencia=leg||"REVISION HUMANA", motivo="V9 decide; V10 audita la decisión";
    const v10Fuerte=fc==="ALTA";
@@ -403,8 +402,7 @@ function f2(r){
      acuerdo="CONFLICTO OBJETO";
      sugerencia="REVISION HUMANA";
      motivo="V10 identifica con alta confianza un objeto distinto de automotor completo";
-   }else if(fe==="INMEDIATO" && fr==="SI" && v10Fuerte &&
-             tr.tipo==="DENUNCIA SUSTRACCION + RECUPERACION"){
+   }else if(fe==="INMEDIATO" && fr==="SI" && v10Fuerte && tr.tipo==="DENUNCIA SUSTRACCION + RECUPERACION"){
      acuerdo=leg==="INMEDIATO"?"ACUERDO":"V10 FUERTE";
      sugerencia="INMEDIATO";
      motivo="V10 reconstruye sustracción y recuperación vinculada con confianza alta";
@@ -417,13 +415,8 @@ function f2(r){
      sugerencia="SUSTRAIDO";
      motivo="V10 identifica automotor sustraído sin recuperación vinculada";
    }else if(tr.tipo==="BUSQUEDA SIN EXITO" && leg==="SUSTRAIDO"){
-     acuerdo="V9 PROTEGIDO";
-     sugerencia="SUSTRAIDO";
-     motivo="V10 detecta búsqueda sin éxito; no confunde búsqueda con recuperación";
-   }else if(tr.tipo==="AUTOMOTOR COMO CONTEXTO"){
-     acuerdo="V9 PROTEGIDO";
-     sugerencia=leg||"REVISION HUMANA";
-     motivo="El automotor aparece como contexto, no como objeto sustraído";
+     acuerdo="V9 PROTEGIDO"; sugerencia="SUSTRAIDO";
+     motivo="V10 reconoce búsqueda sin éxito: no equivale a recuperación";
    }else if(fe && fe!=="INDETERMINADO" && leg && leg!==fe){
      acuerdo="CONFLICTO";
      sugerencia="REVISION HUMANA";
@@ -436,9 +429,7 @@ function f2(r){
      V109_GOBIERNA:"NO · AUDITA V9",
      V109_V9_LEIDO:leg||"VACIO",
      V109_V10_LEIDO:(fe||"VACIO")+" | "+(ft||"SIN OBJETO")+" | "+(fc||"SIN CONFIANZA"),
-     V1010_TIPO_RELATO:tr.tipo,
-     V1010_CONFIANZA_RELATO:tr.conf,
-     V10101_RELACIONES_LEIDAS:Array.isArray(ficha.FICHA_RELACIONES)?ficha.FICHA_RELACIONES.length:0
+     V10102_TIPO_RELATO:tr.tipo,V10102_CONFIANZA_RELATO:tr.conf,V10102_RELACIONES_LEIDAS:tr.n
    };
  };
  const fichaPuenteV109=()=>{
@@ -446,16 +437,16 @@ function f2(r){
    // El puente debe auditar usando ficha_detalle, que es donde viven
    // tipo_objeto, estado_inferido, confianza y recuperacion.
    const fd=__v10.ficha_detalle||{};
-   const fs=__v10.ficha_semantica||{};
-   const rels=fs.relaciones||fd.relaciones||[];
-   const ent=fs.entidades||fd.entidades||[];
+   const rels=fd.relaciones||[];
+   const ent=fd.entidades||[];
    return {
-     FICHA_TIPO_OBJETO:fd.tipo_objeto||fs.tipo_objeto||"",
-     FICHA_ESTADO_INFERIDO:fd.estado_inferido||fs.estado_inferido||"",
-     FICHA_CONFIANZA:fd.confianza||fs.confianza||"",
-     FICHA_RECUPERACION:fd.recuperacion||fs.recuperacion||"",
+     FICHA_TIPO_OBJETO:fd.tipo_objeto||"",
+     FICHA_ESTADO_INFERIDO:fd.estado_inferido||"",
+     FICHA_CONFIANZA:fd.confianza||"",
+     FICHA_RECUPERACION:fd.recuperacion||"",
      FICHA_RELACIONES:rels,
-     FICHA_ENTIDADES:ent
+     FICHA_ENTIDADES:ent,
+     FICHA_RELACION_1:fd.relacion_1||"",FICHA_RELACION_2:fd.relacion_2||"",FICHA_RELACION_3:fd.relacion_3||""
    };
  };
  const conFicha=(o)=>Object.assign(o,__v10,v109Bridge(o,fichaPuenteV109()));
@@ -932,7 +923,7 @@ $("f1").addEventListener("click",async()=>{cand=[];$("f1").disabled=true;for(let
 $("f2").addEventListener("click",async()=>{accepted=[];rejected=[];$("f2").disabled=true;for(let i=0;i<cand.length;i++){const r=cand[i],x=f2(r),fd=x.ficha_detalle||{},z={...r,CONDICION_AUDITOR:x.cond||"DESCARTADO",MOTIVO_2:x.why,FICHA_OBJETO_PRINCIPAL:fd.objeto_principal||"",FICHA_TIPO_OBJETO:fd.tipo_objeto||"",FICHA_ROL_OBJETO:fd.rol_objeto||"",FICHA_ENTIDAD_1:fd.entidad_1||"",FICHA_ENTIDAD_2:fd.entidad_2||"",FICHA_ENTIDAD_3:fd.entidad_3||"",FICHA_RELACION_1:fd.relacion_1||"",FICHA_RELACION_2:fd.relacion_2||"",FICHA_RELACION_3:fd.relacion_3||"",FICHA_EVENTO_1:fd.evento_1||"",FICHA_EVENTO_2:fd.evento_2||"",FICHA_EVENTO_3:fd.evento_3||"",FICHA_SECUENCIA:fd.secuencia||"",FICHA_CORRESPONDE_AUTOMOTOR:fd.corresponde_automotor||"",FICHA_SUSTRACCION_COMPLETA:fd.sustraido_completo||"",FICHA_RECUPERACION:fd.recuperacion||"",FICHA_ESTADO_INFERIDO:fd.estado_inferido||"",FICHA_CONFIANZA:fd.confianza||"",FICHA_RESUMEN:x.ficha_semantica||"",
 V10_TEXTO_RECIBIDO:fd.diag_texto_recibido||"",V10_LONGITUD_TEXTO:fd.diag_longitud||0,
 V10_ORACIONES_DETECTADAS:fd.diag_oraciones||0,V10_VERBOS_SUSTRACCION:fd.diag_verbos_sustraccion||0,
-V10_VERBOS_RECUPERACION:fd.diag_verbos_recuperacion||0,V10_OBJETOS_DETECTADOS:fd.diag_objetos||"",V109_ACUERDO:x.V109_ACUERDO||"",V109_SUGERENCIA:x.V109_SUGERENCIA||"",V109_MOTIVO:x.V109_MOTIVO||"",V109_GOBIERNA:x.V109_GOBIERNA||"NO",V109_V9_LEIDO:x.V109_V9_LEIDO||"VACIO",V109_V10_LEIDO:x.V109_V10_LEIDO||"VACIO",V1010_TIPO_RELATO:x.V1010_TIPO_RELATO||"INDETERMINADO",V1010_CONFIANZA_RELATO:x.V1010_CONFIANZA_RELATO||"BAJA",V10101_RELACIONES_LEIDAS:x.V10101_RELACIONES_LEIDAS||0};(x.ok?accepted:rejected).push(z);if(i%150===0){status.textContent="🧠 Filtro 2 procesando… "+Math.round(100*i/cand.length)+"%";await tick()}}$("f2").disabled=false;$("f3").disabled=!accepted.length;$("f4").disabled=true;$("d2").disabled=false;show(accepted,"CONDICION_AUDITOR","✅ Filtro 2: "+accepted.length.toLocaleString("es-AR")+" aceptados / "+rejected.length.toLocaleString("es-AR")+" descartados.")});
+V10_VERBOS_RECUPERACION:fd.diag_verbos_recuperacion||0,V10_OBJETOS_DETECTADOS:fd.diag_objetos||"",V109_ACUERDO:x.V109_ACUERDO||"",V109_SUGERENCIA:x.V109_SUGERENCIA||"",V109_MOTIVO:x.V109_MOTIVO||"",V109_GOBIERNA:x.V109_GOBIERNA||"NO",V109_V9_LEIDO:x.V109_V9_LEIDO||"VACIO",V109_V10_LEIDO:x.V109_V10_LEIDO||"VACIO",V10102_TIPO_RELATO:x.V10102_TIPO_RELATO||"INDETERMINADO",V10102_CONFIANZA_RELATO:x.V10102_CONFIANZA_RELATO||"BAJA",V10102_RELACIONES_LEIDAS:x.V10102_RELACIONES_LEIDAS||0};(x.ok?accepted:rejected).push(z);if(i%150===0){status.textContent="🧠 Filtro 2 procesando… "+Math.round(100*i/cand.length)+"%";await tick()}}$("f2").disabled=false;$("f3").disabled=!accepted.length;$("f4").disabled=true;$("d2").disabled=false;show(accepted,"CONDICION_AUDITOR","✅ Filtro 2: "+accepted.length.toLocaleString("es-AR")+" aceptados / "+rejected.length.toLocaleString("es-AR")+" descartados.")});
 $("f3").addEventListener("click",async()=>{
  status.textContent="📊 Armando Excel final operativo…";await tick();
  finalRows=accepted.map(cleanFinal);
