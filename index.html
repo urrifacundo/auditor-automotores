@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.9.3 · V10 audita a V9</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.9.3 · V10 audita a V9</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.9.4 · V10 audita a V9</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.9.4 · V10 audita a V9</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[],completedRows=[],sourceFileName="";
 const $=id=>document.getElementById(id), status=$("status");
@@ -393,17 +393,22 @@ function f2(r){
      V109_SUGERENCIA:sugerencia,
      V109_MOTIVO:motivo,
      V109_GOBIERNA:"NO · AUDITA V9",
-     V109_V9_LEIDO:leg||"VACIO"
+     V109_V9_LEIDO:leg||"VACIO",
+     V109_V10_LEIDO:(fe||"VACIO")+" | "+(ft||"SIN OBJETO")+" | "+(fc||"SIN CONFIANZA")
    };
  };
  const fichaPuenteV109=()=>{
-   const rels=__v10.relaciones||[];
-   const ent=__v10.entidades||[];
+   // construirFichaV10 devuelve {ficha_semantica, ficha_detalle}.
+   // El puente debe auditar usando ficha_detalle, que es donde viven
+   // tipo_objeto, estado_inferido, confianza y recuperacion.
+   const fd=__v10.ficha_detalle||{};
+   const rels=fd.relaciones||[];
+   const ent=fd.entidades||[];
    return {
-     FICHA_TIPO_OBJETO:__v10.tipo_objeto||"",
-     FICHA_ESTADO_INFERIDO:__v10.estado_inferido||"",
-     FICHA_CONFIANZA:__v10.confianza||"",
-     FICHA_RECUPERACION:__v10.recuperacion||"",
+     FICHA_TIPO_OBJETO:fd.tipo_objeto||"",
+     FICHA_ESTADO_INFERIDO:fd.estado_inferido||"",
+     FICHA_CONFIANZA:fd.confianza||"",
+     FICHA_RECUPERACION:fd.recuperacion||"",
      FICHA_RELACIONES:rels,
      FICHA_ENTIDADES:ent
    };
@@ -882,7 +887,7 @@ $("f1").addEventListener("click",async()=>{cand=[];$("f1").disabled=true;for(let
 $("f2").addEventListener("click",async()=>{accepted=[];rejected=[];$("f2").disabled=true;for(let i=0;i<cand.length;i++){const r=cand[i],x=f2(r),fd=x.ficha_detalle||{},z={...r,CONDICION_AUDITOR:x.cond||"DESCARTADO",MOTIVO_2:x.why,FICHA_OBJETO_PRINCIPAL:fd.objeto_principal||"",FICHA_TIPO_OBJETO:fd.tipo_objeto||"",FICHA_ROL_OBJETO:fd.rol_objeto||"",FICHA_ENTIDAD_1:fd.entidad_1||"",FICHA_ENTIDAD_2:fd.entidad_2||"",FICHA_ENTIDAD_3:fd.entidad_3||"",FICHA_RELACION_1:fd.relacion_1||"",FICHA_RELACION_2:fd.relacion_2||"",FICHA_RELACION_3:fd.relacion_3||"",FICHA_EVENTO_1:fd.evento_1||"",FICHA_EVENTO_2:fd.evento_2||"",FICHA_EVENTO_3:fd.evento_3||"",FICHA_SECUENCIA:fd.secuencia||"",FICHA_CORRESPONDE_AUTOMOTOR:fd.corresponde_automotor||"",FICHA_SUSTRACCION_COMPLETA:fd.sustraido_completo||"",FICHA_RECUPERACION:fd.recuperacion||"",FICHA_ESTADO_INFERIDO:fd.estado_inferido||"",FICHA_CONFIANZA:fd.confianza||"",FICHA_RESUMEN:x.ficha_semantica||"",
 V10_TEXTO_RECIBIDO:fd.diag_texto_recibido||"",V10_LONGITUD_TEXTO:fd.diag_longitud||0,
 V10_ORACIONES_DETECTADAS:fd.diag_oraciones||0,V10_VERBOS_SUSTRACCION:fd.diag_verbos_sustraccion||0,
-V10_VERBOS_RECUPERACION:fd.diag_verbos_recuperacion||0,V10_OBJETOS_DETECTADOS:fd.diag_objetos||"",V109_ACUERDO:x.V109_ACUERDO||"",V109_SUGERENCIA:x.V109_SUGERENCIA||"",V109_MOTIVO:x.V109_MOTIVO||"",V109_GOBIERNA:x.V109_GOBIERNA||"NO",V109_V9_LEIDO:x.V109_V9_LEIDO||"VACIO"};(x.ok?accepted:rejected).push(z);if(i%150===0){status.textContent="🧠 Filtro 2 procesando… "+Math.round(100*i/cand.length)+"%";await tick()}}$("f2").disabled=false;$("f3").disabled=!accepted.length;$("f4").disabled=true;$("d2").disabled=false;show(accepted,"CONDICION_AUDITOR","✅ Filtro 2: "+accepted.length.toLocaleString("es-AR")+" aceptados / "+rejected.length.toLocaleString("es-AR")+" descartados.")});
+V10_VERBOS_RECUPERACION:fd.diag_verbos_recuperacion||0,V10_OBJETOS_DETECTADOS:fd.diag_objetos||"",V109_ACUERDO:x.V109_ACUERDO||"",V109_SUGERENCIA:x.V109_SUGERENCIA||"",V109_MOTIVO:x.V109_MOTIVO||"",V109_GOBIERNA:x.V109_GOBIERNA||"NO",V109_V9_LEIDO:x.V109_V9_LEIDO||"VACIO",V109_V10_LEIDO:x.V109_V10_LEIDO||"VACIO"};(x.ok?accepted:rejected).push(z);if(i%150===0){status.textContent="🧠 Filtro 2 procesando… "+Math.round(100*i/cand.length)+"%";await tick()}}$("f2").disabled=false;$("f3").disabled=!accepted.length;$("f4").disabled=true;$("d2").disabled=false;show(accepted,"CONDICION_AUDITOR","✅ Filtro 2: "+accepted.length.toLocaleString("es-AR")+" aceptados / "+rejected.length.toLocaleString("es-AR")+" descartados.")});
 $("f3").addEventListener("click",async()=>{
  status.textContent="📊 Armando Excel final operativo…";await tick();
  finalRows=accepted.map(cleanFinal);
