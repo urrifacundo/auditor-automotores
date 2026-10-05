@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V10.17 Auditor de Automotores V10.13 · Arbitraje semántico V9 + V10</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.17 · Arbitraje semántico V9 + V10</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V10.18 Auditor de Automotores V10.13 · Arbitraje semántico V9 + V10</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.18 · Identidad del evento actual</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[],completedRows=[],sourceFileName="";
 const $=id=>document.getElementById(id), status=$("status");
@@ -987,26 +987,27 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
    return null;
  };
 
- // V10.17 — DIRECCION DEL HECHO ACTUAL.
- // Antes de permitir una promocion a INMEDIATO resolvemos que evento abre el
- // expediente. Un ACTA/PROCEDIMIENTO que ya tiene el vehiculo localizado,
- // interceptado, abandonado o bajo control policial y luego descubre un pedido
- // de secuestro previo es HALLAZGO. La sustraccion relatada despues es antecedente.
- // Esto no depende de una frase puntual: exige convergencia de procedimiento,
- // posesion/localizacion actual y antecedente registral previo.
- const v1017HallazgoActualFuerte = procedure && existingSeizure && policePossession;
- const v1017IdxProcedimiento = t.search(/\b(?:ACTA DE PROCEDI|ACTA DE PROCEDIMIENTO|RECORRIDA|COMANDO DE PATRULLAS|MOVIL POLICIAL|SOMOS COMISIONAD[OA]S?)\b/);
- const v1017IdxSustraccion = t.search(S);
- const v1017AntecedenteDespues = v1017IdxProcedimiento>=0 && v1017IdxSustraccion>=0 && v1017IdxProcedimiento<v1017IdxSustraccion;
- const v1017DenunciaAbreHecho = victimComplaint && theftStrong && v1017IdxSustraccion>=0 &&
-   (v1017IdxProcedimiento<0 || v1017IdxSustraccion<v1017IdxProcedimiento);
-
- if(v1017HallazgoActualFuerte && v1017AntecedenteDespues && !v1017DenunciaAbreHecho)
-   return conFicha({ok:1,cond:"HALLAZGO",why:"V10.17 resuelve la direccion del hecho actual: el expediente nace como procedimiento sobre un automotor ya localizado/interceptado y el pedido de secuestro o sustraccion aparece despues como antecedente."});
-
  // El especialista INMEDIATO tiene prioridad conceptual sobre HALLAZGO cuando
  // puede demostrar la secuencia actual completa. Si no puede, el flujo legacy
  // continua intacto y HALLAZGO/SUSTRAIDO conservan sus reglas.
+ // V10.18 — IDENTIDAD DEL EVENTO ACTUAL ANTES DE PROMOVER INMEDIATO.
+ // La ficha V10 puede reconstruir SUSTRACCION -> RECUPERACION aunque la sustraccion
+ // sea solamente un antecedente contado despues dentro de un acta de hallazgo.
+ // Por eso ordenamos tres hitos independientes del relato: apertura procedimental,
+ // observacion fisica actual del automotor y aparicion posterior del antecedente registral.
+ const v1018IdxApertura=t.search(/\b(?:ACTA DE PROCEDI|ACTA DE PROCEDIMIENTO|RECORRIDA|SOMOS COMISIONAD[OA]S?|COMISIONAD[OA]S?|ALERTADOS POR 911|SE CONSTITUYEN|ARRIBAN|CONCURREN)\b/);
+ const v1018IdxHallazgoFisico=t.search(/\b(?:AL LLEGAR|ARRIBAN|ARRIBO|CONSTATAMOS|CONSTATA|OBSERVAN|OBSERVA|VISUALIZAN|VISUALIZA|HABIA|HAY)\b.{0,220}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b.{0,160}\b(?:ESTADO DE ABANDONO|ABANDONAD[OA]|LOCALIZAD[OA]|HALLAD[OA]|ESTACIONAD[OA]|INTERCEPTAD[OA]|VOLCADO|VOLCAD[OA])\b/);
+ const v1018IdxAntecedente=t.search(/\b(?:PEDIDO (?:ACTIVO )?(?:DE )?SECUESTRO|PEDIDO DE SECUESTRO ACTIVO|FECHA DE ALTA|DENUNCIA (?:PREVIA|CORRESPONDIENTE)|DIA DE AYER|EN EL DIA DE AYER)\b/);
+ const v1018IdxSustraccion=t.search(S);
+ const v1018HallazgoAbreHecho=v1018IdxApertura>=0 && v1018IdxHallazgoFisico>=0
+   && v1018IdxHallazgoFisico>=v1018IdxApertura
+   && v1018IdxAntecedente>v1018IdxHallazgoFisico;
+ const v1018SustraccionAbreHecho=victimComplaint && v1018IdxSustraccion>=0
+   && (v1018IdxHallazgoFisico<0 || v1018IdxSustraccion<v1018IdxHallazgoFisico);
+
+ if(v1018HallazgoAbreHecho && !v1018SustraccionAbreHecho)
+   return conFicha({ok:1,cond:"HALLAZGO",why:"V10.18 identifica el evento actual por orden narrativo: el expediente abre con un procedimiento y la observacion fisica de un automotor ya localizado; el pedido de secuestro/sustraccion aparece despues como antecedente. No corresponde promoverlo a INMEDIATO."});
+
  const promocionInmediatoV1013=promoverInmediatoV1013();
  if(promocionInmediatoV1013)return promocionInmediatoV1013;
 
