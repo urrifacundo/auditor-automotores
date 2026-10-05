@@ -285,7 +285,7 @@ function construirFichaV10(textoEntrada){
  }
 
  const robos=uniq.filter(r=>r.ac==="SUSTRAE"&&r.obj!=="INDETERMINADO");
- // V10.23.2 — JERARQUIA DE OBJETOS CONCURRENTES.
+ // V10.23.3 — JERARQUIA DE OBJETOS CONCURRENTES.
  // Una pertenencia puede coexistir con el robo del vehiculo completo. En ese
  // caso no compiten como objetos equivalentes: si la narracion acredita que
  // los autores se apoderan / se llevan / huyen con el automotor, el automotor
@@ -520,7 +520,7 @@ function f2(r){
  };
  const conFicha=(o)=>Object.assign(o,__v10,v109Bridge(o,fichaPuenteV109()));
 
- // V10.23.2 — OBJETO VÍCTIMA + GATE SOBERANO DEL UNIVERSO AUTOMOTOR.
+ // V10.23.3 — OBJETO VÍCTIMA + GATE SOBERANO DEL UNIVERSO AUTOMOTOR.
  // La ficha semántica ya reconstruyó cuál es el objeto principal y su rol.
  // Si el objeto víctima/recuperado es explícitamente MOTOVEHICULO o BICICLETA,
  // ninguna rama posterior puede rescatarlo como SUSTRAIDO/HALLAZGO/INMEDIATO.
@@ -534,7 +534,7 @@ function f2(r){
  const __rolObjetoHecho=/OBJETO (?:SUSTRAIDO|RECUPERADO|HALLADO|PRINCIPAL)/.test(__rolUniverso);
  const __vetoUniverso=(__correspondeUniverso==='NO' && __rolObjetoHecho) || (__objetoNoAutomotor && __rolObjetoHecho);
  if(__vetoUniverso){
-   return conFicha({ok:0,cond:'DESCARTADO',why:'V10.23.2 · Fuera del universo del auditor de automotores: la reconstrucción semántica identifica '+(__tipoUniverso||'OBJETO NO AUTOMOTOR')+' como '+(__rolUniverso||'OBJETO PRINCIPAL')+'. El descarte es soberano y no puede ser revertido por reglas posteriores.'});
+   return conFicha({ok:0,cond:'DESCARTADO',why:'V10.23.3 · Fuera del universo del auditor de automotores: la reconstrucción semántica identifica '+(__tipoUniverso||'OBJETO NO AUTOMOTOR')+' como '+(__rolUniverso||'OBJETO PRINCIPAL')+'. El descarte es soberano y no puede ser revertido por reglas posteriores.'});
  }
 
  const autoWord=/\b(AUTOMOVIL|AUTO|CAMIONETA|CAMION|UTILITARIO|FURGON|SEDAN|COCHE)\b/.test(t);
@@ -1075,6 +1075,43 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
  // Un procedimiento actual sobre un vehículo abandonado con sustracción/pedido previo es HALLAZGO.
  if(abandonedPriorTheft)
    return conFicha({ok:1,cond:"HALLAZGO",why:"El hecho actual es el hallazgo de un automotor abandonado con sustracción/pedido previo."});
+
+ // V10.23.3 — IDENTIDAD Y CONTINUIDAD DEL MISMO AUTOMOTOR.
+ // Esta capa no detecta un INMEDIATO desde cero. Solo resuelve una duda del
+ // arbitro cuando la ficha semantica YA reconstruyo: automotor completo,
+ // sustraccion actual y recuperacion posterior. Exige ademas un ancla concreta
+ // de identidad/continuidad y que el hecho no haya nacido como hallazgo.
+ const v10233Ficha=fichaPuenteV109();
+ const v10233Obj=String(v10233Ficha.FICHA_OBJETO_PRINCIPAL||"").toUpperCase();
+ const v10233Rec=String(v10233Ficha.FICHA_RECUPERACION||"").toUpperCase();
+ const v10233Sec=String(v10233Ficha.FICHA_SECUENCIA||"").toUpperCase();
+ const v10233Inf=String(v10233Ficha.FICHA_ESTADO_INFERIDO||"").toUpperCase();
+ const v10233Comp=String(v10233Ficha.FICHA_SUSTRACCION_COMPLETA||"").toUpperCase();
+
+ // Identificadores materiales: dominio/patente es el ancla mas fuerte.
+ // Tambien admitimos una coreferencia explicita del mismo rodado o una fuente
+ // de rastreo que localiza el vehiculo de la denuncia. Ninguna de estas señales
+ // vale por si sola: siempre se combina con la secuencia semantica completa.
+ const v10233Dominio=/\b(?:DOMINIO|PATENTE|CHAPA(?: PATENTE)?)\s*(?:NRO|N°|NUMERO)?\s*[:\-]?\s*(?:[A-Z]{2}\s?\d{3}\s?[A-Z]{2}|[A-Z]{3}\s?\d{3})\b/.test(t)
+   ||/\b(?:[A-Z]{2}\d{3}[A-Z]{2}|[A-Z]{3}\d{3})\b/.test(t);
+ const v10233Coref=/\b(?:DICHO|DICHA|MISMO|MISMA|MENCIONADO|MENCIONADA|REFERIDO|REFERIDA)\s+(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b/.test(t)
+   ||/\b(?:EL|LA)\s+MISMO\s+(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b/.test(t);
+ const v10233Rastreo=evRastreoPositivo && /\b(?:LOJACK|GPS|GEOLOCALIZACION|RASTREO SATELITAL|STRIX|WISETRACK)\b/.test(t);
+ const v10233IdentidadFuerte=v10233Dominio || v10233Coref || v10233Rastreo;
+ const v10233SecuenciaCompleta=v10233Obj==="AUTOMOTOR"
+   && v10233Comp==="SI" && v10233Rec==="SI"
+   && /SUSTRACCION/.test(v10233Sec) && /RECUPERACION/.test(v10233Sec)
+   && v10233Inf==="INMEDIATO";
+ const v10233Promocion=v10233SecuenciaCompleta && v10233IdentidadFuerte
+   && currentTheftComplaintFirst && !procedureStartsWithVehicle
+   && !v1018HallazgoAbreHecho && !accessoryOnly && !negativeAbsence
+   && !historicalRecoveryBeforeCurrent && !recoveryOnlyNonAsserted;
+
+ if(v10233Promocion){
+   const evidencia=[v10233Dominio?"identificador material del automotor":"",v10233Coref?"coreferencia explicita al mismo rodado":"",v10233Rastreo?"rastreo/localizacion vinculada":""].filter(Boolean).join(", ");
+   const _g=governedImmediate("V10.23.3 resuelve identidad y continuidad: la ficha ya reconstruye sustraccion completa seguida de recuperacion del automotor y existe "+evidencia+". La identidad concreta destraba la duda del arbitro sin crear un INMEDIATO desde cero.");
+   if(_g)return _g;
+ }
 
  // INMEDIATO de alta confianza: sustracción actual + recuperación inequívoca del mismo rodado.
  if(immediateHigh){
