@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V9.25</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V9.25</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V9.26 FICHA</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V9.26 FICHA</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[];
 const $=id=>document.getElementById(id), status=$("status");
@@ -222,90 +222,133 @@ function f2(r){
    frameNonVehicle.length>0 && frameWholeVehicle.length===0 && frameAmbiguous.length===0;
 
 
- // V9.25 — INTÉRPRETE INDEPENDIENTE DEL RELATO.
- // La carga del operador NO define qué ocurrió: primero inferimos el objeto central
- // desde la narración y recién después permitimos que el auditor compare.
- const narrativeObjectEvidence={
-   automotor:0, motovehiculo:0, bicicleta:0, autoparte:0, pertenencia:0,
-   reasons:[]
+ // V9.26 EXPERIMENTAL — FICHA SEMÁNTICA EN PARALELO.
+ // IMPORTANTE: esta ficha NO gobierna todavía la decisión del auditor.
+ // Sirve para observar qué entiende el motor antes de reemplazar reglas consolidadas.
+ const ficha={
+   objeto_principal:"INDETERMINADO",
+   tipo_objeto:"INDETERMINADO",
+   rol_objeto:"INDETERMINADO",
+   evento_1:"",
+   evento_2:"",
+   evento_3:"",
+   secuencia:"",
+   corresponde_automotor:"INDETERMINADO",
+   sustraido_completo:"INDETERMINADO",
+   recuperacion:"INDETERMINADO",
+   estado_inferido:"INDETERMINADO",
+   confianza:"BAJA"
  };
 
- const theftActionLocal=/\b(?:SUSTRAJERON|SUSTRAJO|SUSTRAE|SUSTRAEN|SUSTRAIDO|ROBARON|ROBO|ROBA|APODERARON|APODERO|LLEVARON|LLEVO|FALTA|FALTANTE)\b/;
- const motorNoun=/\b(?:AUTO|AUTOMOVIL|VEHICULO|CAMIONETA|UTILITARIO|CAMION|FURGON|SEDAN)\b/;
- const motoNoun=/\b(?:MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR|SCOOTER|MOTO)\b/;
- const biciNoun=/\b(?:BICICLETA|BICI)\b/;
- const partNoun=/\b(?:RUEDA|NEUMATICO|CUBIERTA|AUXILIO|LLANTA|BATERIA|PATENTE|CHAPA\s+PATENTE|ESTEREO|OPTICA|ESPEJO|AUTOPARTE)\b/;
- const belongingNoun=/\b(?:MOCHILA|BOLSO|CARTERA|CELULAR|TELEFONO|BILLETERA|DOCUMENTACION|HERRAMIENTAS|PERTENENCIAS|DINERO)\b/;
+ const fichaMotor=/\b(?:AUTO|AUTOMOVIL|VEHICULO|CAMIONETA|UTILITARIO|CAMION|FURGON)\b/;
+ const fichaMoto=/\b(?:MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR|SCOOTER|MOTO)\b/;
+ const fichaBici=/\b(?:BICICLETA|BICI)\b/;
+ const fichaParte=/\b(?:RUEDA|NEUMATICO|CUBIERTA|AUXILIO|LLANTA|BATERIA|PATENTE|ESTEREO|OPTICA|ESPEJO|AUTOPARTE)\b/;
+ const fichaTheft=/\b(?:SUSTRAJERON|SUSTRAJO|SUSTRAE|SUSTRAEN|SUSTRAIDO|ROBARON|APODERARON|APODERO|LLEVARON|LLEVO)\b/;
+ const fichaRecovery=/\b(?:HALLADO|HALLADA|HABIDO|HABIDA|RECUPERADO|RECUPERADA|ENCONTRADO|ENCONTRADA|LOCALIZADO|LOCALIZADA|ABANDONADO|ABANDONADA)\b/;
+ const fichaPast=/\b(?:AYER|DIA\s+ANTERIOR|DIAS\s+ANTES|HORAS\s+ANTES|ANTERIORMENTE|CON\s+FECHA\s+ANTERIOR)\b/;
+ const fichaLater=/\b(?:POSTERIORMENTE|LUEGO|DESPUES|EN\s+EL\s+TRANSCURSO|MIENTRAS|MOMENTOS\s+DESPUES|MINUTOS\s+DESPUES)\b/;
 
- for(const e of eventNodes){
-   const z=(e.s||"").slice(0,900);
-   if(!theftActionLocal.test(z) && !e.theft) continue;
+ const fichaEventos=[];
+ for(let i=0;i<eventNodes.length;i++){
+   const e=eventNodes[i], z=e.s||"";
+   let tipo="OTRO";
+   if(fichaBici.test(z))tipo="BICICLETA";
+   else if(fichaParte.test(z) && !fichaTheft.test(z.replace(fichaParte,"")))tipo="AUTOPARTE";
+   else if(fichaMoto.test(z))tipo="MOTOVEHICULO";
+   else if(fichaMotor.test(z))tipo="AUTOMOTOR";
 
-   const hasMotor=motorNoun.test(z), hasMoto=motoNoun.test(z), hasBici=biciNoun.test(z);
-   const hasPart=partNoun.test(z), hasBelonging=belongingNoun.test(z);
+   let accion="OTRO";
+   if((e.theft||fichaTheft.test(z))&&!e.negated)accion="SUSTRACCION";
+   if((e.recovery||fichaRecovery.test(z))&&!e.negated&&!e.searching&&!e.questioned)accion="RECUPERACION";
 
-   // Evidencia fuerte: acción de sustracción próxima al tipo de objeto.
-   if(/\b(?:SUSTRAJERON|SUSTRAJO|SUSTRAE|SUSTRAEN|SUSTRAIDO|ROBARON|APODERARON|LLEVARON)\b.{0,140}\b(?:AUTO|AUTOMOVIL|VEHICULO|CAMIONETA|UTILITARIO|CAMION|FURGON)\b/.test(z)
-      || /\b(?:AUTO|AUTOMOVIL|VEHICULO|CAMIONETA|UTILITARIO|CAMION|FURGON)\b.{0,140}\b(?:SUSTRAIDO|SUSTRAJERON|ROBARON|APODERARON|LLEVARON)\b/.test(z)){
-      narrativeObjectEvidence.automotor+=4;
-      narrativeObjectEvidence.reasons.push("sustracción ligada a automotor");
-   }
-   if(/\b(?:SUSTRAJERON|SUSTRAJO|SUSTRAE|SUSTRAEN|SUSTRAIDO|ROBARON|APODERARON|LLEVARON)\b.{0,140}\b(?:MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR|SCOOTER|MOTO)\b/.test(z)
-      || /\b(?:MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR|SCOOTER|MOTO)\b.{0,140}\b(?:SUSTRAIDO|SUSTRAJERON|ROBARON|APODERARON|LLEVARON)\b/.test(z)){
-      narrativeObjectEvidence.motovehiculo+=4;
-      narrativeObjectEvidence.reasons.push("sustracción ligada a motovehículo");
-   }
-   if(/\b(?:SUSTRAJERON|SUSTRAJO|SUSTRAE|SUSTRAEN|ROBARON|APODERARON|LLEVARON)\b.{0,120}\b(?:BICICLETA|BICI)\b/.test(z)
-      || /\b(?:BICICLETA|BICI)\b.{0,120}\b(?:SUSTRAIDA|SUSTRAJERON|ROBARON|APODERARON|LLEVARON)\b/.test(z)){
-      narrativeObjectEvidence.bicicleta+=5;
-      narrativeObjectEvidence.reasons.push("sustracción ligada a bicicleta");
-   }
+   let tiempo="ACTUAL";
+   if(fichaPast.test(z))tiempo="ANTERIOR";
+   else if(fichaLater.test(z))tiempo="POSTERIOR";
 
-   // Autoparte/pertenencia: el vehículo funciona como origen/contenedor, no como objeto.
-   if(hasPart && hasMotor){
-      narrativeObjectEvidence.autoparte+=4;
-      narrativeObjectEvidence.reasons.push("autoparte vinculada a vehículo");
-   }
-   if(hasBelonging && hasMotor && /\b(?:INTERIOR|DENTRO|BAUL|CABINA|DEL\s+VEHICULO|DEL\s+RODADO)\b/.test(z)){
-      narrativeObjectEvidence.pertenencia+=4;
-      narrativeObjectEvidence.reasons.push("pertenencia sustraída desde vehículo");
-   }
-
-   // Evidencia contextual más débil: nunca decide sola contra evidencia fuerte.
-   if(hasMotor && !hasPart && !hasBelonging) narrativeObjectEvidence.automotor+=1;
-   if(hasMoto && !hasMotor) narrativeObjectEvidence.motovehiculo+=1;
-   if(hasBici) narrativeObjectEvidence.bicicleta+=1;
+   if(accion!=="OTRO")fichaEventos.push({i,tipo,accion,tiempo,texto:z});
  }
 
- const narrativeScores=[
-   ["AUTOMOTOR",narrativeObjectEvidence.automotor],
-   ["MOTOVEHICULO",narrativeObjectEvidence.motovehiculo],
-   ["BICICLETA",narrativeObjectEvidence.bicicleta],
-   ["AUTOPARTE",narrativeObjectEvidence.autoparte],
-   ["PERTENENCIA",narrativeObjectEvidence.pertenencia]
- ].sort((a,b)=>b[1]-a[1]);
+ // Elegimos objeto principal por el evento de sustracción, no por la carátula del operador.
+ const robos=fichaEventos.filter(x=>x.accion==="SUSTRACCION");
+ const robosMotor=robos.filter(x=>x.tipo==="AUTOMOTOR");
+ const robosMoto=robos.filter(x=>x.tipo==="MOTOVEHICULO");
+ const robosBici=robos.filter(x=>x.tipo==="BICICLETA");
+ const robosParte=robos.filter(x=>x.tipo==="AUTOPARTE");
 
- const narrativeBest=narrativeScores[0];
- const narrativeSecond=narrativeScores[1];
- const narrativeObjectCentral=
-   narrativeBest[1]>=4 && narrativeBest[1]>=narrativeSecond[1]+2 ? narrativeBest[0] :
-   narrativeBest[1]>=6 && narrativeBest[1]>narrativeSecond[1] ? narrativeBest[0] :
-   "INDETERMINADO";
+ if(robosMotor.length){
+   ficha.tipo_objeto="AUTOMOTOR";
+   ficha.objeto_principal="AUTOMOTOR DEL RELATO";
+   ficha.rol_objeto="OBJETO SUSTRAIDO";
+   ficha.corresponde_automotor="SI";
+   ficha.sustraido_completo=relationOnlyNonVehicle?"NO":"SI";
+   ficha.confianza=relationOnlyNonVehicle?"MEDIA":"ALTA";
+ }else if(robosMoto.length){
+   ficha.tipo_objeto="MOTOVEHICULO"; ficha.objeto_principal="MOTOVEHICULO DEL RELATO";
+   ficha.rol_objeto="OBJETO SUSTRAIDO"; ficha.corresponde_automotor="NO"; ficha.confianza="ALTA";
+ }else if(robosBici.length){
+   ficha.tipo_objeto="BICICLETA"; ficha.objeto_principal="BICICLETA DEL RELATO";
+   ficha.rol_objeto="OBJETO SUSTRAIDO"; ficha.corresponde_automotor="NO"; ficha.confianza="ALTA";
+ }else if(robosParte.length || relationOnlyNonVehicle){
+   ficha.tipo_objeto="AUTOPARTE"; ficha.objeto_principal="AUTOPARTE DEL VEHICULO";
+   ficha.rol_objeto="OBJETO SUSTRAIDO"; ficha.corresponde_automotor="NO";
+   ficha.sustraido_completo="NO"; ficha.confianza="MEDIA";
+ }
 
- // La carátula/modalidad del operador se conserva únicamente como dato a auditar.
- // Nunca se usa para establecer narrativeObjectCentral.
- const narrativeAutomotorConfirmed=narrativeObjectCentral==="AUTOMOTOR";
- const narrativeClearlyOutsideAutomotor=
-   narrativeObjectCentral==="MOTOVEHICULO" || narrativeObjectCentral==="BICICLETA";
+ const fichaRoboMotor=robosMotor[0]||null;
+ let fichaRecuperacion=null;
+ if(fichaRoboMotor){
+   fichaRecuperacion=fichaEventos.find(x=>
+     x.accion==="RECUPERACION" && x.i>fichaRoboMotor.i &&
+     (x.tipo==="AUTOMOTOR" || /\b(?:DICHO|MISMO|MISMA|VEHICULO|RODADO|EN\s+CUESTION)\b/.test(x.texto))
+   )||null;
+ }
 
- // Si el relato demuestra automotor, una carga de otro tipo NO lo descarta:
- // debe seguir en el auditor para poder detectar la incoherencia del operador.
- // Si el relato demuestra moto/bicicleta, evitamos que las reglas de automotor
- // fabriquen SUSTRAIDO/HALLAZGO/INMEDIATO solo por la etiqueta cargada.
+ // Detectamos también el caso inverso: procedimiento que comienza por un hallazgo,
+ // y luego el relato aporta una sustracción anterior como antecedente.
+ const primeraAccion=fichaEventos[0]||null;
+ const hallazgoPrimero=!!(primeraAccion&&primeraAccion.accion==="RECUPERACION");
+ const roboPosteriorAntecedente=hallazgoPrimero && robos.some(x=>x.i>primeraAccion.i);
+
+ if(fichaRoboMotor){
+   ficha.evento_1="SUSTRACCION · AUTOMOTOR · "+fichaRoboMotor.tiempo;
+   if(fichaRecuperacion){
+     ficha.evento_2="RECUPERACION · MISMO/COMPATIBLE AUTOMOTOR · "+fichaRecuperacion.tiempo;
+     ficha.recuperacion="SI";
+     ficha.secuencia="SUSTRACCION → RECUPERACION";
+     ficha.estado_inferido="INMEDIATO";
+   }else{
+     ficha.recuperacion="NO";
+     ficha.secuencia="SUSTRACCION";
+     ficha.estado_inferido="SUSTRAIDO";
+   }
+ }else if(hallazgoPrimero){
+   ficha.evento_1="HALLAZGO/RECUPERACION · "+primeraAccion.tipo+" · ACTUAL";
+   if(roboPosteriorAntecedente){
+     ficha.evento_2="SUSTRACCION · ANTECEDENTE";
+     ficha.secuencia="HALLAZGO ACTUAL ← SUSTRACCION ANTERIOR";
+   }else ficha.secuencia="HALLAZGO";
+   ficha.recuperacion="SI";
+   ficha.estado_inferido="HALLAZGO";
+ }
+
+ // Texto compacto para exportar a Excel y comparar ficha vs decisión vigente.
+ const fichaTexto=[
+   "OBJETO="+ficha.tipo_objeto,
+   "ROL="+ficha.rol_objeto,
+   "AUTOMOTOR="+ficha.corresponde_automotor,
+   "SUSTRAIDO_COMPLETO="+ficha.sustraido_completo,
+   "RECUPERACION="+ficha.recuperacion,
+   "SECUENCIA="+(ficha.secuencia||"INDETERMINADA"),
+   "INFERIDO="+ficha.estado_inferido,
+   "CONFIANZA="+ficha.confianza
+ ].join(" | ");
+
+ const conFicha=(o)=>Object.assign(o,{ficha_semantica:fichaTexto,ficha_detalle:ficha});
 
 // V9.21 — CONFIANZA SEMANTICA PARA INMEDIATO.
  // No buscamos una frase obligatoria: acumulamos evidencia independiente.
- const semanticVehicleTheftConfirmed=frameWholeVehicle.length>0 || narrativeAutomotorConfirmed;
+ const semanticVehicleTheftConfirmed=frameWholeVehicle.length>0;
  const semanticOnlyNonVehicleTheft=
    relationOnlyNonVehicle || (frameNonVehicle.length>0 && frameWholeVehicle.length===0 && frameAmbiguous.length===0);
  const semanticTheftObjectAmbiguous=
@@ -464,13 +507,13 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
 
  // V9.21: puerta graduada, no binaria.
  const governedImmediate=(why)=>{
-   if(relationOnlyNonVehicle || narrativeClearlyOutsideAutomotor)return null;
+   if(relationOnlyNonVehicle)return null;
    if(semanticImmediateConfidence==="ALTA")
      return {ok:1,cond:"INMEDIATO",why:why+" Confianza semántica alta: "+semanticImmediateReasons.join("; ")+"."};
    if(semanticImmediateConfidence==="MEDIA")
      return {ok:1,cond:"INMEDIATO",why:why+" Confianza semántica media-alta: "+semanticImmediateReasons.join("; ")+"."};
    if(semanticRecoveryCompatible||semanticTheftObjectAmbiguous)
-     return {ok:1,cond:"REVISION HUMANA",why:"Hay evidencia de sustracción y posible recuperación, pero la relación entre objeto, secuencia e identidad no alcanza el umbral para afirmar INMEDIATO."};
+     return conFicha({ok:1,cond:"REVISION HUMANA",why:"Hay evidencia de sustracción y posible recuperación, pero la relación entre objeto, secuencia e identidad no alcanza el umbral para afirmar INMEDIATO."});
    return null;
  };
 
@@ -492,14 +535,7 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
 
  // Un procedimiento actual sobre un vehículo abandonado con sustracción/pedido previo es HALLAZGO.
  if(abandonedPriorTheft)
-   return {ok:1,cond:"HALLAZGO",why:"El hecho actual es el hallazgo de un automotor abandonado con sustracción/pedido previo."};
-
- // V9.25 — PUERTA SEMÁNTICA DEL AUDITOR DE AUTOMOTORES.
- // Solo descartamos por relato cuando la evidencia narrativa es clara.
- // Nunca descartamos porque el operador haya elegido una carátula de moto/bicicleta.
- if(narrativeClearlyOutsideAutomotor){
-   return {ok:0,cond:"DESCARTADO",why:"El relato identifica como objeto central "+narrativeObjectCentral+"; la carga del operador no fue usada para decidirlo."};
- }
+   return conFicha({ok:1,cond:"HALLAZGO",why:"El hecho actual es el hallazgo de un automotor abandonado con sustracción/pedido previo."});
 
  // INMEDIATO de alta confianza: sustracción actual + recuperación inequívoca del mismo rodado.
  if(immediateHigh){
@@ -514,7 +550,7 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
  // En actas de procedimiento, la sustracción relatada suele ser antecedente del hallazgo actual.
  if(currentFinding){
    if(recoveryStrong && theftStrong && victimComplaint && !procedure)
-     return {ok:1,cond:"REVISION HUMANA",why:"Hay sustracción y recuperación, pero no puede establecerse con seguridad si pertenecen a la misma secuencia."};
+     return conFicha({ok:1,cond:"REVISION HUMANA",why:"Hay sustracción y recuperación, pero no puede establecerse con seguridad si pertenecen a la misma secuencia."});
    return {ok:1,cond:"HALLAZGO",why:"El hecho actual es un procedimiento de hallazgo/localización; la eventual sustracción narrada funciona como antecedente."};
  }
 
@@ -536,19 +572,19 @@ const recoveryAction=/\b(?:HALLA|HALLAN|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCAL
      const _g=governedImmediate("Sustracción actual seguida por una recuperación/hallazgo posterior dentro de la misma secuencia del hecho.");
      if(_g)return _g;
    }
-   return {ok:1,cond:"REVISION HUMANA",why:"Hay evidencia fuerte de sustracción y recuperación, pero el orden o la relación entre ambos eventos no es suficientemente claro."};
+   return conFicha({ok:1,cond:"REVISION HUMANA",why:"Hay evidencia fuerte de sustracción y recuperación, pero el orden o la relación entre ambos eventos no es suficientemente claro."});
  }
 
  if((recoveryStrong && !recoveryOnlyNonAsserted) || (existingSeizure&&policePossession)){
    if(procedure||/HALLAZGO AUTOMOTOR|ENCUBRIMIENTO/.test(c)||existingSeizure)
-     return {ok:1,cond:"HALLAZGO",why:existingSeizure?"El automotor es hallado/interceptado en el hecho actual y registra un pedido de secuestro previo.":"Predomina evidencia de hallazgo/localización del automotor."};
-   return {ok:1,cond:"REVISION HUMANA",why:"El automotor tiene evidencia de recuperación/hallazgo, pero el tipo de hecho actual no queda suficientemente definido."};
+     return conFicha({ok:1,cond:"HALLAZGO",why:existingSeizure?"El automotor es hallado/interceptado en el hecho actual y registra un pedido de secuestro previo.":"Predomina evidencia de hallazgo/localización del automotor."});
+   return conFicha({ok:1,cond:"REVISION HUMANA",why:"El automotor tiene evidencia de recuperación/hallazgo, pero el tipo de hecho actual no queda suficientemente definido."});
  }
 
  if(quironAuto && (theftStrong||recoveryStrong))
-   return {ok:1,cond:"REVISION HUMANA",why:"Caso de automotor relevante con señales contradictorias o incompletas para una clasificación segura."};
+   return conFicha({ok:1,cond:"REVISION HUMANA",why:"Caso de automotor relevante con señales contradictorias o incompletas para una clasificación segura."});
 
- return {ok:0,why:"Sin evidencia narrativa suficiente de sustracción, hallazgo o recuperación del automotor completo."};
+ return conFicha({ok:0,why:"Sin evidencia narrativa suficiente de sustracción, hallazgo o recuperación del automotor completo."});
 }
 function extract(r){const t=txt(r),pick=arr=>{for(const re of arr){const m=t.match(re);if(m)return m[1].trim()}return ""};return {...r,PATENTE:pick([/\bDOMINIO\s*(?:NRO|N°|NUMERO)?\s*[:\-]?\s*([A-Z]{2,3}\s?\d{3}\s?[A-Z]{0,2}|[A-Z]{3}\s?\d{3})\b/]),MOTOR:pick([/\b(?:NUMERO DE MOTOR|MOTOR(?: NRO| N°| NUMERO)?)\s*[:\-]?\s*([A-Z0-9.-]{4,25})\b/]),CHASIS:pick([/\b(?:NUMERO DE CHASIS|CHASIS(?: NRO| N°| NUMERO)?)\s*[:\-]?\s*([A-Z0-9.-]{6,30})\b/])}}
 function tick(){return new Promise(r=>setTimeout(r,0))}
