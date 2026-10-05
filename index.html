@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.9.2 · Puente V9 ↔ V10 corregido</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.9.2 · Puente V9 ↔ V10 corregido</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.9.3 · V10 audita a V9</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.9.3 · V10 audita a V9</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Excel final</button><button id="d4" disabled>⬇ Final completado</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[],completedRows=[],sourceFileName="";
 const $=id=>document.getElementById(id), status=$("status");
@@ -360,7 +360,7 @@ function f2(r){
    const fc=String((ficha&&ficha.FICHA_CONFIANZA)||"").toUpperCase();
    const fr=String((ficha&&ficha.FICHA_RECUPERACION)||"").toUpperCase();
 
-   let acuerdo="SIN COMPARAR", sugerencia=leg||"REVISION HUMANA", motivo="V9 conserva gobierno";
+   let acuerdo="SIN COMPARAR", sugerencia=leg||"REVISION HUMANA", motivo="V9 decide; V10 audita la decisión";
    const v10Fuerte=fc==="ALTA";
    const fueraCompleto=/AUTOPARTE|PERTENENCIA|BICICLETA|MOTOVEHICULO/.test(ft);
 
@@ -392,11 +392,23 @@ function f2(r){
      V109_ACUERDO:acuerdo,
      V109_SUGERENCIA:sugerencia,
      V109_MOTIVO:motivo,
-     V109_GOBIERNA:"NO",
+     V109_GOBIERNA:"NO · AUDITA V9",
      V109_V9_LEIDO:leg||"VACIO"
    };
  };
- const conFicha=(o)=>Object.assign(o,__v10,v109Bridge(o,__v10));
+ const fichaPuenteV109=()=>{
+   const rels=__v10.relaciones||[];
+   const ent=__v10.entidades||[];
+   return {
+     FICHA_TIPO_OBJETO:__v10.tipo_objeto||"",
+     FICHA_ESTADO_INFERIDO:__v10.estado_inferido||"",
+     FICHA_CONFIANZA:__v10.confianza||"",
+     FICHA_RECUPERACION:__v10.recuperacion||"",
+     FICHA_RELACIONES:rels,
+     FICHA_ENTIDADES:ent
+   };
+ };
+ const conFicha=(o)=>Object.assign(o,__v10,v109Bridge(o,fichaPuenteV109()));
 
  const autoWord=/\b(AUTOMOVIL|AUTO|CAMIONETA|CAMION|UTILITARIO|FURGON|SEDAN|COCHE)\b/.test(t);
  const genericVehicle=/\b(VEHICULO|RODADO)\b/.test(t);
