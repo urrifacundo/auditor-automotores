@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Auditor de Automotores V11.3 · Rebuild</title>
+<title>Auditor de Automotores V11.4 · Rebuild</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;margin:0;background:#f5f7fb;color:#172033}main{max-width:1450px;margin:auto;padding:24px}h1{margin:0 0 6px}.lead{color:#526078}.card{background:#fff;border:1px solid #dfe5ef;border-radius:12px;padding:16px;margin:16px 0}.controls,.downloads{display:flex;gap:10px;flex-wrap:wrap;align-items:center}button,input{padding:10px 14px;border-radius:8px;border:1px solid #c8d1df}button{cursor:pointer;background:#fff}button:disabled{opacity:.45;cursor:not-allowed}.summary{display:flex;gap:8px;flex-wrap:wrap}.pill{background:#e9eef7;border-radius:999px;padding:7px 11px;font-weight:700}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border-bottom:1px solid #e5e9f0;padding:8px;text-align:left;vertical-align:top}.relato{max-width:760px}#status{font-weight:700;margin:14px 0}
 </style>
 </head>
 <body><main>
-<h1>Auditor de Automotores V11.3 · REBUILD</h1>
+<h1>Auditor de Automotores V11.4 · REBUILD</h1>
 <p class="lead">Motor único: normalización → objeto/rol → hechos → polaridad → identidad → cronología → decisión.</p>
 <section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section>
 <div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section>
@@ -39,7 +39,7 @@ const RX={
  moto:/\b(?:MOTO|MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR|SCOOTER)\b/,
  bici:/\b(?:BICICLETA|BICI)\b/,
  part:/\b(?:RUEDA(?:S)?|CUBIERTA(?:S)?|NEUMATICO(?:S)?|AUXILIO|RUEDA DE AUXILIO|BATERIA|ESTEREO|PATENTE|CHAPA PATENTE|LLANTA(?:S)?|OPTICA(?:S)?|ESPEJO(?:S)?|FARO(?:S)?|PARAGOLPE|CATALIZADOR|AUTOPARTE(?:S)?)\b/,
- belonging:/\b(?:PERTENENCIA(?:S)?|MORRAL|BOLSO|MOCHILA|CARTERA|BILLETERA|CELULAR|TELEFONO|IPHONE|HERRAMIENTA(?:S)?|DOCUMENTACION|DOCUMENTOS|DINERO|EFECTIVO|MERCADERIA)\b/,
+ belonging:/\b(?:PERTENENCIA(?:S)?|MORRAL|BOLSO|MOCHILA|CARTERA|BILLETERA|CELULAR|TELEFONO|IPHONE|HERRAMIENTA(?:S)?|DOCUMENTACION|DOCUMENTOS|DINERO|EFECTIVO|MERCADERIA|LLAVE|LLAVES)\b/,
  theft:/\b(?:SUSTRAE|SUSTRAEN|SUSTRAJO|SUSTRAJERON|SUSTRAIDO|SUSTRAIDA|ROBA|ROBAN|ROBO|ROBARON|ROBADO|ROBADA|APODERA|APODERAN|APODERO|APODERARON|SE LLEVA|SE LLEVAN|SE LLEVO|SE LLEVARON|DESPOJA|DESPOJAN|DESPOJARON)\b/,
  recovery:/\b(?:HALLA|HALLAN|HALLARON|HALLADO|HALLADA|LOCALIZA|LOCALIZAN|LOCALIZARON|LOCALIZADO|LOCALIZADA|RECUPERA|RECUPERAN|RECUPERARON|RECUPERADO|RECUPERADA|ENCUENTRA|ENCUENTRAN|ENCONTRARON|ENCONTRADO|ENCONTRADA|HABIDO|HABIDA|APARECIO|APARECIDO)\b/,
  procedure:/\b(?:ACTA DE PROCEDI|ACTA DE PROCEDIMIENTO|RECORRIDA|COMANDO DE PATRULLAS|MOVIL POLICIAL|SOMOS COMISIONAD|COMISIONAD|ALERTADOS POR 911|OPERADOR DE RADIO|MODULACION RADIAL|SE CONSTITUYEN|ARRIBAN|ARRIBO|CONCURREN)\b/,
@@ -77,6 +77,18 @@ function objectCandidates(z){
 function chooseObject(z,verbIndex){
  const after=z.slice(verbIndex,Math.min(z.length,verbIndex+240));
  const before=z.slice(Math.max(0,verbIndex-180),verbIndex+100);
+ const local=z.slice(Math.max(0,verbIndex-220),Math.min(z.length,verbIndex+320));
+ // V11.4: el tipo explicito manda sobre el hiperónimo. "rodado tipo bicicleta/moto" no es AUTOMOTOR.
+ const explicitBike=RX.bici.test(local);
+ const explicitMoto=RX.moto.test(local);
+ const explicitCar=RX.autoSpecific.test(local);
+ // Relaciones posesivas: "llaves/pertenencias del vehículo" hacen del automotor el contexto, no el objeto sustraído.
+ if(/\b(?:LLAVE|LLAVES|PERTENENCIAS|BOLSO|MOCHILA|CELULAR|DOCUMENTACION)\b.{0,70}\b(?:DEL|DE SU) (?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA)\b/.test(local))return "PERTENENCIA";
+ if(explicitBike&&!explicitCar)return "BICICLETA";
+ if(explicitMoto&&!explicitCar){
+   const offenderMoto=/\b(?:AUTORES?|SUJETOS?|MASCULINOS?)\b.{0,180}\b(?:A BORDO DE|EN|MEDIANTE|UTILIZANDO)?\s*(?:UNA? )?(?:MOTO|MOTOCICLETA|MOTOVEHICULO)\b/.test(local);
+   if(!offenderMoto)return "MOTOVEHICULO";
+ }
  let c=objectCandidates(after).map(x=>({...x,score:x.score-Math.min(45,x.pos/4)}));
  if(!c.length)c=objectCandidates(before).map(x=>({...x,score:x.score-25}));
  // Moto de autores = medio, no objeto victima.
@@ -149,9 +161,14 @@ function analyze(r){
  let autoThefts=thefts.filter(e=>e.obj==="AUTOMOTOR");
  let autoRecs=recoveries.filter(e=>e.obj==="AUTOMOTOR");
  const explicitWhole=wholeVehicleTheftPattern(t);
- if(n.theftStrong&&explicitWhole&&!autoThefts.length)autoThefts=[{idx:-1,pos:0,type:"SUSTRACCION",obj:"AUTOMOTOR",text:"PATRON NARRATIVO",attrs:vehicleAttrs(t),polarity:"AFIRMADA"}];
- if(n.recoveryStrong&&!autoRecs.length&&RX.autoAny.test(t))autoRecs=[{idx:999,pos:0,type:"RECUPERACION",obj:"AUTOMOTOR",text:"PATRON NARRATIVO",attrs:vehicleAttrs(t),polarity:"AFIRMADA"}];
  const explicitNonAuto=thefts.filter(e=>/^(MOTOVEHICULO|BICICLETA|AUTOPARTE|PERTENENCIA)$/.test(e.obj));
+ const explicitVictimMotoBike=explicitNonAuto.some(e=>/^(MOTOVEHICULO|BICICLETA)$/.test(e.obj));
+ const explicitVictimParts=explicitNonAuto.some(e=>/^(AUTOPARTE|PERTENENCIA)$/.test(e.obj));
+ const specificAutoTheft=/\b(?:SUSTRAE|SUSTRAEN|SUSTRAJO|SUSTRAJERON|ROBA|ROBAN|ROBO|ROBARON|APODERA|APODERAN|APODERO|APODERARON|SE LLEVA|SE LLEVAN|SE LLEVO|SE LLEVARON)\b[^.!?]{0,190}\b(?:AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|FURGON|SEDAN|COCHE)\b/.test(t)
+   ||/\b(?:AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|FURGON|SEDAN|COCHE)\b[^.!?]{0,190}\b(?:SUSTRAID[OA]|ROBADO|ROBADA|SE LO LLEVARON|SE LA LLEVARON)\b/.test(t);
+ // El patrón genérico no puede inventar un automotor si el objeto víctima explícito es moto/bici.
+ if(n.theftStrong&&explicitWhole&&!autoThefts.length&&((!explicitVictimMotoBike&&!explicitVictimParts)||specificAutoTheft))autoThefts=[{idx:-1,pos:0,type:"SUSTRACCION",obj:"AUTOMOTOR",text:"PATRON NARRATIVO",attrs:vehicleAttrs(t),polarity:"AFIRMADA"}];
+ if(n.recoveryStrong&&!autoRecs.length&&RX.autoAny.test(t)&&!explicitVictimMotoBike)autoRecs=[{idx:999,pos:0,type:"RECUPERACION",obj:"AUTOMOTOR",text:"PATRON NARRATIVO",attrs:vehicleAttrs(t),polarity:"AFIRMADA"}];
  const hasAutoWords=RX.autoSpecific.test(t)||RX.autoGeneric.test(t)||/AUTOMOTOR/.test(c+" "+cf);
  const autoAsContextOnly=explicitNonAuto.length>0&&!autoThefts.length&&!explicitWhole;
  let universe=autoThefts.length||autoRecs.length?"AUTOMOTOR":autoAsContextOnly?"FUERA":hasAutoWords?"INDETERMINADO":"FUERA";
@@ -166,8 +183,12 @@ function analyze(r){
  if(!linked&&autoThefts.length&&autoRecs.length&&(n.explicitLater||n.duringComplaint)){linked=true;identity="MEDIA"}
  const recoveryPositive=autoRecs.length>0&&(n.recoveryStrong||n.trackingPositive||n.noticeFound||n.foundIt||n.abandonedAfter||n.explicitLater||n.positiveConstata);
  const sequence=autoThefts.length&&recoveryPositive&&linked&&!n.historicalRecoveryBeforeCurrent&&!n.negativeAbsence;
- const positivePriorLink=prior||/HALLAZGO (?:DE )?AUTOMOTOR/.test(c+" "+cf);
- const currentFinding=(findingOpens&&!theftOpens)||((procedure||idxPhysical>=0)&&autoRecs.length>0&&positivePriorLink&&!theftOpens);
+ const narrativePriorLink=prior||/\b(?:HABIA SIDO|HABRIA SIDO|FUE|RESULTA)\b.{0,120}\b(?:SUSTRAID[OA]|ROBADO|ROBADA)\b/.test(t);
+ // La carátula ayuda a contextualizar, pero nunca crea por sí sola el antecedente de HALLAZGO.
+ const positivePriorLink=narrativePriorLink;
+ const rapidCurrentTheft=/\b(?:MOMENTOS ANTES|MINUTOS ANTES|RECIENTEMENTE|ACABABA DE|ACABAN DE)\b.{0,500}\b(?:SUSTRAID[OA]|ROBAD[OA]|SUSTRAJERON|ROBARON)\b/.test(t)
+   ||/\b(?:ROBO AUTOMOTOR|SUSTRACCION DE AUTOMOTOR)\b.{0,800}\b(?:ABANDONAD[OA]|HALLAD[OA]|LOCALIZAD[OA])\b/.test(t);
+ const currentFinding=(findingOpens&&!theftOpens&&!rapidCurrentTheft)||((procedure||idxPhysical>=0)&&autoRecs.length>0&&positivePriorLink&&!theftOpens&&!rapidCurrentTheft);
  const contradictions=[];
  if(autoThefts.length&&autoRecs.length&&!linked)contradictions.push("SUSTRACCION Y RECUPERACION SIN IDENTIDAD SUFICIENTE");
  if(n.historicalRecoveryBeforeCurrent)contradictions.push("RECUPERACION ANTERIOR A LA SUSTRACCION ACTUAL");
@@ -228,15 +249,15 @@ function tick(){return new Promise(r=>setTimeout(r,0))}
 function esc(v){return (v??"").toString().replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
 function show(rows,key,msg){status.textContent=msg;const c={};rows.forEach(r=>c[r[key]]=(c[r[key]]||0)+1);$("summary").innerHTML=Object.entries(c).map(([k,v])=>'<div class="pill">'+esc(k)+': '+v+'</div>').join("");$("rows").innerHTML=rows.slice(0,500).map(r=>'<tr><td>'+esc(r[key])+'</td><td>'+esc(get(r,["numero_interno","nro_interno","numero interno","delito_id"]))+'</td><td>'+esc(get(r,["analisis_caratula","caratula"]))+'</td><td>'+esc(r.MOTIVO_2||r.MOTIVO_1||"")+'</td><td class="relato">'+esc(get(r,["relato","descripcion","narrativa","hecho"]))+'</td></tr>').join("")}
 function dl(name,sheets){const wb=XLSX.utils.book_new();sheets.forEach(([n,r])=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(r),n));XLSX.writeFile(wb,name)}
-status.textContent="✅ V11.3 lista. Seleccioná el Excel de Cassandra.";
+status.textContent="✅ V11.4 lista. Seleccioná el Excel de Cassandra.";
 $("file").addEventListener("change",async function(){const f=this.files[0];if(!f)return;try{status.textContent="Leyendo "+f.name+"…";const wb=XLSX.read(await f.arrayBuffer(),{type:"array"});src=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""});sourceFileName=f.name;cand=[];accepted=[];rejected=[];finalRows=[];completedRows=[];$("f1").disabled=!src.length;["f2","f3","f4","d1","d2","d3","d4"].forEach(x=>$(x).disabled=true);status.textContent="✅ "+src.length.toLocaleString("es-AR")+" denuncias cargadas."}catch(e){status.textContent="❌ "+e.message}});
 $("f1").onclick=async()=>{cand=[];$("f1").disabled=true;for(let i=0;i<src.length;i++){const x=f1(src[i]);if(x)cand.push(x);if(i%250===0){status.textContent="🔎 Filtro 1… "+Math.round(100*i/src.length)+"%";await tick()}}$("f1").disabled=false;$("f2").disabled=!cand.length;$("d1").disabled=!cand.length;show(cand,"ETAPA_1","✅ Filtro 1: "+cand.length.toLocaleString("es-AR")+" candidatos.")};
 $("f2").onclick=async()=>{accepted=[];rejected=[];$("f2").disabled=true;for(let i=0;i<cand.length;i++){const r=cand[i],x=f2(r),z={...r,CONDICION_AUDITOR:x.cond||"DESCARTADO",MOTIVO_2:x.why,...diag(x.a)};(x.ok?accepted:rejected).push(z);if(i%150===0){status.textContent="🧠 Filtro 2… "+Math.round(100*i/cand.length)+"%";await tick()}}$("f2").disabled=false;$("f3").disabled=!accepted.length;$("d2").disabled=false;show(accepted,"CONDICION_AUDITOR","✅ Filtro 2: "+accepted.length.toLocaleString("es-AR")+" aceptados / "+rejected.length.toLocaleString("es-AR")+" descartados.")};
 $("f3").onclick=async()=>{finalRows=accepted.map(cleanFinal);$("d3").disabled=!finalRows.length;$("f4").disabled=!accepted.length;show(accepted,"CONDICION_AUDITOR","✅ Excel final preparado.")};
 $("f4").onclick=async()=>{completedRows=accepted.map(r=>cleanFinal(extract(r)));$("d4").disabled=!completedRows.length;show(accepted,"CONDICION_AUDITOR","✅ Datos vehiculares completados: "+completedRows.length.toLocaleString("es-AR")+" casos.")};
-$("d1").onclick=()=>dl("FILTRO_1_CANDIDATOS_V11.3.xlsx",[["CANDIDATOS",cand]]);
-$("d2").onclick=()=>dl("FILTRO_2_AUDITORIA_V11.3.xlsx",[["ACEPTADOS",accepted],["DESCARTADOS",rejected]]);
-$("d3").onclick=()=>dl("EXCEL_FINAL_AUTOMOTORES_V11.3.xlsx",[["FINAL",finalRows]]);
-$("d4").onclick=()=>dl("EXCEL_FINAL_AUTOMOTORES_COMPLETADO_V11.3.xlsx",[["FINAL",completedRows]]);
+$("d1").onclick=()=>dl("FILTRO_1_CANDIDATOS_V11.4.xlsx",[["CANDIDATOS",cand]]);
+$("d2").onclick=()=>dl("FILTRO_2_AUDITORIA_V11.4.xlsx",[["ACEPTADOS",accepted],["DESCARTADOS",rejected]]);
+$("d3").onclick=()=>dl("EXCEL_FINAL_AUTOMOTORES_V11.4.xlsx",[["FINAL",finalRows]]);
+$("d4").onclick=()=>dl("EXCEL_FINAL_AUTOMOTORES_COMPLETADO_V11.4.xlsx",[["FINAL",completedRows]]);
 })();
 </script></body></html>
