@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V9.22</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V9.22</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V9.22.1</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V9.22.1</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[];
 const $=id=>document.getElementById(id), status=$("status");
@@ -180,46 +180,44 @@ function f2(r){
     if(linkedRecoveryAfterTheft)break;
   }
 
- // V9.22 — REPRESENTACION DEL HECHO: ACCION -> OBJETO -> RELACION.
- // Esta capa no decide la condicion. Primero intenta representar qué fue sustraido.
- const vehicleWords="(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD|MOTOVEHICULO|MOTOCICLETA|MOTO)";
- const partWords="(?:RUEDA(?: DE AUXILIO)?|RUEDAS|CUBIERTA|CUBIERTAS|NEUMATICO|NEUMATICOS|AUXILIO|BATERIA|ESTEREO|PATENTE|CHAPA PATENTE|ESPEJO|ESPEJOS|LLANTA|LLANTAS|OPTICA|OPTICAS|FARO|FAROS|PARAGOLPE|CATALIZADOR|AUTOPARTE|AUTOPARTES)";
- const belongingWords="(?:CELULAR|TELEFONO|IPHONE|MOCHILA|BOLSO|MORRAL|CARTERA|BILLETERA|DOCUMENTACION|DOCUMENTOS|HERRAMIENTA|HERRAMIENTAS|PERTENENCIA|PERTENENCIAS|DINERO|EFECTIVO|MERCADERIA|PAQUETE|PAQUETES)";
- const theftVerbWords="(?:SUSTRAE|SUSTRAEN|SUSTRAJO|SUSTRAJERON|ROBA|ROBAN|ROBO|ROBARON|APODERA|APODERAN|APODERO|APODERARON|SE LLEVA|SE LLEVAN|SE LLEVO|SE LLEVARON|DESPOJA|DESPOJAN|DESPOJARON)";
-
- const rxPartAsTarget=new RegExp("\\b"+theftVerbWords+"\\b.{0,90}\\b"+partWords+"\\b(?:.{0,70}\\b(?:DEL|DE SU|DE MI|DEL MISMO)\\s+"+vehicleWords+"\\b)?");
- const rxBelongingFromVehicle=new RegExp("\\b"+theftVerbWords+"\\b.{0,100}\\b"+belongingWords+"\\b.{0,80}\\b(?:DEL INTERIOR|DEL|DE SU|DE MI)\\s+(?:"+vehicleWords+")\\b");
- const rxFromVehicleThenObject=new RegExp("\\b(?:DEL INTERIOR|DEL|DE SU|DE MI)\\s+(?:"+vehicleWords+")\\b.{0,90}\\b"+theftVerbWords+"\\b.{0,90}\\b(?:"+belongingWords+"|"+partWords+")\\b");
- const rxWholeVehicleTarget=new RegExp("\\b"+theftVerbWords+"\\b.{0,110}\\b(?:"+vehicleWords+")\\b");
- const rxVehiclePronounTaken=/\b(?:SE LO|LO|SE LA|LA)\s+(?:LLEVAN|LLEVARON|SUSTRAEN|SUSTRAJERON|ROBAN|ROBARON)\b/;
- const rxVehicleGone=/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|MOTOCICLETA|MOTO)\b.{0,100}\b(?:NO ESTABA|YA NO ESTABA|FALTABA|NO SE ENCONTRABA)\b/;
+ // V9.22.1 — REPRESENTACION DEL HECHO, optimizada.
+ // Evitamos regex dinamicas amplias sobre relatos completos. Cada decision se toma
+ // sobre el segmento local ya construido por el motor.
+ const partTargetLocal=/\b(?:RUEDA(?: DE AUXILIO)?|RUEDAS|CUBIERTA|CUBIERTAS|NEUMATICO|NEUMATICOS|AUXILIO|BATERIA|ESTEREO|PATENTE|CHAPA PATENTE|ESPEJO|ESPEJOS|LLANTA|LLANTAS|OPTICA|OPTICAS|FARO|FAROS|PARAGOLPE|CATALIZADOR|AUTOPARTE|AUTOPARTES)\b/;
+ const belongingTargetLocal=/\b(?:CELULAR|TELEFONO|IPHONE|MOCHILA|BOLSO|MORRAL|CARTERA|BILLETERA|DOCUMENTACION|DOCUMENTOS|HERRAMIENTA|HERRAMIENTAS|PERTENENCIA|PERTENENCIAS|DINERO|EFECTIVO|MERCADERIA|PAQUETE|PAQUETES)\b/;
+ const containerRelation=/\b(?:DEL INTERIOR|DEL|DE SU|DE MI|DE ESTE|DE DICHO)\b/;
+ const vehicleTakenLocal=/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD|MOTOVEHICULO|MOTOCICLETA|MOTO)\b/;
+ const vehiclePronounTaken=/\b(?:SE LO|LO|SE LA|LA)\s+(?:LLEVAN|LLEVARON|SUSTRAEN|SUSTRAJERON|ROBAN|ROBARON)\b/;
+ const vehicleGoneLocal=/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|MOTOCICLETA|MOTO)\b.{0,80}\b(?:NO ESTABA|YA NO ESTABA|FALTABA|NO SE ENCONTRABA)\b/;
 
  const theftFrames=eventNodes.map((e,i)=>{
    if(!e.theft)return null;
-   const seg=e.s;
-   const partTarget=rxPartAsTarget.test(seg);
-   const belongingTarget=rxBelongingFromVehicle.test(seg)||rxFromVehicleThenObject.test(seg);
-   const otherTarget=e.otherObject&&!e.vehicle;
-   const wholeExplicit=rxWholeVehicleTarget.test(seg);
-   const wholeByReference=e.vehicle&&(e.sameVehicle||e.identity)&&!partTarget&&!belongingTarget;
-   const wholeByPronoun=(rxVehiclePronounTaken.test(seg)||rxVehicleGone.test(seg))&&!partTarget&&!belongingTarget;
+   const seg=e.s.slice(0,900); // limite defensivo: el segmento local basta para resolver el objeto.
+   const hasPart=partTargetLocal.test(seg);
+   const hasBelonging=belongingTargetLocal.test(seg);
+   const hasVehicle=vehicleTakenLocal.test(seg);
+   const hasContainer=containerRelation.test(seg);
 
+   // Una parte nombrada junto al rodado se interpreta como parte-objetivo salvo que
+   // exista evidencia independiente de que también se llevaron el vehículo completo.
    let object="INDETERMINADO", confidence=0;
-   if(partTarget){object="AUTOPARTE";confidence=4;}
-   else if(belongingTarget){object="PERTENENCIA";confidence=4;}
-   else if(otherTarget){object="OTRO";confidence=4;}
-   else if(wholeExplicit){object="VEHICULO_COMPLETO";confidence=4;}
-   else if(wholeByReference||wholeByPronoun){object="VEHICULO_COMPLETO";confidence=3;}
-
+   if(hasPart && hasVehicle){
+     object="AUTOPARTE"; confidence=4;
+   }else if(hasBelonging && hasVehicle && hasContainer){
+     object="PERTENENCIA"; confidence=4;
+   }else if(e.otherObject && !hasVehicle){
+     object="OTRO"; confidence=4;
+   }else if(hasVehicle && !hasPart && !(hasBelonging&&hasContainer)){
+     object="VEHICULO_COMPLETO"; confidence=(e.sameVehicle||e.identity)?4:3;
+   }else if((vehiclePronounTaken.test(seg)||vehicleGoneLocal.test(seg))&&!hasPart){
+     object="VEHICULO_COMPLETO"; confidence=3;
+   }
    return {i,object,confidence,seg};
  }).filter(Boolean);
 
  const frameWholeVehicle=theftFrames.filter(x=>x.object==="VEHICULO_COMPLETO");
  const frameNonVehicle=theftFrames.filter(x=>["AUTOPARTE","PERTENENCIA","OTRO"].includes(x.object));
  const frameAmbiguous=theftFrames.filter(x=>x.object==="INDETERMINADO");
-
- // Si la misma acción identifica claramente una autoparte/pertenencia como objeto,
- // la mención del rodado funciona como poseedor/contenedor y no como objeto robado.
  const relationOnlyNonVehicle=
    frameNonVehicle.length>0 && frameWholeVehicle.length===0 && frameAmbiguous.length===0;
 
