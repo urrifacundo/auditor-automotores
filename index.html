@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.7 · Identidad del Vehículo</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.7 · Identidad del Vehículo</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auditor de Automotores V10.8 · Acción y Objeto</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head><body><main><h1>Auditor de Automotores V10.8 · Acción y Objeto</h1><p class="lead">Cassandra → candidatos → auditoría estricta → datos finales.</p><section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar candidatos</button><button id="f3" disabled>3️⃣ Completar datos</button></section><div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section><section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button></section><section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section></main><script>
 (function(){
 let src=[],cand=[],accepted=[],rejected=[],finalRows=[];
 const $=id=>document.getElementById(id), status=$("status");
@@ -127,32 +127,60 @@ function construirFichaV10(textoEntrada){
    rels.push({i,su,ac,obj,rol,tm,conf,z,eid,attrs:ent?ent.attrs:v10VehAttrs(z)});
  };
 
- // Cada oración se lee por sí misma. La cercanía entre verbo y objeto define la relación.
+ // V10.8 — ACCIÓN → OBJETO.
+ // En vez de tomar cualquier sustantivo cercano, se prioriza el objeto dentro
+ // de la misma cláusula del verbo y se penalizan objetos subordinados ("con",
+ // "conteniendo", "en cuyo interior", "faltante de", etc.).
+ const v10ClauseAfter=(z,pos,max=230)=>{
+   let x=z.slice(pos,Math.min(z.length,pos+max));
+   const cut=x.search(/\b(?:POSTERIORMENTE|LUEGO|DESPUES|SEGUIDAMENTE|MIENTRAS|QUIEN|QUIENES|DONDE|MOMENTO EN QUE|POR LO QUE)\b/);
+   if(cut>15)x=x.slice(0,cut);
+   return x;
+ };
+ const v10ObjectCandidates=(x)=>{
+   const out=[];
+   const push=(tipo,rx,score)=>{
+     const m=x.match(rx); if(m) out.push({tipo,pos:m.index,score});
+   };
+   push("AUTOPARTE",RX.parte,75);
+   push("PERTENENCIA",RX.pert,65);
+   push("BICICLETA",RX.bici,85);
+   push("MOTOVEHICULO",RX.moto,90);
+   push("AUTOMOTOR",RX.auto,95);
+   return out;
+ };
+ const v10ChooseActionObject=(z,verbIndex,action)=>{
+   const after=v10ClauseAfter(z,verbIndex,240);
+   let cand=v10ObjectCandidates(after);
+   if(!cand.length)return {tipo:"INDETERMINADO",conf:"BAJA"};
+
+   // Distancia importa, pero el objeto principal no debe ser desplazado por
+   // contenido/pertenencias mencionadas después.
+   for(const c of cand){
+     c.final=c.score-Math.min(c.pos,120)*0.22;
+     const pre=after.slice(Math.max(0,c.pos-45),c.pos);
+     if(/\b(?:CONTENIENDO|CONTIENE|EN SU INTERIOR|EN EL INTERIOR|DENTRO DE|CON|JUNTO CON|CARGADO CON)\b/.test(pre))
+       c.final-=35;
+     if(/\b(?:FALTANTE DE|FALTANDO|NO POSEIA|NO TENIA|SIN)\b/.test(pre))
+       c.final-=30;
+     if(action==="RECUPERA/HALLA" && (c.tipo==="PERTENENCIA"||c.tipo==="AUTOPARTE") &&
+        /\b(?:VEHICULO|RODADO|AUTO|CAMIONETA|UNIDAD)\b/.test(after.slice(0,Math.max(1,c.pos))))
+       c.final-=45;
+   }
+   cand.sort((a,b)=>b.final-a.final || a.pos-b.pos);
+   const best=cand[0];
+   return {tipo:best.tipo,conf:best.final>=75?"ALTA":best.final>=50?"MEDIA":"BAJA"};
+ };
+
+ // Cada oración se interpreta como relaciones acción→objeto locales.
  v10Sent.forEach((z,i)=>{
    const thefts=[...z.matchAll(new RegExp(RX.theft.source,"g"))];
    for(const m of thefts){
-     const left=z.slice(Math.max(0,m.index-130),m.index);
-     const right=z.slice(m.index,Math.min(z.length,m.index+220));
-     const around=left+" "+right;
-     let obj="INDETERMINADO",conf="BAJA";
-
-     // Prioridad al objeto explícito DESPUÉS del verbo; evita que el vehículo contextual
-     // que aparece antes desplace una rueda, pertenencia, moto, etc.
-     if(RX.parte.test(right)){obj="AUTOPARTE";conf="ALTA";}
-     else if(RX.pert.test(right)){obj="PERTENENCIA";conf="ALTA";}
-     else if(RX.bici.test(right)){obj="BICICLETA";conf="ALTA";}
-     else if(RX.moto.test(right)){obj="MOTOVEHICULO";conf="ALTA";}
-     else if(RX.auto.test(right)){obj="AUTOMOTOR";conf="ALTA";}
-     else if(RX.coref.test(around)){obj="AUTOMOTOR";conf="MEDIA";}
-     else{
-       // Sólo usamos el lado izquierdo cuando el objeto está gramaticalmente pegado al verbo.
-       const nearLeft=left.slice(-80);
-       if(RX.parte.test(nearLeft)){obj="AUTOPARTE";conf="MEDIA";}
-       else if(RX.pert.test(nearLeft)){obj="PERTENENCIA";conf="MEDIA";}
-       else if(RX.bici.test(nearLeft)){obj="BICICLETA";conf="MEDIA";}
-       else if(RX.moto.test(nearLeft)){obj="MOTOVEHICULO";conf="MEDIA";}
-       else if(RX.auto.test(nearLeft)){obj="AUTOMOTOR";conf="MEDIA";}
-     }
+     const sel=v10ChooseActionObject(z,m.index,"SUSTRAE");
+     let obj=sel.tipo,conf=sel.conf;
+     // Coreferencia sólo completa un objeto indeterminado; no desplaza un
+     // objeto explícito de la cláusula.
+     if(obj==="INDETERMINADO" && RX.coref.test(z)){obj="AUTOMOTOR";conf="MEDIA";}
      add(i,sujeto(z),"SUSTRAE",obj,"OBJETO SUSTRAIDO",tiempo(z),conf,z);
    }
 
@@ -168,12 +196,17 @@ function construirFichaV10(textoEntrada){
      if(obj!=="INDETERMINADO")add(i,"AUTORES","SE MOVILIZAN EN",obj,"VEHICULO DE AUTORES",tiempo(z),"ALTA",z);
    }
 
-   if(RX.recover.test(z)&&!RX.badRecovery.test(z)){
-     let obj=tipoLocal(z),conf=obj==="INDETERMINADO"?"BAJA":"ALTA";
-     // Coreferencia se resuelve contra el último objeto vehicular sustraído ya leído.
-     const prev=[...rels].reverse().find(r=>r.i<=i&&r.ac==="SUSTRAE"&&(r.obj==="AUTOMOTOR"||r.obj==="MOTOVEHICULO"));
-     if((RX.coref.test(z)||/\b(?:EL|LA)\s+(?:RODADO|VEHICULO)\b/.test(z))&&prev){obj=prev.obj;conf="ALTA";}
-     add(i,sujeto(z),"RECUPERA/HALLA",obj,"OBJETO RECUPERADO",tiempo(z),conf,z);
+   const recMatches=[...z.matchAll(new RegExp(RX.recover.source,"g"))];
+   if(recMatches.length&&!RX.badRecovery.test(z)){
+     for(const rm of recMatches){
+       const sel=v10ChooseActionObject(z,rm.index,"RECUPERA/HALLA");
+       let obj=sel.tipo,conf=sel.conf;
+       const prev=[...rels].reverse().find(r=>r.i<=i&&r.ac==="SUSTRAE"&&(r.obj==="AUTOMOTOR"||r.obj==="MOTOVEHICULO"));
+       if((obj==="INDETERMINADO"||RX.coref.test(z))&&prev){
+         obj=prev.obj; conf=obj==="INDETERMINADO"?"MEDIA":"ALTA";
+       }
+       add(i,sujeto(z),"RECUPERA/HALLA",obj,"OBJETO RECUPERADO",tiempo(z),conf,z);
+     }
    }
  });
 
@@ -302,7 +335,7 @@ function construirFichaV10(textoEntrada){
  ficha.entidad_1=ents[0]||"";ficha.entidad_2=ents[1]||"";ficha.entidad_3=ents[2]||"";
 
  const fichaTexto=[
-   "LECTOR=V10.7-IDENTIDAD-VEHICULO","OBJETO="+ficha.tipo_objeto,"ROL="+ficha.rol_objeto,
+   "LECTOR=V10.8-ACCION-OBJETO","OBJETO="+ficha.tipo_objeto,"ROL="+ficha.rol_objeto,
    "REL1="+(ficha.relacion_1||"-"),"REL2="+(ficha.relacion_2||"-"),
    "AUTOMOTOR="+ficha.corresponde_automotor,"SUSTRAIDO_COMPLETO="+ficha.sustraido_completo,
    "RECUPERACION="+ficha.recuperacion,"SECUENCIA="+(ficha.secuencia||"INDETERMINADA"),
