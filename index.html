@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Auditor de Automotores V11.4 · Rebuild</title>
+<title>Auditor de Automotores V11.5 · Rebuild</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;margin:0;background:#f5f7fb;color:#172033}main{max-width:1450px;margin:auto;padding:24px}h1{margin:0 0 6px}.lead{color:#526078}.card{background:#fff;border:1px solid #dfe5ef;border-radius:12px;padding:16px;margin:16px 0}.controls,.downloads{display:flex;gap:10px;flex-wrap:wrap;align-items:center}button,input{padding:10px 14px;border-radius:8px;border:1px solid #c8d1df}button{cursor:pointer;background:#fff}button:disabled{opacity:.45;cursor:not-allowed}.summary{display:flex;gap:8px;flex-wrap:wrap}.pill{background:#e9eef7;border-radius:999px;padding:7px 11px;font-weight:700}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border-bottom:1px solid #e5e9f0;padding:8px;text-align:left;vertical-align:top}.relato{max-width:760px}#status{font-weight:700;margin:14px 0}
 </style>
 </head>
 <body><main>
-<h1>Auditor de Automotores V11.4 · REBUILD</h1>
+<h1>Auditor de Automotores V11.5 · REBUILD</h1>
 <p class="lead">Motor único: normalización → objeto/rol → hechos → polaridad → identidad → cronología → decisión.</p>
 <section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section>
 <div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section>
@@ -70,32 +70,76 @@ function sameVehicle(a,b){
 // 3) OBJETO Y ROL: la palabra VEHICULO no decide por si sola
 // ---------------------------------------------------------------------------
 function objectCandidates(z){
- const out=[]; const push=(type,rx,score)=>{const m=z.match(rx);if(m)out.push({type,pos:m.index,score})};
- push("BICICLETA",RX.bici,125); push("MOTOVEHICULO",RX.moto,120); push("AUTOPARTE",RX.part,105); push("PERTENENCIA",RX.belonging,95); push("AUTOMOTOR",RX.autoSpecific,115); push("AUTOMOTOR",RX.autoGeneric,65);
+ const out=[]; const push=(type,rx,score)=>{for(const m of z.matchAll(new RegExp(rx.source,"g")))out.push({type,pos:m.index,score})};
+ // El tipo específico vale más que el hiperónimo genérico, pero todavía no decide: decide el rol respecto de la acción.
+ push("BICICLETA",RX.bici,125); push("MOTOVEHICULO",RX.moto,120); push("AUTOPARTE",RX.part,108); push("PERTENENCIA",RX.belonging,100); push("AUTOMOTOR",RX.autoSpecific,118); push("AUTOMOTOR",RX.autoGeneric,62);
  return out;
 }
+function clauseAround(z,verbIndex){
+ const left=z.slice(0,verbIndex), right=z.slice(verbIndex);
+ const lm=Math.max(left.lastIndexOf(","),left.lastIndexOf(";"),left.lastIndexOf(":"));
+ let a=lm>=0?lm+1:Math.max(0,verbIndex-170);
+ const rm=right.search(/[,;:]/);
+ let b=rm>=0?verbIndex+rm:Math.min(z.length,verbIndex+230);
+ // Conectores fuertes suelen abrir otro evento/actor; no dejamos que el objeto de esa segunda acción contamine la primera.
+ const tail=z.slice(verbIndex,b);
+ const cut=tail.search(/\b(?:POSTERIORMENTE|LUEGO|DESPUES|MIENTRAS|QUIEN(?:ES)?|MOMENTO EN QUE|POR LO QUE|ACTO SEGUIDO)\b/);
+ if(cut>20)b=verbIndex+cut;
+ return {text:z.slice(a,b),start:a,verb:verbIndex-a};
+}
+function offenderMeansMoto(z){
+ return /\b(?:AUTORES?|SUJETOS?|MASCULINOS?|DELINCUENTES?|IMPUTADOS?)\b[^.;]{0,180}\b(?:A BORDO DE|SE MOVILIZABAN EN|CIRCULABAN EN|ARRIBARON EN|LLEGARON EN|HUYERON EN|ESCAPARON EN|SE DIERON A LA FUGA EN|EN|MEDIANTE|UTILIZANDO)\s*(?:UNA? )?(?:MOTO|MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR)\b/.test(z)
+ ||/\b(?:A BORDO DE|SE MOVILIZABAN EN|CIRCULABAN EN|ARRIBARON EN|LLEGARON EN|HUYERON EN|ESCAPARON EN|SE DIERON A LA FUGA EN)\s*(?:UNA? )?(?:MOTO|MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR)\b/.test(z);
+}
+function contextualBelonging(z){
+ // El automotor es continente/escenario; la acción cae sobre pertenencias o autopartes.
+ return /\b(?:DEL|DE SU|DE UN|DE UNA|EN EL|EN SU|DEL INTERIOR DEL|DEL INTERIOR DE SU)\s+(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b/.test(z)
+   ||/\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b.{0,70}\b(?:CONTENIA|CONTENIENDO|EN CUYO INTERIOR|EN SU INTERIOR|DENTRO DEL CUAL)\b/.test(z);
+}
 function chooseObject(z,verbIndex){
- const after=z.slice(verbIndex,Math.min(z.length,verbIndex+240));
- const before=z.slice(Math.max(0,verbIndex-180),verbIndex+100);
- const local=z.slice(Math.max(0,verbIndex-220),Math.min(z.length,verbIndex+320));
- // V11.4: el tipo explicito manda sobre el hiperónimo. "rodado tipo bicicleta/moto" no es AUTOMOTOR.
- const explicitBike=RX.bici.test(local);
- const explicitMoto=RX.moto.test(local);
- const explicitCar=RX.autoSpecific.test(local);
- // Relaciones posesivas: "llaves/pertenencias del vehículo" hacen del automotor el contexto, no el objeto sustraído.
- if(/\b(?:LLAVE|LLAVES|PERTENENCIAS|BOLSO|MOCHILA|CELULAR|DOCUMENTACION)\b.{0,70}\b(?:DEL|DE SU) (?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA)\b/.test(local))return "PERTENENCIA";
- if(explicitBike&&!explicitCar)return "BICICLETA";
- if(explicitMoto&&!explicitCar){
-   const offenderMoto=/\b(?:AUTORES?|SUJETOS?|MASCULINOS?)\b.{0,180}\b(?:A BORDO DE|EN|MEDIANTE|UTILIZANDO)?\s*(?:UNA? )?(?:MOTO|MOTOCICLETA|MOTOVEHICULO)\b/.test(local);
-   if(!offenderMoto)return "MOTOVEHICULO";
+ const cl=clauseAround(z,verbIndex), local=cl.text;
+ const after=local.slice(cl.verb,Math.min(local.length,cl.verb+210));
+ const before=local.slice(Math.max(0,cl.verb-120),cl.verb+70);
+ const meansMoto=offenderMeansMoto(local)||offenderMeansMoto(z);
+
+ // 1. Relaciones explícitas acción→objeto. El objeto específico manda sobre VEHICULO/RODADO genérico.
+ const directBike=/\b(?:BICICLETA|BICI)\b/.test(after);
+ const directMoto=/\b(?:MOTO|MOTOCICLETA|MOTOVEHICULO|CICLOMOTOR|SCOOTER)\b/.test(after);
+ const directPart=RX.part.test(after);
+ const directBel=RX.belonging.test(after);
+ const directCar=RX.autoSpecific.test(after)||RX.autoGeneric.test(after);
+
+ // "sustrae X del interior del vehículo": X es el objeto; el vehículo es contexto.
+ if((directBel||directPart)&&contextualBelonging(after)){
+   const pBel=after.search(RX.belonging), pPart=after.search(RX.part);
+   if(pPart>=0&&(pBel<0||pPart<pBel))return "AUTOPARTE";
+   return "PERTENENCIA";
  }
- let c=objectCandidates(after).map(x=>({...x,score:x.score-Math.min(45,x.pos/4)}));
- if(!c.length)c=objectCandidates(before).map(x=>({...x,score:x.score-25}));
- // Moto de autores = medio, no objeto victima.
- if(/\b(?:AUTORES?|SUJETOS?|MASCULINOS?)\b.{0,160}\b(?:A BORDO DE|EN|MEDIANTE|UTILIZANDO)?\s*(?:UNA? )?(?:MOTO|MOTOCICLETA|MOTOVEHICULO)\b/.test(z))
-   c=c.map(x=>x.type==="MOTOVEHICULO"?{...x,score:x.score-100}:x);
+ // Posesión explícita: llaves/pertenencias DEL vehículo no convierte al vehículo en objeto sustraído.
+ if(/\b(?:LLAVE|LLAVES|PERTENENCIAS|BOLSO|MOCHILA|CELULAR|DOCUMENTACION|DINERO|BILLETERA)\b.{0,75}\b(?:DEL|DE SU) (?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b/.test(local))return "PERTENENCIA";
+ if(directBike&&!RX.autoSpecific.test(after))return "BICICLETA";
+ if(directMoto&&!RX.autoSpecific.test(after)&&!meansMoto)return "MOTOVEHICULO";
+
+ // 2. Puntuación local. Penalizamos contenido, medio de autores y objetos subordinados.
+ let c=objectCandidates(after).map(x=>({...x,score:x.score-Math.min(50,x.pos*.28)}));
+ if(!c.length)c=objectCandidates(before).map(x=>({...x,score:x.score-28}));
+ c=c.map(x=>{
+   let score=x.score;
+   const pre=after.slice(Math.max(0,x.pos-55),x.pos);
+   if(/\b(?:CONTENIENDO|CONTIENE|CONTENIA|EN SU INTERIOR|EN EL INTERIOR|DENTRO DE|JUNTO CON|CARGADO CON)\b/.test(pre))score-=38;
+   if(/\b(?:FALTANTE DE|FALTANDO|NO POSEIA|NO TENIA|SIN)\b/.test(pre))score-=32;
+   if(x.type==="MOTOVEHICULO"&&meansMoto)score-=120;
+   return {...x,score};
+ });
  c.sort((a,b)=>b.score-a.score||a.pos-b.pos);
- return c[0]&&c[0].score>20?c[0].type:"INDETERMINADO";
+ const best=c[0];
+ if(best&&best.score>25)return best.type;
+
+ // 3. Fallback controlado: sólo contexto inequívoco, nunca una palabra genérica aislada.
+ if(RX.bici.test(local))return "BICICLETA";
+ if(RX.moto.test(local)&&!meansMoto)return "MOTOVEHICULO";
+ if(RX.autoSpecific.test(local))return "AUTOMOTOR";
+ return "INDETERMINADO";
 }
 function wholeVehicleTheftPattern(t){
  return /\b(?:SUSTRAE|SUSTRAEN|SUSTRAJO|SUSTRAJERON|ROBA|ROBAN|ROBO|ROBARON|APODERA|APODERAN|APODERO|APODERARON|SE LLEVA|SE LLEVAN|SE LLEVO|SE LLEVARON)\b[^.!?]{0,170}\b(?:VEHICULO|RODADO|AUTO|AUTOMOVIL|CAMIONETA|CAMION|UTILITARIO|UNIDAD)\b/.test(t)
@@ -249,15 +293,15 @@ function tick(){return new Promise(r=>setTimeout(r,0))}
 function esc(v){return (v??"").toString().replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
 function show(rows,key,msg){status.textContent=msg;const c={};rows.forEach(r=>c[r[key]]=(c[r[key]]||0)+1);$("summary").innerHTML=Object.entries(c).map(([k,v])=>'<div class="pill">'+esc(k)+': '+v+'</div>').join("");$("rows").innerHTML=rows.slice(0,500).map(r=>'<tr><td>'+esc(r[key])+'</td><td>'+esc(get(r,["numero_interno","nro_interno","numero interno","delito_id"]))+'</td><td>'+esc(get(r,["analisis_caratula","caratula"]))+'</td><td>'+esc(r.MOTIVO_2||r.MOTIVO_1||"")+'</td><td class="relato">'+esc(get(r,["relato","descripcion","narrativa","hecho"]))+'</td></tr>').join("")}
 function dl(name,sheets){const wb=XLSX.utils.book_new();sheets.forEach(([n,r])=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(r),n));XLSX.writeFile(wb,name)}
-status.textContent="✅ V11.4 lista. Seleccioná el Excel de Cassandra.";
+status.textContent="✅ V11.5 lista. Seleccioná el Excel de Cassandra.";
 $("file").addEventListener("change",async function(){const f=this.files[0];if(!f)return;try{status.textContent="Leyendo "+f.name+"…";const wb=XLSX.read(await f.arrayBuffer(),{type:"array"});src=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""});sourceFileName=f.name;cand=[];accepted=[];rejected=[];finalRows=[];completedRows=[];$("f1").disabled=!src.length;["f2","f3","f4","d1","d2","d3","d4"].forEach(x=>$(x).disabled=true);status.textContent="✅ "+src.length.toLocaleString("es-AR")+" denuncias cargadas."}catch(e){status.textContent="❌ "+e.message}});
 $("f1").onclick=async()=>{cand=[];$("f1").disabled=true;for(let i=0;i<src.length;i++){const x=f1(src[i]);if(x)cand.push(x);if(i%250===0){status.textContent="🔎 Filtro 1… "+Math.round(100*i/src.length)+"%";await tick()}}$("f1").disabled=false;$("f2").disabled=!cand.length;$("d1").disabled=!cand.length;show(cand,"ETAPA_1","✅ Filtro 1: "+cand.length.toLocaleString("es-AR")+" candidatos.")};
 $("f2").onclick=async()=>{accepted=[];rejected=[];$("f2").disabled=true;for(let i=0;i<cand.length;i++){const r=cand[i],x=f2(r),z={...r,CONDICION_AUDITOR:x.cond||"DESCARTADO",MOTIVO_2:x.why,...diag(x.a)};(x.ok?accepted:rejected).push(z);if(i%150===0){status.textContent="🧠 Filtro 2… "+Math.round(100*i/cand.length)+"%";await tick()}}$("f2").disabled=false;$("f3").disabled=!accepted.length;$("d2").disabled=false;show(accepted,"CONDICION_AUDITOR","✅ Filtro 2: "+accepted.length.toLocaleString("es-AR")+" aceptados / "+rejected.length.toLocaleString("es-AR")+" descartados.")};
 $("f3").onclick=async()=>{finalRows=accepted.map(cleanFinal);$("d3").disabled=!finalRows.length;$("f4").disabled=!accepted.length;show(accepted,"CONDICION_AUDITOR","✅ Excel final preparado.")};
 $("f4").onclick=async()=>{completedRows=accepted.map(r=>cleanFinal(extract(r)));$("d4").disabled=!completedRows.length;show(accepted,"CONDICION_AUDITOR","✅ Datos vehiculares completados: "+completedRows.length.toLocaleString("es-AR")+" casos.")};
-$("d1").onclick=()=>dl("FILTRO_1_CANDIDATOS_V11.4.xlsx",[["CANDIDATOS",cand]]);
-$("d2").onclick=()=>dl("FILTRO_2_AUDITORIA_V11.4.xlsx",[["ACEPTADOS",accepted],["DESCARTADOS",rejected]]);
-$("d3").onclick=()=>dl("EXCEL_FINAL_AUTOMOTORES_V11.4.xlsx",[["FINAL",finalRows]]);
-$("d4").onclick=()=>dl("EXCEL_FINAL_AUTOMOTORES_COMPLETADO_V11.4.xlsx",[["FINAL",completedRows]]);
+$("d1").onclick=()=>dl("FILTRO_1_CANDIDATOS_V11.5.xlsx",[["CANDIDATOS",cand]]);
+$("d2").onclick=()=>dl("FILTRO_2_AUDITORIA_V11.5.xlsx",[["ACEPTADOS",accepted],["DESCARTADOS",rejected]]);
+$("d3").onclick=()=>dl("EXCEL_FINAL_AUTOMOTORES_V11.5.xlsx",[["FINAL",finalRows]]);
+$("d4").onclick=()=>dl("EXCEL_FINAL_AUTOMOTORES_COMPLETADO_V11.5.xlsx",[["FINAL",completedRows]]);
 })();
 </script></body></html>
