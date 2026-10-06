@@ -3,19 +3,168 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Auditor de Automotores</title>
+<title>Auditor de Automotores-SUPERINTENDENCIA INTELIGENCIA CRIMINAL</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
-body{font-family:Arial,sans-serif;margin:0;background:#f5f7fb;color:#172033}main{max-width:1450px;margin:auto;padding:24px}h1{margin:0 0 6px}.lead{color:#526078}.card{background:#fff;border:1px solid #dfe5ef;border-radius:12px;padding:16px;margin:16px 0}.controls,.downloads{display:flex;gap:10px;flex-wrap:wrap;align-items:center}button,input{padding:10px 14px;border-radius:8px;border:1px solid #c8d1df}button{cursor:pointer;background:#fff}button:disabled{opacity:.45;cursor:not-allowed}.summary{display:flex;gap:8px;flex-wrap:wrap}.pill{background:#e9eef7;border-radius:999px;padding:7px 11px;font-weight:700}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border-bottom:1px solid #e5e9f0;padding:8px;text-align:left;vertical-align:top}.relato{max-width:760px}#status{font-weight:700;margin:14px 0}
+
+:root{
+  --bg:#f3f6fb; --panel:#ffffff; --panel2:#f8fafc; --text:#142033; --muted:#66758c;
+  --line:#dce4ef; --primary:#234a7d; --primary2:#17365f; --soft:#eaf1f9;
+  --success:#176b45; --warning:#8a5b00; --danger:#9b2c2c;
+  --shadow:0 12px 34px rgba(25,45,75,.08);
+}
+*{box-sizing:border-box}
+body{
+  font-family:Inter,Segoe UI,Arial,sans-serif;margin:0;
+  background:linear-gradient(180deg,#eef3f9 0,#f7f9fc 330px,#f3f6fb 100%);
+  color:var(--text)
+}
+main{max-width:1500px;margin:auto;padding:28px 28px 48px}
+.hero{
+  background:linear-gradient(135deg,#17365f,#28598f);
+  color:#fff;border-radius:22px;padding:28px 30px;margin-bottom:18px;
+  box-shadow:0 16px 40px rgba(23,54,95,.18);position:relative;overflow:hidden
+}
+.hero:after{
+  content:"";position:absolute;width:280px;height:280px;border-radius:50%;
+  right:-90px;top:-150px;background:rgba(255,255,255,.08)
+}
+.hero-top{display:flex;align-items:center;justify-content:space-between;gap:18px;position:relative;z-index:1}
+.brand{display:flex;align-items:center;gap:15px}
+.brand-icon{
+  width:54px;height:54px;border-radius:15px;display:grid;place-items:center;
+  background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);font-size:27px
+}
+h1{font-size:27px;margin:0 0 5px;letter-spacing:-.4px}
+.version{
+  display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;
+  background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18);
+  font-size:12px;font-weight:800;white-space:nowrap
+}
+.lead{color:#dbe8f7;margin:0;font-size:14px;line-height:1.5}
+.card{
+  background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:17px;
+  padding:18px;margin:16px 0;box-shadow:var(--shadow)
+}
+.section-title{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#6c7b91;font-weight:800;margin:0 0 13px}
+.workflow{display:grid;grid-template-columns:minmax(270px,1.1fr) 2fr;gap:16px}
+.file-box{
+  border:1px dashed #aebdd0;border-radius:14px;padding:15px;background:var(--panel2);
+  display:flex;flex-direction:column;gap:8px
+}
+.file-label{font-size:13px;font-weight:800;color:#34455e}
+input[type=file]{
+  width:100%;padding:9px;background:#fff;border:1px solid #cdd7e4;border-radius:10px;color:#44546a
+}
+.actions{display:grid;grid-template-columns:repeat(4,minmax(130px,1fr));gap:10px}
+button{
+  min-height:44px;padding:10px 14px;border-radius:11px;border:1px solid #cbd6e4;
+  cursor:pointer;background:#fff;color:#25364d;font-weight:750;transition:.15s ease;
+  box-shadow:0 2px 5px rgba(25,45,75,.03)
+}
+button:hover:not(:disabled){transform:translateY(-1px);border-color:#8fa8c5;box-shadow:0 6px 14px rgba(25,45,75,.08)}
+button:disabled{opacity:.42;cursor:not-allowed;box-shadow:none}
+#f1,#f2,#f3,#f4{background:var(--soft);border-color:#c8d9ec;color:#1e4775}
+#f2{background:#234a7d;color:#fff;border-color:#234a7d}
+.status-wrap{
+  display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);
+  border-radius:14px;padding:14px 16px;margin:16px 0;box-shadow:0 5px 18px rgba(25,45,75,.05)
+}
+.status-dot{width:10px;height:10px;border-radius:50%;background:#4d80b5;box-shadow:0 0 0 5px #e8f0f8;flex:0 0 auto}
+#status{font-weight:750;margin:0;color:#30445e;font-size:14px}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;margin:12px 0 2px}
+.pill{
+  background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px 14px;
+  font-weight:800;box-shadow:0 4px 14px rgba(25,45,75,.045);color:#31455e
+}
+.downloads{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px}
+.downloads button{background:#fff}
+.table-card{padding:0;overflow:hidden}
+.table-head{
+  padding:16px 18px;border-bottom:1px solid var(--line);display:flex;
+  justify-content:space-between;align-items:center;gap:15px;background:#fbfcfe
+}
+.table-head h2{font-size:15px;margin:0}
+.table-note{font-size:12px;color:var(--muted)}
+.table-scroll{overflow:auto;max-height:650px}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:12px}
+th{
+  position:sticky;top:0;z-index:2;background:#f3f6fa;color:#4b5d74;
+  text-transform:uppercase;letter-spacing:.04em;font-size:10px;font-weight:850
+}
+th,td{border-bottom:1px solid #e7ecf2;padding:10px 11px;text-align:left;vertical-align:top}
+tbody tr:hover{background:#f8fbff}
+td:first-child{font-weight:800;white-space:nowrap}
+.relato{min-width:440px;max-width:760px;line-height:1.42;color:#43536a}
+.footer-note{text-align:center;color:#8793a4;font-size:11px;margin-top:22px}
+@media(max-width:950px){
+  .workflow{grid-template-columns:1fr}.actions,.downloads{grid-template-columns:repeat(2,1fr)}
+  .hero-top{align-items:flex-start}.version{display:none}
+}
+@media(max-width:560px){
+  main{padding:14px}.hero{padding:21px}.actions,.downloads{grid-template-columns:1fr}
+  h1{font-size:22px}.brand-icon{display:none}
+}
+
 </style>
 </head>
 <body><main>
-<h1>Auditor de Automotores V11.5 · REBUILD</h1>
-<p class="lead">Auditor de Vehiculos, Sustraidos, Hallados e Inmediatos</p>
-<section class="card controls"><input id="file" type="file" accept=".xlsx,.xls"><button id="f1" disabled>1️⃣ Detectar candidatos</button><button id="f2" disabled>2️⃣ Auditar</button><button id="f3" disabled>3️⃣ Excel final</button><button id="f4" disabled>4️⃣ Completar datos</button></section>
-<div id="status">Cargá un Excel crudo de Cassandra.</div><section id="summary" class="summary"></section>
-<section class="card downloads"><button id="d1" disabled>⬇ Filtro 1</button><button id="d2" disabled>⬇ Filtro 2</button><button id="d3" disabled>⬇ Final</button><button id="d4" disabled>⬇ Final completado</button></section>
-<section class="card"><table><thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead><tbody id="rows"></tbody></table></section>
+<header class="hero">
+  <div class="hero-top">
+    <div class="brand">
+      <div class="brand-icon">🚘</div>
+      <div>
+        <h1>Auditor de Automotores</h1>
+        <p class="lead">Análisis semántico de denuncias · Cassandra → Quirón</p>
+      </div>
+    </div>
+    <div class="version">VBeta 4.3 · Base estable</div>
+  </div>
+</header>
+
+<section class="card">
+  <p class="section-title">Flujo de trabajo</p>
+  <div class="workflow">
+    <div class="file-box">
+      <div class="file-label">📄 Archivo de Cassandra</div>
+      <input id="file" type="file" accept=".xlsx,.xls">
+      <div style="font-size:11px;color:#7b899c">Seleccioná el Excel crudo para comenzar la auditoría.</div>
+    </div>
+    <div class="actions">
+      <button id="f1" disabled>1️⃣ Detectar candidatos</button>
+      <button id="f2" disabled>2️⃣ Auditar automotores</button>
+      <button id="f3" disabled>3️⃣ Generar Excel final</button>
+      <button id="f4" disabled>4️⃣ Completar datos</button>
+    </div>
+  </div>
+</section>
+
+<div class="status-wrap"><span class="status-dot"></span><div id="status">Cargá un Excel crudo de Cassandra.</div></div>
+<section id="summary" class="summary"></section>
+
+<section class="card">
+  <p class="section-title">Descargas</p>
+  <div class="downloads">
+    <button id="d1" disabled>⬇ Descargar Filtro 1</button>
+    <button id="d2" disabled>⬇ Descargar Filtro 2</button>
+    <button id="d3" disabled>⬇ Descargar Final</button>
+    <button id="d4" disabled>⬇ Final completado</button>
+  </div>
+</section>
+
+<section class="card table-card">
+  <div class="table-head">
+    <h2>Vista previa de resultados</h2>
+    <span class="table-note">Se muestran hasta 500 registros</span>
+  </div>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Estado</th><th>N° interno</th><th>Carátula</th><th>Motivo</th><th>Relato</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</section>
+<div class="footer-note">Auditor de Automotores · SUPERINTENDENCIA INTELIGENCIA CRIMINAL</div>
 </main><script>
 (function(){
 "use strict";
@@ -239,7 +388,11 @@ function analyze(r){
  if(n.historicalRecoveryBeforeCurrent)contradictions.push("RECUPERACION ANTERIOR A LA SUSTRACCION ACTUAL");
  if(n.negativeAbsence&&recoveryPositive)contradictions.push("NEGACION DE PRESENCIA FRENTE A POSIBLE RECUPERACION");
  const betaSeed={t,temporalV12}; const beta1=VBeta1_reconstructOmitted(betaSeed);
- return {t,c,cf,events,n,procedure,complaint,prior,newSeizure,autoThefts,autoRecs,explicitNonAuto,universe,principal,findingOpens,theftOpens,linked,identity,recoveryPositive,sequence,positivePriorLink,currentFinding,contradictions,temporalV12,beta1};
+ const beta2=VBeta2_policeRecovery({t,temporalV12,beta1});
+ const beta3=VBeta3_trackingRecovery({t,temporalV12,beta1,beta2});
+ const beta4=VBeta4_episodeResolver({t,temporalV12,beta1,beta2,beta3,autoThefts,autoRecs,recoveryPositive,contradictions,currentFinding,sequence,positivePriorLink,identity});
+ const beta43=VBeta43_strongChronology({t,temporalV12,beta1,beta2,beta3,beta4,autoThefts,autoRecs,recoveryPositive,contradictions,currentFinding,sequence,positivePriorLink,identity});
+ return {t,c,cf,events,n,procedure,complaint,prior,newSeizure,autoThefts,autoRecs,explicitNonAuto,universe,principal,findingOpens,theftOpens,linked,identity,recoveryPositive,sequence,positivePriorLink,currentFinding,contradictions,temporalV12,beta1,beta2,beta3,beta4,beta43};
 }
 
 
@@ -273,11 +426,159 @@ function VBeta1_reconstructOmitted(a){
 }
 
 // ---------------------------------------------------------------------------
+// VBETA 2 - RECUPERACION POLICIAL CON VERIFICACION POSTERIOR
+// Segunda familia experimental. Reconstruye el evento cuando la policia encuentra
+// fisicamente un automotor (abandono/hallazgo/localizacion) y la consulta posterior
+// acredita pedido/alerta por sustraccion. No usa palabras aisladas como autoridad.
+// ---------------------------------------------------------------------------
+function VBeta2_policeRecovery(a){
+ const t=a.t||''; const tv=a.temporalV12||{};
+ if(a.beta1&&a.beta1.authority)return {decision:'SIN_APORTE',conf:'BAJA',authority:false,reason:'VBeta1 ya reconstruyo el evento omitido.',identity:'NO_APLICA',evidence:''};
+ if((tv.fo||0)>0)return {decision:'SIN_APORTE',conf:'BAJA',authority:false,reason:'V12 ya posee evento de hallazgo; VBeta2 no duplica autoridad.',identity:'NO_APLICA',evidence:''};
+ // Escena actual: hallazgo vehicular o automotor observado/encontrado en abandono.
+ const scene=/\b(?:HALLAZGO VEHICULAR|HALLAZGO (?:DE )?(?:UN )?(?:AUTOMOTOR|VEHICULO|RODADO)|VEHICULO EN ESTADO DE ABANDONO|VEHICULO ABANDONADO|AUTOMOTOR ABANDONADO)\b|\b(?:VISUALIZAMOS|OBSERVAMOS|LOCALIZAMOS|ENCONTRAMOS|DAMOS CON)\b[^.;]{0,220}\b(?:VEHICULO|AUTOMOTOR|RODADO|VOLKSWAGEN|RENAULT|FIAT|PEUGEOT|CHEVROLET|FORD|TOYOTA|CITROEN|NISSAN|JEEP)\b[^.;]{0,180}\b(?:ABANDONAD[OA]|SIN OCUPANTES|ESTACIONAD[OA])\b/.test(t);
+ // Verificacion posterior del objeto individualizado. Exige consulta/constatacion + resultado positivo.
+ const query=/\b(?:CURSAD[OA]|CONSULTAD[OA]|CONSULTA|COTEJAD[OA]|VERIFICAD[OA]|SISTEMA INFORMATICO|RADIOESTACION|CENTRAL 911|CAPA OPERATIVA)\b[^.;]{0,360}\b(?:DOMINIO|CHASIS|MOTOR|NUMERACION|VEHICULO|RODADO)\b|\b(?:DOMINIO|CHASIS|MOTOR)\b[^.;]{0,180}\b(?:CURSAD[OA]|CONSULTAD[OA]|VERIFICAD[OA]|COTEJAD[OA])\b/.test(t);
+ const positive=/\b(?:POSEE|REGISTRA|PESA|SURGE|ARROJA|RESULTA|TENIA|TIENE|CONTABA CON)\b[^.;]{0,220}\b(?:PEDIDO|SOLICITUD|ALERTA)\b[^.;]{0,120}\b(?:SECUESTRO|CAPTURA|SUSTRAID|ROBO)|\bPEDIDO (?:ACTIVO )?DE SECUESTRO\b|\bALERTA (?:ACTIVA )?(?:POR )?(?:ROBO|SUSTRACCION)\b/.test(t);
+ // Antecedente historico/narrativo de sustraccion. La caratula no crea este dato.
+ const prior=/\b(?:HABIA SIDO|HABRIA SIDO|FUE|RESULTABA|RESULTA)\b[^.;]{0,180}\b(?:SUSTRAID[OA]|ROBAD[OA])\b|\b(?:PEDIDO|ALERTA)\b[^.;]{0,150}\b(?:SECUESTRO|ROBO|SUSTRACCION)\b/.test(t);
+ // Individualizacion fuerte del automotor actual.
+ const plate=/\b(?:DOMINIO|PATENTE|CHAPA)\b[^.;]{0,80}\b(?:[A-Z]{2}\s*[- ]?\s*\d{3}\s*[- ]?\s*[A-Z]{2}|[A-Z]{3}\s*[- ]?\s*\d{3})\b/.test(t);
+ const serial=/\b(?:CHASIS|MOTOR)\b[^.;]{0,80}\b[A-Z0-9]{6,}\b/.test(t);
+ const descriptor=/\b(?:VOLKSWAGEN|RENAULT|FIAT|PEUGEOT|CHEVROLET|FORD|TOYOTA|CITROEN|NISSAN|JEEP|HYUNDAI|KIA|AUDI|BMW|MERCEDES)\b[^.;]{0,120}\b(?:MODELO|TAOS|KANGOO|AMAROK|HILUX|CORSA|BORA|CLIO|SANDERO|DUSTER|CRONOS|ONIX|RANGER|ECOSPORT|VENTO|SAVEIRO|PARTNER|BERLINGO|S10|TRACKER|ETIOS|COROLLA|GOL|FOX)\b/.test(t);
+ const identity=(plate||(serial&&descriptor))?'ALTA':((plate||serial||descriptor)?'MEDIA':'BAJA');
+ // Exclusiones: sustraccion narrada como hecho actual/reciente debe quedar para el arbitro temporal,
+ // no transformarse en Hallazgo historico por esta capa.
+ const currentTheft=/\b(?:MOMENTOS ANTES|MINUTOS ANTES|HORAS ANTES|RECIENTEMENTE|ACABABA DE|ACABAN DE|EN HORAS TEMPRANAS|MISMO DIA)\b[^.;]{0,420}\b(?:SUSTRAID[OA]|ROBAD[OA]|SUSTRAJERON|ROBARON)\b/.test(t);
+ const evidence=[scene&&'ESCENA_RECUPERACION_POLICIAL',query&&'VERIFICACION_IDENTIFICATORIA',positive&&'RESULTADO_PEDIDO_POSITIVO',prior&&'ANTECEDENTE_SUSTRACCION',plate&&'DOMINIO',serial&&'SERIAL',descriptor&&'DESCRIPTOR_VEHICULO',currentTheft&&'SUSTRACCION_RECIENTE'].filter(Boolean).join(' | ');
+ if(scene&&query&&positive&&prior&&identity==='ALTA'&&!currentTheft)return {decision:'HALLAZGO',conf:'ALTA',authority:true,reason:'Recuperacion policial reconstruida: el automotor fue encontrado/intervenido fisicamente y la verificacion posterior del objeto individualizado acredito pedido/alerta por sustraccion antecedente.',identity,evidence};
+ if(scene&&positive&&prior&&(query||identity!=='BAJA'))return {decision:'POSIBLE_HALLAZGO_POLICIAL',conf:'MEDIA',authority:false,reason:'Existe una escena compatible con recuperacion policial y antecedente positivo, pero falta completar la cadena escena-verificacion-identidad para modificar la clasificacion.',identity,evidence};
+ return {decision:'SIN_RECUPERACION_POLICIAL_RECONSTRUIDA',conf:'BAJA',authority:false,reason:'No se acredita la secuencia completa de recuperacion policial del mismo automotor.',identity,evidence};
+}
+
+// ---------------------------------------------------------------------------
+// VBETA 3 - RASTREO Y RECUPERACION DEL MISMO AUTOMOTOR
+// Tercera familia experimental. El GPS/LoJack/rastreo no decide por palabra:
+// debe producir una ubicacion positiva y culminar en presencia/recuperacion fisica
+// del automotor individualizado. La temporalidad define INMEDIATO vs HALLAZGO.
+// ---------------------------------------------------------------------------
+function VBeta3_trackingRecovery(a){
+ const t=a.t||''; const tv=a.temporalV12||{};
+ if(a.beta1&&a.beta1.authority)return {decision:'SIN_APORTE',conf:'BAJA',authority:false,reason:'VBeta1 ya posee autoridad.',identity:'NO_APLICA',evidence:''};
+ if(a.beta2&&a.beta2.authority)return {decision:'SIN_APORTE',conf:'BAJA',authority:false,reason:'VBeta2 ya posee autoridad.',identity:'NO_APLICA',evidence:''};
+ // No duplica un hallazgo que V12 ya reconstruyo con autoridad temporal.
+ if((tv.fo||0)>0&&tv.decision!=='SIN_EVIDENCIA_TEMPORAL_V12')return {decision:'SIN_APORTE',conf:'BAJA',authority:false,reason:'La ficha temporal V12 ya reconstruyo la recuperacion.',identity:'NO_APLICA',evidence:''};
+ const tracking=/\b(?:LOJACK|GPS|GEOLOCALIZACION|RASTREO SATELITAL|UBICACION SATELITAL|STRIX|WISETRACK|SISTEMA DE RASTREO|LOCALIZADOR SATELITAL)\b/.test(t);
+ const trackingNeg=/\b(?:NO POSEE|NO TIENE|NO CUENTA CON|CARECE DE|INACTIV[OA]|DESCONECTAD[OA]|SIN SEÑAL|SIN SENAL|RASTREO NEGATIVO)\b[^.;]{0,120}\b(?:LOJACK|GPS|GEOLOCALIZACION|RASTREO|LOCALIZADOR)\b|\b(?:LOJACK|GPS|GEOLOCALIZACION|RASTREO|LOCALIZADOR)\b[^.;]{0,120}\b(?:INACTIV[OA]|NEGATIV[OA]|SIN SEÑAL|SIN SENAL|NO FUNCIONA)\b/.test(t);
+ const otherObject=/\b(?:ICLOUD|FIND MY|GPS|GEOLOCALIZACION|UBICACION)\b[^.;]{0,220}\b(?:CELULAR|TELEFONO|IPHONE|TABLET|NOTEBOOK|MOCHILA|BOLSO)\b|\b(?:CELULAR|TELEFONO|IPHONE|TABLET|NOTEBOOK|MOCHILA|BOLSO)\b[^.;]{0,220}\b(?:ICLOUD|GPS|GEOLOCALIZACION|UBICACION)\b/.test(t);
+ // El sistema debe aportar una ubicacion/posicion positiva, no ser mero equipamiento.
+ const located=/\b(?:LOJACK|GPS|GEOLOCALIZACION|RASTREO SATELITAL|UBICACION SATELITAL|STRIX|WISETRACK|SISTEMA DE RASTREO|LOCALIZADOR SATELITAL)\b[^.;]{0,320}\b(?:ARROJA|ARROJO|INDICA|INDICO|INFORMA|INFORMO|APORTA|APORTO|MARCA|MARCO|UBICA|UBICO|LOCALIZA|LOCALIZO|POSICION|COORDENADAS|SEÑAL|SENAL)\b|\b(?:SEÑAL|SENAL|POSICION|COORDENADAS|UBICACION)\b[^.;]{0,220}\b(?:LOJACK|GPS|RASTREO|SATELITAL|STRIX|WISETRACK)\b/.test(t);
+ // La ubicacion tiene que conducir a una constatacion fisica del automotor.
+ const physical=/\b(?:SE DIRIGE|SE DIRIGIO|CONCURRE|CONCURRIO|ARRIBA|ARRIBO|COMISIONAD[OA]|CONSTITUID[OA]|ACUDE|ACUDIO)\b[^.;]{0,420}\b(?:UBICACION|LUGAR|DOMICILIO|COORDENADAS|SEÑAL|SENAL|PUNTO)\b[^.;]{0,420}\b(?:OBSERVA|OBSERVO|VISUALIZA|VISUALIZO|CONSTATA|CONSTATO|ENCUENTRA|ENCONTRO|HALLA|HALLO|LOCALIZA|LOCALIZO|DA CON|DIO CON)\b[^.;]{0,220}\b(?:VEHICULO|AUTOMOTOR|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b|\b(?:OBSERVA|OBSERVO|VISUALIZA|VISUALIZO|CONSTATA|CONSTATO|ENCUENTRA|ENCONTRO|HALLA|HALLO|LOCALIZA|LOCALIZO|DA CON|DIO CON)\b[^.;]{0,180}\b(?:VEHICULO|AUTOMOTOR|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b[^.;]{0,260}\b(?:LOJACK|GPS|RASTREO|SATELITAL|SEÑAL|SENAL|UBICACION)\b/.test(t);
+ const recovery=/\b(?:VEHICULO|AUTOMOTOR|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b[^.;]{0,180}\b(?:HALLAD[OA]|LOCALIZAD[OA]|RECUPERAD[OA]|ENCONTRAD[OA]|ABANDONAD[OA])\b|\b(?:HALLAN|HALLA|HALLARON|LOCALIZAN|LOCALIZA|LOCALIZARON|RECUPERAN|RECUPERA|RECUPERARON|ENCUENTRAN|ENCUENTRA|ENCONTRARON)\b[^.;]{0,180}\b(?:VEHICULO|AUTOMOTOR|RODADO|AUTO|AUTOMOVIL|CAMIONETA|UNIDAD)\b/.test(t);
+ const priorTheft=/\b(?:SUSTRAID[OA]|ROBAD[OA]|SUSTRAJERON|SUSTRAJO|ROBARON|ROBO|APODERARON|APODERO)\b/.test(t);
+ const priorPedido=/\b(?:PEDIDO|ALERTA)\b[^.;]{0,160}\b(?:SECUESTRO|ROBO|SUSTRACCION)\b/.test(t);
+ const plate=/\b(?:DOMINIO|PATENTE|CHAPA)\b[^.;]{0,80}\b(?:[A-Z]{2}\s*[- ]?\s*\d{3}\s*[- ]?\s*[A-Z]{2}|[A-Z]{3}\s*[- ]?\s*\d{3})\b/.test(t);
+ const descriptor=/\b(?:VOLKSWAGEN|RENAULT|FIAT|PEUGEOT|CHEVROLET|FORD|TOYOTA|CITROEN|NISSAN|JEEP|HYUNDAI|KIA|AUDI|BMW|MERCEDES)\b[^.;]{0,120}\b(?:MODELO|TAOS|KANGOO|AMAROK|HILUX|CORSA|BORA|CLIO|SANDERO|DUSTER|CRONOS|ONIX|RANGER|ECOSPORT|VENTO|SAVEIRO|PARTNER|BERLINGO|S10|TRACKER|ETIOS|COROLLA|GOL|FOX)\b/.test(t);
+ const identity=plate?'ALTA':(descriptor?'MEDIA':'BAJA');
+ const immediate=/\b(?:MOMENTOS ANTES|MINUTOS ANTES|INSTANTES ANTES|POCAS HORAS ANTES|UNAS HORAS ANTES|RECIENTEMENTE|ACABABA DE|ACABAN DE|MISMO DIA|FECHA DE HOY|DIA DE LA FECHA)\b/.test(t)||/\b(?:MIENTRAS|DURANTE)\b[^.;]{0,120}\b(?:DENUNCIA|RADICABA|FORMULABA)\b/.test(t);
+ const old=/\b(?:DIAS|SEMANAS|MESES|AÑOS|ANOS) ANTES\b|\bHACE\s+(?:\d+|VARIOS|ALGUNOS)\s+(?:DIAS|SEMANAS|MESES|AÑOS|ANOS)\b|\bDIA ANTERIOR\b/.test(t);
+ const chain=tracking&&!trackingNeg&&!otherObject&&located&&(physical||recovery)&&(priorTheft||priorPedido)&&identity!=='BAJA';
+ const evidence=[tracking&&'RASTREO',located&&'UBICACION_POSITIVA',(physical||recovery)&&'AUTOMOTOR_RECUPERADO',(priorTheft||priorPedido)&&'ANTECEDENTE',plate&&'DOMINIO',descriptor&&'DESCRIPTOR',immediate&&'VENTANA_CORTA',old&&'ANTECEDENTE_ANTIGUO',trackingNeg&&'RASTREO_NEGATIVO',otherObject&&'RASTREO_OTRO_OBJETO'].filter(Boolean).join(' | ');
+ if(chain&&immediate&&!old)return {decision:'INMEDIATO',conf:'ALTA',authority:true,reason:'Rastreo positivo del mismo automotor: la ubicacion satelital condujo a su recuperacion dentro de la misma secuencia temporal de la sustraccion.',identity,evidence};
+ if(chain&&old&&!immediate)return {decision:'HALLAZGO',conf:'ALTA',authority:true,reason:'Rastreo positivo del mismo automotor con antecedente de sustraccion previo: la localizacion actual constituye hallazgo/recuperacion.',identity,evidence};
+ // Sin temporalidad inequívoca, VBeta3 aprende la cadena pero no fuerza categoria.
+ if(chain)return {decision:'RECUPERACION_POR_RASTREO',conf:'MEDIA',authority:false,reason:'Se reconstruye rastreo positivo y recuperacion del mismo automotor, pero falta temporalidad suficiente para distinguir INMEDIATO de HALLAZGO.',identity,evidence};
+ if(tracking&&located)return {decision:'POSIBLE_RASTREO',conf:'MEDIA',authority:false,reason:'Existe ubicacion por rastreo, pero no se acredita toda la cadena identidad-recuperacion-antecedente.',identity,evidence};
+ return {decision:'SIN_RASTREO_RECONSTRUIDO',conf:'BAJA',authority:false,reason:'No se reconstruye una recuperacion vehicular completa mediante rastreo.',identity,evidence};
+}
+
+// ---------------------------------------------------------------------------
+// VBETA 4.1 - AUTORIDAD POR HUECOS
+// No busca bajar REVIEW a cero. Separa el episodio actual de antecedentes historicos
+// y resuelve solo relaciones temporales/causales fuertes del mismo automotor.
+// ---------------------------------------------------------------------------
+function VBeta4_episodeResolver(a){
+ const t=a.t||'';
+ const manyObjects=(t.match(/\b(?:CARGO|ITEM|SECUESTRO)\s*\d+/g)||[]).length>=8 || t.length>12000;
+ if(manyObjects)return {decision:'MANTENER_REVISION',conf:'ALTA',authority:false,reason:'Relato masivo/multiobjeto: inventario o cotejo de numerosos secuestros. La ambiguedad es estructural y requiere revision humana.',episode:'MULTIOBJETO',evidence:'RELATO_MASIVO'};
+ const during=/\b(?:AL MOMENTO|MIENTRAS|DURANTE)\b[^.;]{0,180}\b(?:REDACTANDO|RADICANDO|FORMULANDO|TOMANDO)\b[^.;]{0,100}\b(?:DENUNCIA|PRESENTE)\b[^.;]{0,360}\b(?:VEHICULO|AUTOMOTOR|RODADO|AUTO|CAMIONETA)\b[^.;]{0,160}\b(?:FUE|HA SIDO|RESULTA|SE ENCUENTRA)?\s*(?:HALLAD[OA]|ENCONTRAD[OA]|LOCALIZAD[OA]|RECUPERAD[OA])\b/.test(t);
+ const shortAbandon=/\b(?:MOMENTOS ANTES|INSTANTES ANTES|RECIENTEMENTE)\b[^.;]{0,500}\b(?:SUSTRAEN|SUSTRAJERON|ROBAN|ROBARON|APODERAN|APODERARON)\b[^.;]{0,500}\b(?:VEHICULO|AUTOMOTOR|RODADO|CAMIONETA)\b[^.;]{0,500}\b(?:ABANDONAD[OA]|DEJANDOL[OA]S? ABANDONAD[OA])\b[^.;]{0,120}\b(?:POCOS? METROS|METROS DEL SITIO|CERCANIAS|INMEDIACIONES)\b/.test(t) || /\b(?:SUSTRAEN|SUSTRAJERON|ROBAN|ROBARON)\b[^.;]{0,600}\b(?:VEHICULO|AUTOMOTOR|RODADO|CAMIONETA)\b[^.;]{0,500}\b(?:DEJANDOL[OA]S? ESTOS SUJETOS ABANDONAD[OA]|ABANDONAD[OA] A POCOS METROS)\b/.test(t);
+ const policeFound=/\b(?:VEHICULO|AUTOMOTOR|RODADO)\b[^.;]{0,180}\b(?:ESTADO DE ABANDONO|ABANDONAD[OA]|HALLAD[OA])\b|\b(?:CONSTATA|CONSTATAMOS|VISUALIZA|VISUALIZAMOS|DAMOS CON|ENCUENTRA)\b[^.;]{0,180}\b(?:VEHICULO|AUTOMOTOR|RODADO)\b/.test(t);
+ const activePedido=/\bPEDIDO DE SECUESTRO ACTIVO\b/.test(t);
+ const priorDated=/\b(?:FECHA DE ALTA|FECHA)\s*(?:DEL?|:)?\s*\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/.test(t);
+ const historicalRecovery=/\b(?:DIA|FECHA)\s+\d{1,2}\s+DE\s+(?:ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE)\s+(?:DEL\s+)?(?:AÑO\s+)?20\d{2}\b[^.;]{0,420}\b(?:SUSTRAJERON|ROBARON|SUSTRAID[OA])\b[^.;]{0,420}\b(?:RECUPERA|RECUPERAD[OA])\b/.test(t);
+ const currentTheftWindow=/\b(?:FECHA ACTUAL|DIA DE LA FECHA|EN LA FECHA|HOY)\b[^.;]{0,700}\b(?:SUSTRAJERON|SUSTRAEN|ROBARON|ROBAN|SUSTRAID[OA])\b|\b(?:ENTRE LAS?\s+\d{1,2}[:.]?\d{0,2}\s+Y\s+\d{1,2}[:.]?\d{0,2})\b[^.;]{0,400}\b(?:SUSTRACCION|SUSTRAJERON|RODADO YA NO)\b/.test(t);
+ const evidence=[during&&'RECUPERACION_DURANTE_DENUNCIA',shortAbandon&&'ABANDONO_INMEDIATO',policeFound&&'HALLAZGO_POLICIAL',activePedido&&'PEDIDO_ACTIVO',priorDated&&'ANTECEDENTE_FECHADO',historicalRecovery&&'RECUPERACION_HISTORICA',currentTheftWindow&&'SUSTRACCION_ACTUAL'].filter(Boolean).join(' | ');
+ // VBeta4.1: evidencia no equivale a autoridad. Las capas previas conservan precedencia.
+ // La familia MISMO_EPISODIO es la nueva enseñanza validada de VBeta4 y puede resolver
+ // INMEDIATO; las ramas de antecedente/historia solo llenan huecos no resueltos.
+ const tv=a.temporalV12||{};
+ const temporalResolved=tv.decision==='HALLAZGO'||tv.decision==='INMEDIATO';
+ const previousResolved=temporalResolved||!!a.beta1?.authority||!!a.beta2?.authority||!!a.beta3?.authority||!!a.currentFinding||!!a.sequence||!!a.positivePriorLink;
+ if(during)return {decision:'INMEDIATO',conf:'ALTA',authority:true,reason:'El mismo episodio contiene sustraccion actual y noticia de recuperacion mientras se radica/redacta la denuncia.',episode:'MISMO_EPISODIO',evidence};
+ if(shortAbandon)return {decision:'INMEDIATO',conf:'ALTA',authority:true,reason:'Sustraccion y abandono/recuperacion a pocos metros integran una unica secuencia inmediata.',episode:'MISMO_EPISODIO',evidence};
+ if(policeFound&&activePedido&&priorDated){
+   if(previousResolved)return {decision:'HALLAZGO',conf:'ALTA',authority:false,reason:'VBeta4.1 reconoce antecedente previo, pero una capa anterior ya reconstruyo suficientemente el evento; se conserva su decision.',episode:'ANTECEDENTE_PREVIO',evidence};
+   return {decision:'HALLAZGO',conf:'ALTA',authority:true,reason:'Hueco no resuelto por capas previas: procedimiento actual de hallazgo del automotor con pedido de secuestro activo y antecedente fechado previo.',episode:'ANTECEDENTE_PREVIO',evidence};
+ }
+ if(historicalRecovery&&currentTheftWindow){
+   if(previousResolved)return {decision:'SUSTRAIDO',conf:'ALTA',authority:false,reason:'VBeta4.1 separa el antecedente historico, pero una capa anterior ya posee resolucion suficiente; no toma autoridad.',episode:'EPISODIOS_SEPARADOS',evidence};
+   return {decision:'SUSTRAIDO',conf:'ALTA',authority:true,reason:'Hueco no resuelto por capas previas: la recuperacion mencionada pertenece a un episodio historico anterior y el episodio actual acredita una nueva sustraccion sin recuperacion actual.',episode:'EPISODIOS_SEPARADOS',evidence};
+ }
+ return {decision:'SIN_RESOLUCION_EPISODICA',conf:'BAJA',authority:false,reason:'No hay relacion episodica suficientemente fuerte para modificar la clasificacion estable.',episode:'INDETERMINADO',evidence};
+}
+
+
+
+// ---------------------------------------------------------------------------
+// VBETA 4.3 - ARBITRO CRONOLOGICO DE EPISODIO
+// Ficha transversal: SUSTRACCION -> IDENTIDAD -> RECUPERACION -> DISTANCIA.
+// No reemplaza detectores; arbitra solo cuando la relacion temporal del mismo
+// automotor es mas fuerte que la categoria inferida por una capa individual.
+// ---------------------------------------------------------------------------
+function VBeta43_strongChronology(a){
+ const t=a.t||''; const tv=a.temporalV12||{};
+ // VBeta4.3 no inventa los dos hechos ni la identidad: exige que las capas de evento ya los hayan acreditado.
+ const identityStrong=(a.identity==='ALTA'||a.identity==='MEDIA'||!!a.sequence);
+ const recoveryStrong=!!a.recoveryPositive&&((a.autoRecs||[]).length>0||(tv.fo||0)>0||!!a.currentFinding);
+ const theftStrong=(a.autoThefts||[]).length>0||(tv.th||0)>0||!!a.positivePriorLink;
+ const minutesHours=/\b(?:ESCASOS?|POCOS?|UNOS?|ALGUNOS?)\s+(?:MINUTOS|MOMENTOS|INSTANTES|HORAS)\s+(?:ANTES|PREVIOS?)\b|\b(?:MOMENTOS|MINUTOS|INSTANTES|HORAS)\s+ANTES\b|\bRECIENTEMENTE\b|\bACABABA(?:N)? DE\b|\bEN HORAS TEMPRANAS\b|\bESA MISMA (?:MAÑANA|MANANA|MADRUGADA|TARDE|NOCHE)\b/.test(t);
+ const duringComplaint=/\b(?:MIENTRAS|DURANTE|AL MOMENTO)\b[^.;]{0,260}\b(?:DENUNCIA|RADICABA|FORMULABA|REDACTABA|REDACTANDO|DENUNCIABA)\b/.test(t)||/\b(?:SE ENCONTRABA|ESTABA)\b[^.;]{0,180}\b(?:RADICANDO|FORMULANDO|REALIZANDO)\b[^.;]{0,80}\bDENUNCIA\b/.test(t);
+ const immediateSequence=/\b(?:LUEGO|SEGUIDAMENTE|ACTO SEGUIDO|A CONTINUACION|POSTERIORMENTE)\b[^.;]{0,220}\b(?:ABANDONAD[OA]|HALLAD[OA]|LOCALIZAD[OA]|RECUPERAD[OA]|ENCONTRAD[OA])\b/.test(t)&&/\b(?:POCOS? METROS|INMEDIACIONES|CERCANIAS|A METROS)\b/.test(t);
+ const sameDayOnly=/\b(?:MISMO DIA|DIA DE LA FECHA|FECHA DE HOY|EN LA FECHA|ESE MISMO DIA|ESA MISMA FECHA)\b/.test(t);
+ const explicitLong=/\b(?:HACE\s+)?(?:DOS|TRES|CUATRO|CINCO|SEIS|SIETE|OCHO|NUEVE|DIEZ|ONCE|DOCE|TRECE|CATORCE|QUINCE|\d+)\s+(?:DIAS|SEMANAS|MESES|AÑOS|ANOS)\b|\b(?:DIA|FECHA) ANTERIOR\b/.test(t);
+ const dias=Number.isFinite(Number(tv.dias))&&String(tv.dias)!==''?Number(tv.dias):null;
+ const strongImmediate=minutesHours||duringComplaint||immediateSequence;
+ let distance='INDETERMINADA',authority=false,decision='SIN_APORTE',conf='BAJA',reason='La cronologia no aporta evidencia suficientemente fuerte para reemplazar la clasificacion previa.';
+ if(theftStrong&&recoveryStrong&&identityStrong){
+   if(dias!==null&&dias>=2){
+     distance='DIAS_O_MAS'; decision='HALLAZGO'; conf='ALTA'; authority=true;
+     reason='Mismo automotor, sustraccion y recuperacion acreditadas, separadas por '+dias+' dias.';
+   } else if(dias!==null&&dias===1&&!strongImmediate){
+     distance='DIA_ANTERIOR'; decision='HALLAZGO'; conf='ALTA'; authority=true;
+     reason='Mismo automotor recuperado con antecedente de sustraccion del dia anterior y sin continuidad inmediata acreditada.';
+   } else if(strongImmediate&&!explicitLong){
+     distance=duringComplaint?'DURANTE_DENUNCIA':immediateSequence?'CONTINUIDAD_ESPACIO_TEMPORAL':'MINUTOS_HORAS';
+     decision='INMEDIATO'; conf='ALTA'; authority=true;
+     reason='La sustraccion y la recuperacion del mismo automotor estan unidas por una relacion temporal explicita y fuerte.';
+   } else if((dias===0||sameDayOnly)&&!strongImmediate){
+     distance='MISMO_DIA_SIN_AUTORIDAD'; conf='MEDIA';
+     reason='El mismo dia funciona como apoyo, pero VBeta4.3 no lo considera suficiente para cambiar la clasificacion por si solo.';
+   }
+ }
+ const evidence=[theftStrong&&'SUSTRACCION_ACREDITADA',recoveryStrong&&'RECUPERACION_ACREDITADA',identityStrong&&'IDENTIDAD_ACREDITADA',dias!==null&&('DIAS='+dias),minutesHours&&'MINUTOS_HORAS',duringComplaint&&'DURANTE_DENUNCIA',immediateSequence&&'CONTINUIDAD',sameDayOnly&&'MISMO_DIA_APOYO',explicitLong&&'ANTECEDENTE_LARGO'].filter(Boolean).join(' | ');
+ return {decision,conf,authority,distance,identity:identityStrong?'ACREDITADA':'NO_ACREDITADA',reason,evidence};
+}
+
+// ---------------------------------------------------------------------------
 // 7) UNICO ARBITRO FINAL
 // ---------------------------------------------------------------------------
 function decide(a){
  if(a.universe==="FUERA")return {ok:0,cond:"DESCARTADO",why:"Fuera del universo automotor: el objeto principal reconstruido es "+a.principal+"."};
  if(a.universe==="INDETERMINADO"&&!a.autoThefts.length&&!a.autoRecs.length)return {ok:0,cond:"DESCARTADO",why:"El automotor aparece en el relato, pero no como objeto acreditado de sustracción/hallazgo."};
+ // VBETA 4.3: arbitro cronologico transversal. Si acredita mismo automotor, recuperacion y distancia temporal fuerte, gobierna antes que las inferencias parciales.
+ if(a.beta43&&a.beta43.authority&&['INMEDIATO','HALLAZGO'].includes(a.beta43.decision))return {ok:1,cond:a.beta43.decision,why:'VBeta4.3 cronologia fuerte: '+a.beta43.reason};
  // V11.25: ARBITRO TEMPORAL. Detectar y decidir quedan separados.
  // HALLAZGO temporal conserva la autoridad validada de V11.23/V11.24.
  if(a.temporalV12&&a.temporalV12.decision==="HALLAZGO")return {ok:1,cond:"HALLAZGO",why:"Temporalidad V12: "+a.temporalV12.reason};
@@ -291,6 +592,13 @@ function decide(a){
  if(temporalImmediateHigh||temporalImmediateSameDay||temporalImmediateSequence)return {ok:1,cond:"INMEDIATO",why:"Arbitro temporal V12: "+tv.reason};
  // VBETA 1: autoridad solo para reconstruccion nominal de alta confianza.
  if(a.beta1&&a.beta1.authority&&a.beta1.decision==="HALLAZGO")return {ok:1,cond:"HALLAZGO",why:"VBeta1: "+a.beta1.reason};
+ // VBETA 2: segunda familia, recuperacion policial + verificacion positiva del mismo automotor.
+ if(a.beta2&&a.beta2.authority&&a.beta2.decision==="HALLAZGO")return {ok:1,cond:"HALLAZGO",why:"VBeta2: "+a.beta2.reason};
+ // VBETA 3: capa previa protegida; se evalua antes de VBeta4.1.
+ if(a.beta3&&a.beta3.authority&&a.beta3.decision==="INMEDIATO")return {ok:1,cond:"INMEDIATO",why:"VBeta3: "+a.beta3.reason};
+ if(a.beta3&&a.beta3.authority&&a.beta3.decision==="HALLAZGO")return {ok:1,cond:"HALLAZGO",why:"VBeta3: "+a.beta3.reason};
+ // VBETA 4.1: separacion episodica con autoridad por huecos.
+ if(a.beta4&&a.beta4.authority&&['INMEDIATO','HALLAZGO','SUSTRAIDO'].includes(a.beta4.decision))return {ok:1,cond:a.beta4.decision,why:'VBeta4.1: '+a.beta4.reason};
  if(a.currentFinding){
    if(a.positivePriorLink)return {ok:1,cond:"HALLAZGO",why:"El hecho actual comienza con el automotor ya localizado/intervenido y la sustracción o pedido previo funciona como antecedente positivo."};
    return {ok:0,cond:"DESCARTADO",why:"Hay procedimiento sobre un automotor, pero no existe vínculo positivo suficiente con una sustracción/pedido previo."};
@@ -800,7 +1108,7 @@ function cleanFinal(r){const cols=["delito_id","nro_registro","ipp","fecha_carga
 // ---------------------------------------------------------------------------
 function diag(a){
  const ev=a.events.slice(0,4).map(e=>e.type+"→"+e.obj+"["+e.polarity+"]").join(" | ");
- return {V11_UNIVERSO:a.universe,V11_OBJETO_PRINCIPAL:a.principal,V11_EVENTOS:ev,V11_IDENTIDAD:a.identity,V11_CRONOLOGIA:a.currentFinding?"HALLAZGO_ACTUAL_CON_ANTECEDENTE":a.sequence?"SUSTRACCION→RECUPERACION":a.autoThefts.length?"SUSTRACCION":"INDETERMINADA",V11_RECUPERACION:a.recoveryPositive?"POSITIVA":"NO_CONFIRMADA",V11_ANTECEDENTE:a.positivePriorLink?"POSITIVO":"NO_ACREDITADO",V11_CONTRADICCIONES:a.contradictions.join(" | "),V11_EVIDENCIAS:[a.n.trackingPositive&&"RASTREO+",a.n.duringComplaint&&"DURANTE_DENUNCIA",a.n.noticeFound&&"AVISO_HALLAZGO",a.n.foundIt&&"DAN_CON",a.n.abandonedAfter&&"ABANDONO_POSTERIOR",a.n.explicitLater&&"TEMPORAL_POSTERIOR",a.n.positiveConstata&&"CONSTATACION+"].filter(Boolean).join(" | "),V11_TEMPORAL_V12:a.temporalV12?.decision||"",V11_TEMPORAL_V12_CONF:a.temporalV12?.conf||"",V11_TEMPORAL_V12_DIAS:a.temporalV12?.dias??"",V11_TEMPORAL_V12_DETALLE:a.temporalV12?.detalle||"",V11_TEMPORAL_V12_MOTIVO:a.temporalV12?.reason||"",V11_TEMPORAL_V12_MISMO_DIA:a.temporalV12?.sameDayCue?"SI":"",V11_TEMPORAL_V12_SUSTRACCION_RECIENTE:a.temporalV12?.sameDayTheft?"SI":"",V11_TEMPORAL_V12_AUTORIDAD:(a.temporalV12?.decision==="HALLAZGO"?"HALLAZGO_TEMPORAL":(a.temporalV12?.decision==="INMEDIATO"&&a.temporalV12?.conf==="ALTA"&&a.temporalV12?.fo>0&&(a.temporalV12?.ped>0||a.temporalV12?.th>0)&&!a.temporalV12?.old)?"INMEDIATO_ALTA":(a.temporalV12?.decision==="INMEDIATO"&&a.temporalV12?.conf==="MEDIA"&&a.temporalV12?.fo>0&&a.temporalV12?.ped>0&&a.temporalV12?.sameDayCue&&a.temporalV12?.sameDayTheft&&!a.temporalV12?.old)?"INMEDIATO_MISMO_DIA":(a.temporalV12?.decision==="INMEDIATO"&&a.temporalV12?.conf==="MEDIA"&&a.temporalV12?.fo>0&&a.temporalV12?.th>0&&a.temporalV12?.inm&&!a.temporalV12?.old)?"INMEDIATO_SECUENCIA":"SIN_AUTORIDAD"),VBETA1_EVENTO:a.beta1?.decision||"",VBETA1_CONF:a.beta1?.conf||"",VBETA1_IDENTIDAD:a.beta1?.identity||"",VBETA1_EVIDENCIAS:a.beta1?.evidence||"",VBETA1_AUTORIDAD:a.beta1?.authority?"SI":"NO",VBETA1_MOTIVO:a.beta1?.reason||""};
+ return {V11_UNIVERSO:a.universe,V11_OBJETO_PRINCIPAL:a.principal,V11_EVENTOS:ev,V11_IDENTIDAD:a.identity,V11_CRONOLOGIA:a.currentFinding?"HALLAZGO_ACTUAL_CON_ANTECEDENTE":a.sequence?"SUSTRACCION→RECUPERACION":a.autoThefts.length?"SUSTRACCION":"INDETERMINADA",V11_RECUPERACION:a.recoveryPositive?"POSITIVA":"NO_CONFIRMADA",V11_ANTECEDENTE:a.positivePriorLink?"POSITIVO":"NO_ACREDITADO",V11_CONTRADICCIONES:a.contradictions.join(" | "),V11_EVIDENCIAS:[a.n.trackingPositive&&"RASTREO+",a.n.duringComplaint&&"DURANTE_DENUNCIA",a.n.noticeFound&&"AVISO_HALLAZGO",a.n.foundIt&&"DAN_CON",a.n.abandonedAfter&&"ABANDONO_POSTERIOR",a.n.explicitLater&&"TEMPORAL_POSTERIOR",a.n.positiveConstata&&"CONSTATACION+"].filter(Boolean).join(" | "),V11_TEMPORAL_V12:a.temporalV12?.decision||"",V11_TEMPORAL_V12_CONF:a.temporalV12?.conf||"",V11_TEMPORAL_V12_DIAS:a.temporalV12?.dias??"",V11_TEMPORAL_V12_DETALLE:a.temporalV12?.detalle||"",V11_TEMPORAL_V12_MOTIVO:a.temporalV12?.reason||"",V11_TEMPORAL_V12_MISMO_DIA:a.temporalV12?.sameDayCue?"SI":"",V11_TEMPORAL_V12_SUSTRACCION_RECIENTE:a.temporalV12?.sameDayTheft?"SI":"",V11_TEMPORAL_V12_AUTORIDAD:(a.temporalV12?.decision==="HALLAZGO"?"HALLAZGO_TEMPORAL":(a.temporalV12?.decision==="INMEDIATO"&&a.temporalV12?.conf==="ALTA"&&a.temporalV12?.fo>0&&(a.temporalV12?.ped>0||a.temporalV12?.th>0)&&!a.temporalV12?.old)?"INMEDIATO_ALTA":(a.temporalV12?.decision==="INMEDIATO"&&a.temporalV12?.conf==="MEDIA"&&a.temporalV12?.fo>0&&a.temporalV12?.ped>0&&a.temporalV12?.sameDayCue&&a.temporalV12?.sameDayTheft&&!a.temporalV12?.old)?"INMEDIATO_MISMO_DIA":(a.temporalV12?.decision==="INMEDIATO"&&a.temporalV12?.conf==="MEDIA"&&a.temporalV12?.fo>0&&a.temporalV12?.th>0&&a.temporalV12?.inm&&!a.temporalV12?.old)?"INMEDIATO_SECUENCIA":"SIN_AUTORIDAD"),VBETA1_EVENTO:a.beta1?.decision||"",VBETA1_CONF:a.beta1?.conf||"",VBETA1_IDENTIDAD:a.beta1?.identity||"",VBETA1_EVIDENCIAS:a.beta1?.evidence||"",VBETA1_AUTORIDAD:a.beta1?.authority?"SI":"NO",VBETA1_MOTIVO:a.beta1?.reason||"",VBETA2_EVENTO:a.beta2?.decision||"",VBETA2_CONF:a.beta2?.conf||"",VBETA2_IDENTIDAD:a.beta2?.identity||"",VBETA2_EVIDENCIAS:a.beta2?.evidence||"",VBETA2_AUTORIDAD:a.beta2?.authority?"SI":"NO",VBETA2_MOTIVO:a.beta2?.reason||"",VBETA3_EVENTO:a.beta3?.decision||"",VBETA3_CONF:a.beta3?.conf||"",VBETA3_IDENTIDAD:a.beta3?.identity||"",VBETA3_EVIDENCIAS:a.beta3?.evidence||"",VBETA3_AUTORIDAD:a.beta3?.authority?"SI":"NO",VBETA3_MOTIVO:a.beta3?.reason||"",VBETA4_EVENTO:a.beta4?.decision||"",VBETA4_CONF:a.beta4?.conf||"",VBETA4_EPISODIO:a.beta4?.episode||"",VBETA4_EVIDENCIAS:a.beta4?.evidence||"",VBETA4_AUTORIDAD:a.beta4?.authority?"SI":"NO",VBETA4_MOTIVO:a.beta4?.reason||"",VBETA43_EVENTO:a.beta43?.decision||"",VBETA43_CONF:a.beta43?.conf||"",VBETA43_DISTANCIA:a.beta43?.distance||"",VBETA43_IDENTIDAD:a.beta43?.identity||"",VBETA43_EVIDENCIAS:a.beta43?.evidence||"",VBETA43_AUTORIDAD:a.beta43?.authority?"SI":"NO",VBETA43_MOTIVO:a.beta43?.reason||""};
 }
 function tick(){return new Promise(r=>setTimeout(r,0))}
 function esc(v){return (v??"").toString().replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
@@ -812,9 +1120,9 @@ $("f1").onclick=async()=>{cand=[];$("f1").disabled=true;for(let i=0;i<src.length
 $("f2").onclick=async()=>{accepted=[];rejected=[];$("f2").disabled=true;for(let i=0;i<cand.length;i++){const r=cand[i],x=f2(r),z={...r,CONDICION_AUDITOR:x.cond||"DESCARTADO",MOTIVO_2:x.why,...diag(x.a)};(x.ok?accepted:rejected).push(z);if(i%150===0){status.textContent="🧠 Filtro 2… "+Math.round(100*i/cand.length)+"%";await tick()}}$("f2").disabled=false;$("f3").disabled=!accepted.length;$("d2").disabled=false;show(accepted,"CONDICION_AUDITOR","✅ Filtro 2: "+accepted.length.toLocaleString("es-AR")+" aceptados / "+rejected.length.toLocaleString("es-AR")+" descartados.")};
 $("f3").onclick=async()=>{finalRows=accepted.map(cleanFinal);$("d3").disabled=!finalRows.length;$("f4").disabled=!accepted.length;show(accepted,"CONDICION_AUDITOR","✅ Excel final preparado.")};
 $("f4").onclick=async()=>{completedRows=accepted.map(r=>cleanFinal(extract(r)));$("d4").disabled=!completedRows.length;show(accepted,"CONDICION_AUDITOR","✅ Datos vehiculares completados: "+completedRows.length.toLocaleString("es-AR")+" casos.")};
-$("d1").onclick=()=>dl("FILTRO_1_CANDIDATOS_V11.19.xlsx",[["CANDIDATOS",cand]]);
-$("d2").onclick=()=>dl("FILTRO_2_AUDITORIA_V11.5.xlsx",[["ACEPTADOS",accepted],["DESCARTADOS",rejected]]);
-$("d3").onclick=()=>dl("EXCEL_FINAL_AUTOMOTORES_V11.5.xlsx",[["FINAL",finalRows]]);
-$("d4").onclick=()=>dl("EXCEL_FINAL_AUTOMOTORES_COMPLETADO_V11.5.xlsx",[["FINAL",completedRows]]);
+$("d1").onclick=()=>dl("FILTRO_1_CANDIDATOS.xlsx",[["CANDIDATOS",cand]]);
+$("d2").onclick=()=>dl("FILTRO_2_AUDITORIA.xlsx",[["ACEPTADOS",accepted],["DESCARTADOS",rejected]]);
+$("d3").onclick=()=>dl("EXCEL_FINAL_AUTOMOTORES.xlsx",[["FINAL",finalRows]]);
+$("d4").onclick=()=>dl("EXCEL_FINAL_AUTOMOTORES_COMPLETADO.xlsx",[["FINAL",completedRows]]);
 })();
 </script></body></html>
