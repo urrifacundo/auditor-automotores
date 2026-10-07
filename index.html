@@ -78,7 +78,7 @@ details p{line-height:1.55;color:#30445e}
         <p class="lead">Clasificación de robos y hallazgos de automotores · Cassandra → Quirón</p>
       </div>
     </div>
-    <div class="version">V13.2</div>
+    <div class="version">V13.6</div>
   </div>
 </header>
 
@@ -91,7 +91,7 @@ details p{line-height:1.55;color:#30445e}
       <div class="file-hint">Seleccioná el Excel crudo. Se procesa en esta computadora; no se envía a ningún lado.</div>
     </div>
     <div class="opts">
-      <label class="chk"><input type="checkbox" id="optDesc" checked>Omitir los hechos descartados en Cassandra (si el relato muestra un automotor, van a revisión humana)</label>
+      <input type="checkbox" id="optDesc" checked hidden>
       <label class="chk"><input type="checkbox" id="optAband">Contar como Hallazgo los autos abandonados sin pedido de secuestro</label>
       <div><button id="run" class="pri" disabled>▶ Auditar automotores</button></div>
     </div>
@@ -154,7 +154,7 @@ details p{line-height:1.55;color:#30445e}
 const norm=s=>(s??"").toString().normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[“”"'`´]/g," ").replace(/([A-Z]{2,})-([A-Z]{2,})/g,(x,a,b)=>/^(?:PICK|NO|EX|SUB|SEMI|AUTO|MOTO|VICE|CO|SAN|VILLA|LA|EL|DE|GRAL)$/.test(a)||b.length<3?x:a+b).replace(/\s+/g," ").trim();
 
 // ---------------------------------------------------------------- 1) VOCABULARIO
-const W_AUTO="AUTOMOVIL(?:ES)?|SEMI ?REMOLQUE|SEMI ?ACOPLADO|ACOPLADO|MOTORHOME|CASA RODANTE|(?<!EN |DE |PRESENTES |ESTOS |DICHOS |TESTIGO DE |TESTIGOS DE )AUTOS|(?<!TESTIGO DE |TESTIGOS DE |PRESENTE |DICTO |DICTA |DICTADO |MEDIANTE )AUTO(?! DE (?:PROCESAMIENTO|ELEVACION|MERITO|FECHA)| INTERLOCUTORIO| FUNDADO)|CAMIONETAS?|CAMION(?:ES)?|UTILITARIOS?|FURGON(?:ETA)?|PICK ?UP|SEDAN|COCHE|TAXI|REMIS";
+const W_AUTO="AUTOMOVIL(?:ES)?|SEMI ?REMOLQUE|SEMI ?ACOPLADO|ACOPLADO|MOTORHOME|CASA RODANTE|(?<!EN |DE |PRESENTES |ESTOS |DICHOS |TESTIGO DE |TESTIGOS DE )AUTOS|(?<!TESTIGO DE |TESTIGOS DE |PRESENTE |DICTO |DICTA |DICTADO |MEDIANTE )AUTO(?! DE (?:PROCESAMIENTO|ELEVACION|MERITO|FECHA|COLECCION|JUGUETE)| INTERLOCUTORIO| FUNDADO|[ -]?(?:STEREO|ESTEREO|RADIO|PARTES?)\\b| A ESCALA)|CAMIONETAS?|CAMION(?:ES)?|UTILITARIOS?|FURGON(?:ETA)?|PICK ?UP|SEDAN|COCHE|TAXI|REMIS";
 const W_MOTO="MOTO ?VEHICULOS?|MOTOCICLETAS?|MOTOS?|CICLOMOTOR(?:ES)?|SCOOTER|CUATRICICLO|MOTOCICLO";
 const W_BICI="BICICLETAS?|BICI|MOUNTAIN BIKE|MONOPATIN|RODADO (?:1[2-9]|2[0-9])(?! DE (?:ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|SETIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE)|[\\/\\d])";
 const W_GEN="VEHICULOS?|RODADOS?|(?<!(?:TITULO|SEGURO|CEDULA|REGISTRO|PARQUE|VERIFICACION|TARJETA|IDENTIFICACION|IDENTIFICACION DEL|DOCUMENTACION|DOCUMENTACION DEL|TITULO DEL|CEDULA DEL|SEGURO DEL) )AUTOMOTOR(?:ES)?|UNIDAD(?! (?:FUNCIONAL|POLICIAL|PENAL|DE |CARCELARIA|SANITARIA|IDENTIFICABLE|FISCAL|N\\b|NRO|REGIONAL|TACTICA|OPERATIVA))";
@@ -272,17 +272,20 @@ function objsIn(seg){            // todos los objetos nombrados en un tramo, con
 }
 const VEHW="VEHICULO|RODADO|AUTOMOVIL|AUTOMOTOR|AUTO|CAMIONETA|CAMION|UTILITARIO|UNIDAD|COCHE|FURGON|MOTOCICLETA|MOTO ?VEHICULO|MOTO|BICICLETA|BICI";
 const VEHA="VEHICULO|RODADO|AUTOMOVIL|AUTOMOTOR|AUTO|CAMIONETA|CAMION|UTILITARIO|UNIDAD|COCHE|FURGON|MISMO|MISMA";
-const VERBF="SUSTRA(?:E|EN|JO|JERON|IA|IAN|ER|ERLE|ERLES|ERLO|ERLA|ERSELO|ERSELA|YENDO|YENDOLE|YENDOLES|YENDOSELO|IDO|IDA|IDOS|IDAS|JERA|JERAN|GERON|GO|JIERON)|ROB(?:A|AN|O|ARON|ABA|ABAN|AR|ARLE|ARLES|ARLO|ARLA|ARSE|ANDO|ANDOLE|ADO|ADA|ADOS|ADAS)|HURT(?:A|AN|O|ARON|AR|ARLE|ARLO|ANDO|ADO|ADA|ADOS|ADAS)|(?:DES)?APODER(?:A|AN|O|ARON|ANDOSE|ANDOLO|ARSE|ADO|ADA|ANDOLE)|DESPOJ(?:A|AN|O|ARON|ANDOLO|ANDOLA|ANDOLE|ADO|ADA|ARLO|ARLE)|LLEV(?:A|AN|O|ARON|ABA|ABAN|ANDOSE|ARSE|ANDOSELO|ARSELO|ARSELA|ADO|ARA|ARAN)|ARREBAT(?:A|AN|O|ARON|ANDOLE)|QUIT(?:A|AN|O|ARON|ANDOLE)";
+const VERBF="SUSTRA(?:E|EN|JE|JO|JERON|IA|IAN|ER|ERLE|ERLES|ERLO|ERLA|ERSELO|ERSELA|YENDO|YENDOLE|YENDOLES|YENDOSELO|IDO|IDA|IDOS|IDAS|JERA|JERAN|GERON|GO|JIERON)|ROB(?:A|AN|O|ARON|ABA|ABAN|AR|ARLE|ARLES|ARLO|ARLA|ARSE|ANDO|ANDOLE|ADO|ADA|ADOS|ADAS)|HURT(?:A|AN|O|ARON|AR|ARLE|ARLO|ANDO|ADO|ADA|ADOS|ADAS)|(?:DES)?APODER(?:A|AN|O|ARON|ANDOSE|ANDOLO|ARSE|ADO|ADA|ANDOLE)|DESPOJ(?:A|AN|O|ARON|ANDOLO|ANDOLA|ANDOLE|ADO|ADA|ARLO|ARLE)|LLEV(?:A|AN|O|ARON|ABA|ABAN|ANDOSE|ARSE|ANDOSELO|ARSELO|ARSELA|ADO|ARA|ARAN)|ARREBAT(?:A|AN|O|ARON|ANDOLE)|QUIT(?:A|AN|O|ARON|ANDOLE)";
 const NOUNF="SUSTRACCION|SUSTRACION|SUSTRACIION|HURTO|ROBO|DESAPODERAMIENTO|FALTANTE|FALTA|AUSENCIA";
 const ATT_BEFORE=/\b(?:INTENT\w*|INTENCION(?:ES)? DE|PRETEND\w*|QUIS(?:O|IERON)|QUERI(?:A|AN)|TRAT(?:O|ARON|ANDO|ABAN?) DE|PARA|A FIN DE|FINES DE|CON EL FIN DE|PROPOSITO DE|AMENAZ\w+ CON|IBAN? A|TENTATIVA DE|INTENTO DE|RESIST\w* (?:A|AL)|OPON\w+ (?:A|AL)|OPUSO (?:A|AL)|POSIBLE|SUPUEST[OA]|PRESUNT[OA]|EVITAR(?: EL| LA| QUE)?|IMPEDIR(?: EL| LA| QUE)?)(?: LUEGO| ASI| PODER| UN| EL| LA| SE LO| SE LA| LE)? ?(?:DESTRABARLO Y |ABRIRLO Y )?$/;
 const ATT_AFTER=/^[^.]{0,140}\b(?:(?:NO LOGRANDO|SIN LOGRAR|NO PUDIENDO|SIN PODER|NO LOGRAN|NO LOGRARON|NO LOGRO|SIN CONSEGUIR|NO CONSIGUIENDO|SIN LLEGAR A|NO PUDIERON|NO PUDO)\b[^.]{0,30}\b(?:SUSTRA\w+|LLEV\w+|ROB\w+|CONCRET\w+|CONSUM\w+|COMETIDO|ARRANC\w+|ENCEND\w+|PONER\w* EN MARCHA|HACERLO|SU OBJETIVO|SU FIN|ABRIR\w*)|EN TENTATIVA|GRADO DE TENTATIVA|FRUSTR\w+ (?:EL|LA|SU)|DESIST\w+)\b/;
 function thefts(t,M,dt){
-  const ev=[], push=(o)=>{ev.push(o)};
+  const ev=[], push=(o)=>{
+    if(o.type==="A"&&/^(?:RODADO|VEHICULO|UNIDAD|MISMO|MISMA)$/.test(o.obj||"")){const sp=t.slice(Math.max(0,o.pos-170),o.pos+12); if(/\b(?:ENTREG\w+|DAME|DEJ[AE]|SOLT\w+|SUELT[AE]|QUIERO) (?:LA|MI|SU) MOTO\w*\b/.test(sp)&&!/\b(?:AUTO\w*|CAMIONETA|UTILITARIO)\b/.test(sp))o.type="M";}
+    ev.push(o)};
   const typeOf=(k,pos)=>k==="G"?typeAt(M,pos,dt):k;
   const cutS=s=>{const c=s.search(/\. [A-Z]|\.- ?[A-Z]|\b(?:PREGUNTAD[OA]|CONSULTAD[OA]|A PREGUNTAS?)\b/);return c>=0?s.slice(0,c):s};
   // --- A) verbo + objeto
   for(const m of t.matchAll(new RegExp("\\b(?:(?:SE |ME |LE |LES |NOS )?(?:LO |LA |LOS |LAS )?)?(?:HA(?:N|BIAN?|BRIAN?|YAN?)? |FUE |FUERA |FUERE |FUERON |SIDO |SIENDO )?(?:RECIENTEMENTE |ANTERIORMENTE |PREVIAMENTE |YA |TAMBIEN |LUEGO )?("+VERBF+")\\b","g"))){
     const v=m[1], p=m.index, e=p+m[0].length, pre=m[0].slice(0,m[0].length-v.length);
+    if(/^,? (?:SIENDO|LO SIGUIENTE|LOS SIGUIENTES|ENTRE ELLOS)\b/.test(t.slice(e,e+22))||/\b(?:LOS|LAS) CUALES (?:LE |LES |ME )?(?:HAN |HABIAN |HABRIAN )?(?:SIDO )?$/.test(t.slice(Math.max(0,p-34),e-v.length)))continue;
     if(/\b(?:LO QUE|COSAS QUE|TODO LO QUE) (?:LE |LES |ME |NOS |SE )?$/.test(t.slice(Math.max(0,p-22),p))||/\bHAC\w+ $/.test(t.slice(Math.max(0,p-9),p))&&/AR$/.test(v))continue;      // "vende lo que roban", "hace robar a menores"
     if(/^LLEV/.test(v)&&/\bLE $/.test(pre+"")&&/\b(?:TALLER|MECANICO|GOMERIA|CHAPISTA|LAVADERO|CONCESIONARI[AO]|SERVICE)\b/.test(t.slice(Math.max(0,p-260),p+60)))continue;   // "le llevó su auto al mecánico": lo llevó el dueño
     if(/^LLEV/.test(v)){ if(!/\bSE (?:LO |LA |LOS |LAS |ME |LE )?(?:HA(?:N|BIAN?|BRIAN?)? )?$/.test(t.slice(Math.max(0,p-4),e-v.length)+"")&&!/SE$|SELO$|SELA$/.test(v)&&!/\b(?:SE|ME|LE|LES)\b/.test(pre)&&!/\b(?:SE|ME|LE|LES|NOS) (?:LO |LA |LOS |LAS )?(?:HAN |HABIAN? |HABRIAN? )?$/.test(t.slice(Math.max(0,p-22),p)))continue; if(/^ A CABO| ADELANTE| PUEST| CONSIGO UN ARMA/.test(t.slice(e,e+12)))continue; }
@@ -367,11 +370,56 @@ function thefts(t,M,dt){
     const k=/^MOTO/.test(vm[1])?"M":/BICI/.test(vm[1])?"B":/^(?:AUTOMOVIL|AUTO|CAMIONETA|CAMION|UTILITARIO|COCHE|FURGON)$/.test(vm[1])?"A":"G";
     push({pos:m.index,opos:b0+vm.index,verb:"FALTANTE",type:typeOf(k,b0+vm.index),obj:vm[1],attempt:false,absence:true});
   }
+  // --- A2) formas directas que el análisis de objeto no resolvió
+  {
+    const cerca=(p)=>ev.some(x=>Math.abs(x.pos-p)<90);
+    const prevOff=(p)=>new RegExp("\\bUNA? (?:AUTO\\w*|VEHICULO|RODADO|CAMIONETA|UTILITARIO)\\b").test(t.slice(Math.max(0,p-1500),p))||M.some(x=>x.medio&&x.type==="A"&&x.pos<p);
+    const lastVeh=(p)=>M.filter(x=>x.pos<p&&p-x.pos<1500&&!x.medio&&(x.kind==="word"||x.kind==="brand"||x.kind==="model")).pop();
+    const tipo=(k,pos)=>{if(!/^(?:AUTO\w*|CAMIONETA|CAMION|UTILITARIO|COCHE|FURGON)$/.test(k)&&M.some(x=>(x.type==="M"||x.type==="B")&&x.propio&&x.pos<pos&&pos-x.pos<700))return "M"; const ty=/^(?:AUTO\w*|CAMIONETA|CAMION|UTILITARIO|COCHE|FURGON)$/.test(k)?"A":typeAt(M,pos,dt); return ty==="G"?(dt==="A"?"A":"G"):ty};
+    const neg=(p)=>/\b(?:(?:NO|SIN|NI|NUNCA)(?: SE| LE| LO| LA| ME| LES| LOGR\w+| PUD\w+| LLEG\w+ A)*|INTENT\w+(?: DE)?(?: IR(?:SE)?)?(?: A LA| ALA)?|IMPID\w+ QUE|EVIT\w+ QUE|QUISIERON|QUERIAN|QUERIENDO|TRAT\w+ DE|CON (?:LA )?INTENCION(?:ES)? DE|A FIN DE|FINES DE) ?(?:LE |LES |LO |LA |HABER(?:LE)? )?$/.test(t.slice(Math.max(0,p-45),p));
+    const VG="RODADO|VEHICULO|AUTOMOVIL|AUTOMOTOR|AUTO(?![ -]?(?:STEREO|ESTEREO|RADIO|PARTES?)\\b)|CAMIONETA|UTILITARIO|UNIDAD|COCHE";
+    // "lo despojan de su rodado", "despojan al deponente de la unidad"
+    for(const m of t.matchAll(new RegExp("\\b(?:DESPOJ\\w+|DESAPODER\\w+)\\b[^.,]{0,45}?\\bDE (?:SU|MI|EL|LA|DICH[OA]) ("+VG+")\\b(?! (?:DE |DEL )?(?:"+PARTE+"))","g"))){
+      if(cerca(m.index)||neg(m.index))continue; const vp=m.index+m[0].length-m[1].length, ty=tipo(m[1],vp); if(ty!=="A")continue;
+      push({pos:m.index,opos:vp,verb:"DESPOJAN",type:"A",obj:m[1],attempt:false,asalto:true});
+    }
+    // "le habían sustraído el mismo", "sustrajeron dicho rodado", "le sustraen su vehículo"
+    for(const m of t.matchAll(new RegExp("\\b(?:SUSTRA(?:E|EN|JO|JERON|JE|ERLE|ERLES|YENDOLE|YENDO|JENDO|IDO)|ROB(?:A|AN|O|ARON|ADO|ARLE)|HURT(?:A|AN|O|ARON|ADO))\\b (?:A (?:EL |LA )?(?:DICENTE|DENUNCIANTE|DEPONENTE) )?(EL MISMO(?! (?:ME |LE |SE )?(?:REFIER|MANIF|RESPOND|DICE|DIJO|INDIC|EXPRES|ACLAR|REFIRI|CONTEST|AGREG|DECLAR))|LA MISMA(?! (?:ME |LE |SE )?(?:REFIER|MANIF|RESPOND|DICE|DIJO|INDIC|EXPRES|ACLAR|REFIRI|CONTEST|AGREG|DECLAR))|(?:DICH[OA]|EL|SU|MI|LA) (?:"+VG+"))\\b(?! (?:DE |DEL |DE LA )?(?:"+PARTE+"|"+PERT+"))","g"))){
+      if(cerca(m.index)||neg(m.index))continue;
+      if(/\b(?:LOS|LAS) CUALES\b[^.]{0,30}$/.test(t.slice(Math.max(0,m.index-40),m.index)))continue;
+      if(/^(?:SUSTRAIDO|ROBADO|HURTADO)/.test(m[0])&&!/\b(?:HA|HAN|HABIA|HABIAN|HABRIA|HABRIAN|FUE|SIDO|HAYAN?) (?:SIDO )?$/.test(t.slice(Math.max(0,m.index-12),m.index)))continue;
+      let k=m[1].split(" ").pop(), vp=m.index+m[0].length-k.length;
+      if(/MISM/.test(m[1])){const lv=lastVeh(m.index); if(!lv)continue; const b=t.slice(Math.max(0,m.index-90),m.index); if(new RegExp("\\b(?:"+PARTE+"|"+PERT+")\\b").test(b.replace(/\b(?:EN|DENTRO DEL?|DEBAJO DEL?|SOBRE)\b[^.,]{0,60}/g,"")))continue; k=lv.txt; vp=lv.pos}
+      const ty=tipo(k,vp); if(ty!=="A")continue;
+      push({pos:m.index,opos:vp,verb:"SUSTRAEN",type:"A",obj:k,attempt:false});
+    }
+    // "le sustraen la llave del rodado, abordando este y fugando"
+    for(const m of t.matchAll(new RegExp("\\bLLAVES? (?:DE|DEL|DE LA|DE SU|DE DICH[OA]) ?(?:EL |LA )?("+VG+")\\b[^.]{0,90}?\\b(?:ABORD\\w+|SUB\\w+|ASCIEND\\w+|CON (?:EL|LA) (?:CUAL|CAUL|QUE))\\b[^.]{0,70}?\\b(?:FUGA\\w*|HUYE\\w*|SE RETIRA\\w*|SE MARCHA\\w*)","g"))){
+      if(cerca(m.index)||neg(m.index))continue; const vp=m.index+m[0].indexOf(m[1]), ty=tipo(m[1],vp); if(ty!=="A")continue;
+      if(/\b(?:A PIE|CORRIENDO|EN (?:LA|UNA|SU) MOTO\w*)\b/.test(t.slice(m.index+m[0].length,m.index+m[0].length+40)))continue;
+      push({pos:m.index,opos:vp,verb:"TOMAN LAS LLAVES, ABORDAN Y HUYEN",type:"A",obj:m[1],attempt:false,asalto:true});
+    }
+    // "junto a su vehículo se llevaron la billetera"
+    for(const m of t.matchAll(new RegExp("\\bJUNTO (?:A|CON|AL) (?:SU |EL |LA |MI )?("+VG+")\\b[^.]{0,30}?\\b(?:SE LLEV\\w+|L[EO]S? SUSTRA\\w+|SUSTRA\\w+|L[EO]S? ROB\\w+)","g"))){
+      if(cerca(m.index))continue; const vp=m.index+m[0].indexOf(m[1]), ty=tipo(m[1],vp); if(ty!=="A")continue;
+      push({pos:m.index,opos:vp,verb:"SE LLEVAN EL VEHICULO Y OTRAS COSAS",type:"A",obj:m[1],attempt:false});
+    }
+    // "se dan a la fuga con el rodado", "fugaron en el automóvil"
+    for(const m of t.matchAll(new RegExp("\\b(?:FUGA\\w*|HUYE\\w*|HUYENDO|HUYERON|MARCHARSE|SE MARCHA\\w*)\\b,? (?:DEL LUGAR )?(CON|EN|A BORDO DE|A BORDO DEL) (EL |SU |MI |DICHO |DICHA |LA )?("+VG+")\\b(?: (?:DEL|DE LA) (?:DICENTE|DENUNCIANTE|VICTIMA|DEPONENTE|DAMNIFICAD[OA]))?","g"))){
+      if(cerca(m.index)||neg(m.index))continue;
+      const suyo=/SU |MI /.test(m[2]||"")||/(?:DICENTE|DENUNCIANTE|VICTIMA|DEPONENTE|DAMNIFICAD[OA])$/.test(m[0]);
+      if(!m[2])continue;
+      if(!suyo&&m[1]!=="CON"&&prevOff(m.index))continue;
+      if(!suyo&&m[1]!=="CON"&&!/\b(?:BAJ\w+|DESCEND\w+|DESCIEND\w+|LLAVES?|SUB\w+|ABORD\w+|ASCIEND\w+)\b/.test(t.slice(Math.max(0,m.index-350),m.index)))continue;
+      const vp=m.index+m[0].indexOf(m[3]), ty=tipo(m[3],vp); if(ty!=="A")continue;
+      push({pos:m.index,opos:vp,verb:"HUYEN CON EL VEHICULO",type:"A",obj:m[3],attempt:false,asalto:true});
+    }
+  }
   // --- C) ausencia: "su rodado no se encontraba", "constata que ya no estaba"
   const AUS="(?:YA )?NO SE ENCONTR(?:ABA|ARIA|IA|O)|YA NO ESTABA|NO ESTABA|NO LO ENCONTRO|NO LA ENCONTRO|NO LO ENCUENTRA|NO ENCUENTRA|NO ENCONTRO|NO SE HALLABA|HABIA DESAPARECIDO|DESAPARECIO|NO LO HALLO|NO SE ENCUENTRA(?= (?:MAS )?(?:EN EL (?:LUGAR|ESTACIONAMIENTO|GARAGE|GARAJE|FRENTE)|EN (?:LA|SU) (?:PUERTA|VEREDA|CALLE|COCHERA)|DONDE|ESTACIONAD))|NO SE ENCONTRAR(?= EN )|FALTABA";
   for(const m of t.matchAll(new RegExp("\\b(?:"+AUS+")\\b","g"))){
     const p=m.index,e=p+m[0].length, after=t.slice(e,e+90), before=t.slice(Math.max(0,p-150),p);
-    if(/^ (?:(?!DESCONOCIENDO|IGNORANDO|SIENDO|PUDIENDO|DANDO|PROCEDIENDO|DIRIGIENDO)(?:\w+ANDO|\w+IENDO)\b|ACTIVAD|COLOCAD|PUEST|CONECTAD|ENCENDID|ASEGURAD|CERRAD|EN CONDICIONES|PATENTAD|RADICAD|A SU NOMBRE|TRANSFERID|EN FUNCIONAMIENTO|FUNCIONANDO|DANAD|HABILITAD|PRESENTE|TRABAJANDO|SOL[OA]\b|BIEN\b|CON (?:LLAVE|ALARMA|SEGURO|TRABA)|EN (?:SU|EL) (?:DOMICILIO|CASA|VIVIENDA|INTERIOR)|NADIE|NINGUN|COMPRENDID|EL (?:MORADOR|PROPIETARIO|DUENO|TITULAR|CONDUCTOR)|SU (?:MARIDO|ESPOSA|PAREJA|HIJ)|LA (?:PUERTA|LLAVE|DOCUMENTACION))/.test(after))continue;
+    if(/^ (?:(?!DESCONOCIENDO|IGNORANDO|SIENDO|PUDIENDO|DANDO|PROCEDIENDO|DIRIGIENDO)(?:\w+ANDO|\w+IENDO)\b|ACTIVAD|FORZAD|VIOLENTAD|DANOS|ROT[OA]S?\b|EN SEGUIMIENTO|SIGUIENDO|COLOCAD|PUEST|CONECTAD|ENCENDID|ASEGURAD|CERRAD|EN CONDICIONES|PATENTAD|RADICAD|A SU NOMBRE|TRANSFERID|EN FUNCIONAMIENTO|FUNCIONANDO|DANAD|HABILITAD|PRESENTE|TRABAJANDO|SOL[OA]\b|BIEN\b|CON (?:LLAVE|ALARMA|SEGURO|TRABA)|EN (?:SU|EL) (?:DOMICILIO|CASA|VIVIENDA|INTERIOR)|NADIE|NINGUN|COMPRENDID|EL (?:MORADOR|PROPIETARIO|DUENO|TITULAR|CONDUCTOR)|SU (?:MARIDO|ESPOSA|PAREJA|HIJ)|LA (?:PUERTA|LLAVE|DOCUMENTACION))/.test(after))continue;
     let vpos=-1,k=null;
     const ma=after.match(new RegExp("^ (?:MAS )?(?:(?:SU|EL|LA|DICHO|DICHA|MI|UN|UNA) )?("+VEHW+")\\b"));
     if(ma){vpos=e+after.indexOf(ma[1]);k=ma[1]}
@@ -381,6 +429,7 @@ function thefts(t,M,dt){
       if(subj&&(lugar||before.length-subj.index<70)){
         const tail=before.slice(subj.index+subj[0].length);
         if(/\b(?:CONDUCTOR|CHOFER|DUENO|PROPIETARI[OA]|TITULAR|OCUPANTES?|TRIPULANTES?|ACOMPANANTE) (?:DE|DEL|DE LA|DE DICH[OA]|DE SU|DE EL)(?: \w+)? ?$/.test(before.slice(0,subj.index)))continue;   // quien no estaba es la persona
+        if(new RegExp("\\b(?:"+PARTE+") (?:DE|DEL|DE LA|DE SU|DE MI|DE DICH[OA])(?: \\w+)? ?$").test(before.slice(0,subj.index)))continue;   // "la batería del automóvil no estaba"
         if(subj[1]==="RODADO"&&/^ (?:N\w{0,5} ?)?\d/.test(tail))continue;                                   // "cubierta rodado 285": medida, no vehículo
         if(/\b(?:QUIEN|EL DENUNCIANTE|LA DENUNCIANTE|SU (?:MARIDO|ESPOSA|PAREJA|HIJ\w+|MADRE|PADRE)|EL CONDUCTOR|PERSONA|MASCULINO|FEMENINA|NADIE)\b/.test(tail)&&!lugar)continue;
         if(/MISM/.test(subj[1])){const s2=[...t.slice(Math.max(0,p-320),p).matchAll(new RegExp("\\b("+VEHW+")\\b","g"))].pop(); if(!s2)continue; vpos=Math.max(0,p-320)+s2.index;k=s2[1]}
@@ -393,10 +442,29 @@ function thefts(t,M,dt){
     const kk=/^MOTO/.test(k)?"M":/BICI/.test(k)?"B":/^(?:AUTOMOVIL|AUTO|CAMIONETA|CAMION|UTILITARIO|COCHE|FURGON)$/.test(k)?"A":"G";
     push({pos:p,opos:vpos,verb:"AUSENCIA",type:typeOf(kk,vpos),obj:"vehículo que ya no estaba donde lo dejó",attempt:false,absence:true});
   }
+  // --- C2) ausencia con el vehículo nombrado lejos: "resulta ser dueño de un Corsa... el cual dejó estacionado... al regresar constata que ya no estaba"
+  for(const m of t.matchAll(/\b(?:CONSTAT\w+|NOT[AO]\w*|OBSERV\w+|VISU?ALIZ\w+|VISIUALIZ\w+|VISUAIZ\w+|DA CUENTA|DIO CUENTA|DANDO CUENTA|SE PERCAT\w+|ADVIERTE|ADVIRTIO|ENCUENTRA|SE ENCONTRO CON|REGRES\w+|RETORN\w+|VOLV\w+|VUELVE)\b(?:(?!\b(?:CONSTAT|NOT[AO]|OBSERV|VISU|VISI|DA CUENTA|DIO CUENTA|DANDO CUENTA|SE PERCAT|ADVI))[^.]){0,90}?\b(YA NO ESTABA|NO ESTABA|(?:YA )?NO SE ENCONTRABA|NO SE ENCUENTRA|NO SE HALLABA|NO ?HALLANDO|NO L[OA] HALLO|NO L[OA] ENCONTRO|NO L[OA] ENCUENTRA|(?:EL |DEL |SU |LA |COMO )?FALTANTE|LA FALTA|LA AUSENCIA|HABIA DESAPARECIDO|SE L[OA] HABIAN (?:SUSTRAIDO|ROBADO|LLEVADO)|L[OA] HABIAN (?:SUSTRAIDO|ROBADO))\b/g)){
+    const cp=m.index+m[0].length-m[1].length, e=m.index+m[0].length, after=t.slice(e,e+60);
+    if(ev.some(x=>Math.abs(x.pos-cp)<60||Math.abs(x.pos-m.index)<60))continue;
+    const okAfter=/FALTANTE|FALTA$|AUSENCIA/.test(m[1])?(/^(?: DE(?:L)? (?:MISMO|RODADO|VEHICULO|AUTO\w*|CAMIONETA|UTILITARIO)| DE (?:SU|DICH[OA]|LA|EL) (?:MISM[OA]|RODADO|VEHICULO|AUTO\w*|CAMIONETA|UTILITARIO|UNIDAD)| DE EST[EA]\\b| ?[.;-]| ?$|, (?:ENSEGUIDA|NO |POR LO QUE|DIRIGIENDOSE|LLAM|QUE |Y |MOTIVO|RAZON|SE |INMEDIATAMENTE|LUEGO|DANDO|DESCONOC|IGNOR|VEHICULO MARCA|RODADO MARCA))/.test(after)):/^(?: MAS)?(?: EN (?:EL|DICHO|ESE) (?:LUGAR|SITIO)| DONDE| ESTACIONAD| ALLI| AHI| ?[.,;-]| ?$| EL MISMO| DICHO (?:RODADO|VEHICULO)| SU (?:RODADO|VEHICULO|AUTO\w*|CAMIONETA)| POR LO QUE| MOTIVO)/.test(after);
+    if(!okAfter)continue;
+    const mid=m[0].slice(0,m[0].length-m[1].length).replace(/^\S+(?: CUENTA| PERCAT\w+| ENCONTRO CON)?/,"");
+    if(!/^(?: (?:QUE|DE|EL|LA|LE|SU|ESTE|ESTA|YA|MISM[OA]|DICH[OA]|RODADO|VEHICULO|AUTO\w*|CAMIONETA|UTILITARIO|UNIDAD|AUTORES|IGNORADOS|SUJETOS|DESCONOCIDOS|A|AL|LAS|LOS|ALREDEDOR|APROXIMADAMENTE|HORAS?|HS|[\d:.]+(?:HS)?|SIENDO|PROMEDIANDO|LUGAR|DOMICILIO|EN|BUSCA|BUSQUEDA|DEL|MENCION|ESTA MANERA|DESPERTARSE|SALIR|REGRESAR|RETORNO|RETORNAR|VOLVER|EGRESAR|LOGRA|CONSTATAR|CONSTATA|VISUALIZA|OBSERVA|NOTA|DONDE|CUANDO|Y)|,)* ?$/.test(mid))continue;
+    const prev=t.slice(Math.max(0,cp-750),cp), est=[...prev.matchAll(/\b(?:ESTACION\w+|APARC\w+|(?:EL CUAL|LA CUAL|EL MISMO|LA MISMA|L[OA]) DEJ[OEA]\w*|DEJ\w+ (?:EL |SU |DICHO )?(?:RODADO|VEHICULO|AUTO\w*) (?:DE MENCION )?(?:SOBRE|EN|FRENTE)|GUARDARL[OA]|DEJ\w+ (?:EL |SU |DICHO |LA )?(?:RODADO|VEHICULO|AUTO\w*|CAMIONETA|UTILITARIO)|(?:RODADO|VEHICULO|AUTO\w*|CAMIONETA|UTILITARIO)[^.]{0,40}\b(?:EN LA VIA PUBLICA|EN LA VEREDA|EN LA CALLE|EN LA PUERTA|FRENTE A SU))\b/g)].pop();
+    const nombra=/^,? (?:DE |DEL )?(?:SU |EL )?(?:VEHICULO|RODADO|AUTOMOVIL|AUTO|CAMIONETA)\b/.test(after);
+    if(!est&&!nombra)continue;
+    const between=est?prev.slice(est.index):"";
+    if(new RegExp("\\b(?:"+PARTE+"|"+PERT+")\\b").test(between.replace(/\b(?:DOMICILIO|FINCA|CASA|VIVIENDA|LOCAL|COMERCIO|LLAVES?|DOCUMENTACION|PUERTAS?|ALARMA|TRABA\w*)\b/g,"")))continue;
+    if(/MISM/.test(after.slice(0,16))&&/\b(?:MOCHILA|BOLSO|CARTERA|BILLETERA|CELULAR|TELEFONO|NOTEBOOK|COMPUTADORA|HERRAMIENTAS?|DINERO|BATERIA|RUEDA|ESTEREO|STEREO|DOCUMENTACION|CAJA|VALIJA)\b/.test(between))continue;
+    const lv=M.filter(x=>x.pos<cp&&cp-x.pos<1500&&!x.medio&&(x.kind==="word"||x.kind==="brand"||x.kind==="model")).pop();
+    if(!lv)continue;
+    const ty=lv.type==="G"?typeAt(M,lv.pos,dt):lv.type; if(ty==="G"&&dt!=="A")continue;
+    push({pos:cp,opos:lv.pos,verb:"AUSENCIA",type:ty==="G"?"A":ty,obj:"vehículo que ya no estaba donde lo dejó",attempt:false,absence:true});
+  }
   // --- D) asalto: lo hacen bajar / entrega las llaves / abordan el vehículo y huyen con él
-  const FUGA="SEDAN A LA FUGA|(?:DAN(?:DOSE)?|DA|DIO|DIERON|DARSE|EMPREND\\w+|EMPRENDIENDO) (?:A )?(?:LA )?(?:FUGA|HUIDA)|SE FUGA\\w*|FUGANDO\\w*|FUGARSE|FUGARON|HUYE\\w*|HUYO|HUYERON|ESCAPA\\w*|SE RETIRA\\w*|RETIRANDOSE|SE ALEJA\\w*|ALEJANDOSE|SE VA|SE VAN|SE FUE|SE FUERON|EMPREND\\w+ (?:LA )?(?:MARCHA|RETIRADA)|INICIA\\w* (?:LA )?MARCHA|SALE\\w* MARCHA ATRAS|TOMAN POR|TOMA POR|DOBLAN?|SE MARCHA\\w*|ARRANCA\\w*|ACELERA\\w*|SALE\\w* A (?:TODA|GRAN) VELOCIDAD|PARTE\\w* (?:RAUDAMENTE|A TODA)|SE LO LLEVA\\w*|SE LA LLEVA\\w*|PIERDE\\w* DE VISTA|PERDIENDOL[OA]S? DE VISTA";
-  const SUBE="ABORD(?:A|AN|O|ARON|AR|ANDO|E|EN|ARLE|ARLO|ARLA)|SUB(?:E|EN|IO|IERON|IR|IENDO|IENDOSE|IRSE)|ASCIEND(?:E|EN|IENDO)|ASCEND(?:IO|IERON|ER)|INGRES(?:A|AN|O|ARON|AR|ANDO)|SE SUBE\\w*|SE METE\\w*|TOMA\\w* EL (?:CONTROL|VOLANTE|MANDO)|SE COLOCA\\w* AL VOLANTE|SE PONE\\w* AL VOLANTE|SE SIENTA\\w* (?:AL VOLANTE|EN EL ASIENTO DEL CONDUCTOR)";
-  const rxAbordo=new RegExp("\\b(?:"+SUBE+")\\b (?:NUEVAMENTE |TODOS |AMBOS |LOS (?:DOS|TRES|CUATRO) |RAPIDAMENTE )?(?:A |AL |EN |EN EL |DENTRO DE(?:L)? )?(?:EL |LA |SU |MI |DICHO |DICHA |INTERIOR DE(?:L)? (?:SU )?)?("+VEHA+"|"+W_MOTO+")\\b((?:[^.]|\\.(?! ?(?:QUE )?(?:PREGUNTAD|CONSULTAD|A PREGUNTAS|INTERROGAD))){0,230})","g");
+  const FUGA="SEDAN A LA FUGA|(?:DAN(?:DOSE)?|DA|DIO|DIERON|DARSE|EMPREND\\w+|EMPRENDIENDO) (?:A )?(?:LA )?(?:FUGA|HUIDA)|SE FUGA\\w*|FUGANDO\\w*|FUGARSE|FUGAR|MARCHARSE|EN FUGA|FUGARON|HUYE\\w*|HUYO|HUYERON|ESCAPA\\w*|SE RETIRA\\w*|RETIRANDOSE|SE ALEJA\\w*|ALEJANDOSE|SE VA|SE VAN|SE FUE|SE FUERON|EMPREND\\w+ (?:LA )?(?:MARCHA|RETIRADA)|INICIA\\w* (?:LA )?MARCHA|SALE\\w* MARCHA ATRAS|TOMAN POR|TOMA POR|DOBLAN?|SE MARCHA\\w*|ARRANCA\\w*|ACELERA\\w*|SALE\\w* A (?:TODA|GRAN) VELOCIDAD|PARTE\\w* (?:RAUDAMENTE|A TODA)|SE LO LLEVA\\w*|SE LA LLEVA\\w*|PIERDE\\w* DE VISTA|PERDIENDOL[OA]S? DE VISTA";
+  const SUBE="TOMA\\w* (?:EL )?CONTROL(?= DE)|APODE?RA\\w*(?= DE)|APODARSE|SUBIRSE|SUBIENDOSE|ABORD(?:A|AN|O|ARON|AR|ANDO|E|EN|ARLE|ARLO|ARLA)|SUB(?:E|EN|IO|IERON|IR|IENDO|IENDOSE|IRSE)|ASCIEND(?:E|EN|IENDO)|ASCEND(?:IO|IERON|ER)|INGRES(?:A|AN|O|ARON|AR|ANDO)|SE SUBE\\w*|SE METE\\w*|TOMA\\w* EL (?:CONTROL|VOLANTE|MANDO)|SE COLOCA\\w* AL VOLANTE|SE PONE\\w* AL VOLANTE|SE SIENTA\\w* (?:AL VOLANTE|EN EL ASIENTO DEL CONDUCTOR)";
+  const rxAbordo=new RegExp("\\b(?:"+SUBE+")\\b (?:NUEVAMENTE |TODOS |AMBOS |LOS (?:DOS|TRES|CUATRO) |RAPIDAMENTE )?(?:A |AL |EN |EN EL |DENTRO DE(?:L)? |DEL |DE )?(?:EL |LA |SU |MI |DICHO |DICHA |INTERIOR DE(?:L)? (?:SU )?)?("+VEHA+"|"+W_MOTO+")\\b((?:[^.]|\\.(?! ?(?:QUE )?(?:PREGUNTAD|CONSULTAD|A PREGUNTAS|INTERROGAD))){0,230})","g");
   for(const m of t.matchAll(rxAbordo)){
     const p=m.index, pre=t.slice(Math.max(0,p-40),p), tail=m[2];
     if(/\b(?:UN|UNA|OTRO|OTRA) ?$/.test(m[0].slice(0,m[0].length-tail.length-m[1].length)))continue;      // "abordan un vehículo gris" = el de los autores
@@ -410,8 +478,8 @@ function thefts(t,M,dt){
     if(/\bSIN PAGAR\b|\bSIN ABONAR\b/.test(tail.slice(0,fu.index+90)))continue;
     if(new RegExp("\\b(?:SUSTRA\\w+|ROB\\w+|LLEV\\w+|APODER\\w+)\\b[^.]{0,40}\\b(?:"+PERT+")\\b").test(tail.slice(0,fu.index))&&!/\b(?:SU|MI) $/.test(m[0].slice(0,m[0].length-tail.length-m[1].length)))continue;
     const ctx=t.slice(Math.max(0,p-380),p);
-    const cue=/\b(?:L[OA]S?|ME|NOS|LE) (?:HAC\w+|OBLIG\w+|BAJ\w+|SAC\w+|TIR\w+|ARROJ\w+|EXIG\w+|ORDEN\w+|REFIER\w+|DIC\w+)\b[^.]{0,50}\b(?:DESCEND\w+|BAJ\w+|DESCIEND\w+|DEL (?:AUTO|VEHICULO|RODADO)|DE LA CAMIONETA)|\bBAJATE\b|\bBAJENSE\b|\bSE BAJEN?\b|\bBAJEN? DEL\b|\bSE LO ENTREGUE\b|\bDESCIENDAN? DEL\b|\bSUSTRAYENDOLE\b|\bDAME (?:EL|LA|TU|LAS?) (?:AUTO|VEHICULO|RODADO|CAMIONETA|LLAVES?)|\bQUIERO (?:ES )?EL (?:AUTO|VEHICULO|RODADO)|\bENTREG\w+ (?:DE )?(?:LAS? )?LLAVES?|\b(?:DICENTE|DENUNCIANTE|DEPONENTE|DECLARANTE|VICTIMA|DAMNIFICAD[OA]|EL MISMO|LA MISMA)\b[^.]{0,60}\b(?:DESCIENDE|DESCENDIO|DESCENDER|SE BAJA|SE BAJO|BAJA DEL|BAJO DEL|BAJAR|SALE CORRIENDO|INGRESA CORRIENDO|ACCEDE)\b|\bHACIENDOL[OA]S? (?:DESCENDER|BAJAR)|\bHACE(?:N)? (?:DESCENDER|BAJAR)\b|\bOBLIGA(?:N|NDOL[OA])? A (?:DESCENDER|BAJAR)|\bDESCEND(?:ER|ES|E) DEL\b|\bBAJAR(?:SE)? DEL\b|\bLO HACE BAJAR\b|\bSIN OPONER RESISTENCIA\b/.test(ctx+" "+m[0].slice(0,30));
-    const suyo=/\b(?:SU|MI) $/.test(m[0].slice(0,m[0].length-tail.length-m[1].length));
+    const cue=/\b(?:L[OA]S?|ME|NOS|LE) (?:HAC\w+|OBLIG\w+|BAJ\w+|SAC\w+|TIR\w+|ARROJ\w+|EXIG\w+|ORDEN\w+|REFIER\w+|DIC\w+)\b[^.]{0,50}\b(?:DESCEND\w+|BAJ\w+|DESCIEND\w+|DEL (?:AUTO|VEHICULO|RODADO)|DE LA CAMIONETA)|\bBAJATE\b|\bBAJENSE\b|\bSE BAJEN?\b|\bBAJEN? DEL\b|\bSE LO ENTREGUE\b|\bDESCIENDAN? DEL\b|\bSUSTRAYENDOLE\b|\bDAME (?:EL|LA|TU|LAS?) (?:AUTO|VEHICULO|RODADO|CAMIONETA|LLAVES?)|\bQUIERO (?:ES )?EL (?:AUTO|VEHICULO|RODADO)|\bENTREG\w+ (?:DE )?(?:LAS? )?LLAVES?|\b(?:DICENTE|DENUNCIANTE|DEPONENTE|DECLARANTE|VICTIMA|DAMNIFICAD[OA]|EL MISMO|LA MISMA)\b[^.]{0,60}\b(?:DESCIENDE|DESCENDIO|DESCENDER|SE BAJA|SE BAJO|BAJA DEL|BAJO DEL|BAJAR|SALE CORRIENDO|INGRESA CORRIENDO|ACCEDE)\b|\bHACIENDOL[OA]S? (?:DESCENDER|BAJAR)|\bHACE(?:N)? (?:DESCENDER|BAJAR)\b|\bOBLIGA(?:N|NDOL[OA])? A (?:DESCENDER|BAJAR)|\bDESCEND(?:ER|ES|E) DEL\b|\bBAJAR(?:SE)? DEL\b|\bLO HACE BAJAR\b|\bSIN OPONER RESISTENCIA\b|\bSE L[OA] SACARON\b|\bSACAR A (?:LA|EL|L[OA]S) (?:DENUNCIANTE|DICENTE|VICTIMA|DEPONENTE)|\bPROCEDE A DESCENDER\b|\bBAJA O TE\b|\bDALE BAJA\b|\bBAJO AMENAZA\b/.test(ctx+" "+m[0].slice(0,30));
+    const suyo=/\b(?:SU|MI) $/.test(m[0].slice(0,m[0].length-tail.length-m[1].length))||/^ (?:DEL?|DE LA) (?:DENUNCIANTE|DICENTE|DICIENTE|VICTIMA|DEPONENTE|DAMNIFICAD[OA]|EST[AE])\b/.test(tail);
     const autorSuj=/\b(?:SUJETOS?|MASCULINOS?|MALVIVIENTES?|DELINCUENTES?|AUTOR(?:ES)?|NN|INDIVIDUOS?|ESTOS|LOS MISMOS|UNO DE (?:ELLOS|LOS)|AGRESOR(?:ES)?|LADRON(?:ES)?|CACOS?|MALHECHOR(?:ES)?|ACOMPANANTE|ARMADOS?|EL OTRO|EL RESTO|AMBOS)\b[^.]{0,80}$/.test(t.slice(Math.max(0,p-95),p))||/^(?:ABORDAN|SUBEN|INGRESAN|ASCIENDEN|ABORDARON|SUBIERON)\b/.test(m[0]);
     const dentroV=new RegExp("\\b(?:DENTRO|EN EL INTERIOR|AL INTERIOR) (?:DE|DEL) (?:EL |LA |SU |MI |DICHO |DICHA )?(?:"+VEHA+")\\b[^.]{0,25}\\b(?:QUEDO|QUEDARON|TENIA|SE ENCONTRABAN?|SE HALLABAN?|HABIA|POSEIA|ESTABAN?)\\b").test(t.slice(p,p+m[0].length+260));
     if(!cue&&!(suyo&&autorSuj)&&!dentroV)continue;
@@ -421,6 +489,7 @@ function thefts(t,M,dt){
       const hayRobo=hayRobo0||(!llego&&/\b(?:ARMA DE FUEGO|ARMA BLANCA|APUNT\w+|EFECTOS PERSONALES|PERTENENCIAS|LAS? LLAVES?)\b/.test(prev.slice(-700)));
       const su3=/\bSU $/.test(m[0].slice(0,m[0].length-tail.length-m[1].length));
       if(!hayRobo&&((!cue&&!dentroV)||(su3&&llego)))continue;
+      if(llego&&!suyo&&new RegExp("^ (?:MARCA )?(?:"+BR_AUTO+")\\b").test(tail)&&new RegExp("\\bUNA? (?:"+VEHA+")\\b[^.]{0,60}"+(tail.match(/^ (?:MARCA )?(\w+)/)||[])[1]).test(prev))continue;   // "sube al vehículo Chevrolet Corsa" en el que llegaron
       if(!cue&&!dentroV&&llego&&!/\b(?:SU|MI) (?:AUTO\w*|VEHICULO|RODADO|CAMIONETA|UTILITARIO|COCHE)\b/.test(prev))continue;
     }
     if(!cue&&/^[^.]{0,80}\b(?:HACIA|A|PARA) SU (?:DOMICILIO|CASA|VIVIENDA|TRABAJO)\b/.test(tail))continue;
@@ -430,7 +499,7 @@ function thefts(t,M,dt){
     push({pos:p,opos:vpos,verb:"ABORDAN EL VEHICULO Y HUYEN",type:typeOf(k,vpos),obj:m[1],attempt,asalto:true});
   }
   // lo hacen descender + huyen con el vehículo / "dame el auto" / entrega de llaves
-  const rxBaja=new RegExp("\\b(?:(?:HAC\\w+|OBLIG\\w+|EXIG\\w+|ORDEN\\w+|INTIM\\w+|FORZ\\w+|REFIER\\w+|DICI?E\\w*|MANIFEST\\w+|GRIT\\w+|SOLICIT\\w+|PID\\w+|INDIC\\w+) [^.]{0,60}?(?:DESCEND\\w+|BAJ(?:AR|ARSE|E|EN|ATE|ESE|ARA|ARAN|ARME|ARNOS)|DESCIEND\\w+)|(?:(?:EL|LA) (?:DICENTE|DENUNCIANTE|DEPONENTE|DECLARANTE|VICTIMA|MISM[OA])|LO SOLICITADO|POR TEMOR|ACCEDE|OBEDECE|SIN OPONER RESISTENCIA)[^.]{0,40}?(?:DESCIENDE|DESCENDIO|SE BAJA|SE BAJO|BAJA|BAJO) (?:DE|DEL)|BAJATE|BAJA(?:TE)? YA|BAJENSE|DAME (?:EL|LA|TU|LAS LLAVES DE(?:L)?) (?:"+VEHA+")|DAME LAS? LLAVES?|QUIERO (?:ES )?EL (?:AUTO|VEHICULO|RODADO)|DEJA EL (?:AUTO|VEHICULO|RODADO)|ENTREGA\\w* (?:DE )?(?:LAS? )?LLAVES?|ENTREG\\w+ (?:EL|SU|LA) (?:"+VEHA+")|ENTREGA (?:DEL|DE SU|DE LA|DE MI) (?:VEHICULO|RODADO|AUTOMOVIL|AUTO|CAMIONETA|CAMION|UTILITARIO|UNIDAD)|(?:L[OA]S?|ME|NOS) (?:SACA\\w*|BAJA\\w*|TIRA\\w*|ARROJA\\w*|EMPUJA\\w*)(?: A LA FUERZA| POR LA FUERZA| VIOLENTAMENTE)? (?:DE|DEL|DE SU|DE MI|DE LA) (?:"+VEHA+")|LE SACA\\w* LAS? LLAVES?|TOMA\\w* LAS? LLAVES?)\\b((?:[^.]|\\.(?! ?(?:QUE )?(?:PREGUNTAD|CONSULTAD|A PREGUNTAS|INTERROGAD))){0,330})","g");
+  const rxBaja=new RegExp("\\b(?:(?:HAC\\w+|OBLIG\\w+|EXIG\\w+|ORDEN\\w+|INTIM\\w+|FORZ\\w+|REFIER\\w+|DICI?E\\w*|MANIFEST\\w+|GRIT\\w+|VOCIFER\\w+|SOLICIT\\w+|PID\\w+|INDIC\\w+) [^.]{0,60}?(?:DESCEND\\w+|BAJ(?:AR|ARSE|E|EN|ATE|ESE|ARA|ARAN|ARME|ARNOS)|DESCIEND\\w+)|(?:(?:EL|LA) (?:DICENTE|DENUNCIANTE|DEPONENTE|DECLARANTE|VICTIMA|MISM[OA])|LO SOLICITADO|POR TEMOR|ACCEDE|OBEDECE|SIN OPONER RESISTENCIA)[^.]{0,40}?(?:DESCIENDE|DESCENDIO|SE BAJA|SE BAJO|BAJA|BAJO) (?:DE|DEL)|BAJATE|BAJA(?:TE)? YA|BAJENSE|DAME (?:EL|LA|TU|LAS LLAVES DE(?:L)?) (?:"+VEHA+")|DAME LAS? LLAVES?|QUIERO (?:ES )?EL (?:AUTO|VEHICULO|RODADO)|DEJA EL (?:AUTO|VEHICULO|RODADO)|ENTREGA\\w* (?:DE )?(?:LAS? )?LLAVES?|ENTREG\\w+ (?:EL|SU|LA) (?:"+VEHA+")|ENTREGA (?:DEL|DE SU|DE LA|DE MI) (?:VEHICULO|RODADO|AUTOMOVIL|AUTO|CAMIONETA|CAMION|UTILITARIO|UNIDAD)|(?:L[OA]S?|ME|NOS) (?:SACA\\w*|BAJA\\w*|TIRA\\w*|ARROJA\\w*|EMPUJA\\w*)(?: A LA FUERZA| POR LA FUERZA| VIOLENTAMENTE)? (?:DE|DEL|DE SU|DE MI|DE LA) (?:"+VEHA+")|LE SACA\\w* LAS? LLAVES?|TOMA\\w* LAS? LLAVES?)\\b((?:[^.]|\\.(?! ?(?:QUE )?(?:PREGUNTAD|CONSULTAD|A PREGUNTAS|INTERROGAD))){0,330})","g");
   for(const m of t.matchAll(rxBaja)){
     const p=m.index, tail=m[1], head=m[0].slice(0,m[0].length-tail.length);
     const fu=tail.match(new RegExp("\\b(?:"+FUGA+")\\b")); if(!fu)continue;
@@ -491,7 +560,7 @@ function findDate(seg){
 }
 function pedidos(t,M,dt){
   const out=[];
-  const rx=/\b(?:PEDIDO|ADELANTO|SOLICITUD)(?: DE)?(?: ADELANTO(?: DE)?)? SECUESTRO\b|\bSECUESTRO ACTIVO\b|\bPEDIDO ACTIVO\b|\bADELANTO ACTIVO\b|\bPEDIDO (?:VIGENTE )?POR (?:ROBO|HURTO|SUSTRACCION)\b|\bPARTE DE ALERTA\b|\bADELANTO DE ALERTA\b|\bALERTA (?:ACTIVA|DE ROBO|DE SECUESTRO|DE SUSTRACCION|POR SUSTRACCION)\b|\bALERTA POR (?:ROBO|HURTO)\b|\bSOLICITUD (?:DE )?IDENTIFICACION\b|\bADELANTO(?= (?:A SOLICITUD|DE LA COMISARIA|POR ROBO|POR HURTO|DE FECHA|CON FECHA))|\bIMPEDIMENTO(?: LEGAL)?\b|\bCAPTURA ACTIVA\b/g;
+  const rx=/\b(?:PEDIDO|ADELANTO|SOLICITUD)(?: DE)?(?: ADELANTO(?: DE)?)? SECUESTRO\b|\bSECUESTRO ACTIVO\b|\bCARGA PREVENTIVA\b|\bCARGA ACTIVA\b|\bPEDIDO ACTIVO\b|\bADELANTO ACTIVO\b|\bPEDIDO (?:VIGENTE )?POR (?:ROBO|HURTO|SUSTRACCION)\b|\bPARTE DE ALERTA\b|\bADELANTO DE ALERTA\b|\bALERTA (?:ACTIVA|DE ROBO|DE SECUESTRO|DE SUSTRACCION|POR SUSTRACCION)\b|\bALERTA POR (?:ROBO|HURTO)\b|\bSOLICITUD (?:DE )?IDENTIFICACION\b|\bADELANTO(?= (?:A SOLICITUD|DE LA COMISARIA|POR ROBO|POR HURTO|DE FECHA|CON FECHA))|\bIMPEDIMENTO(?: LEGAL)?\b|\bCAPTURA ACTIVA\b/g;
   for(const m of t.matchAll(rx)){
     const p=m.index,e=p+m[0].length,before=t.slice(Math.max(0,p-75),p),after=t.slice(e,e+330);
     const isImp=/^IMPEDIMENTO/.test(m[0]);
@@ -569,7 +638,7 @@ function controlCarga(calif,res){
 // ---------------------------------------------------------------- 9) FICHA DE VEHICULOS AL PIE DEL RELATO
 // Muchas denuncias terminan con "AUTOMOTORES Marca X Dominio Y Modelo Z Nro. Motor .. Color .. Nro. Chasis .. Vínculo Sustraído".
 const RX_PIE=/Marca\s+(.{0,40}?)\s+Dominio\s+(.{0,40}?)\s+Modelo\s+(.{0,60}?)\s+Nro\. ?Motor\s+(.{0,40}?)\s+Color\s+(.{0,30}?)\s+Nro\. ?Chasis\s+(.{0,40}?)\s+V[ií]nculo\s+(Sustra[ií]do|Secuestrado|Utilizado durante el hecho|Abandonado|Hallado|Recuperado)/g;
-const MOTO_MODEL_RX=new RegExp("\\b(?:"+MD_MOTO+"|CB ?\\d+\\w*|CBR|XRE|NXR|BROS|ELITE|POP ?\\d*|NAVI|GLH|FUN|AX ?\\d+|GN ?\\d+|EN ?\\d+|GSX\\w*|BURGMAN|MAX ?\\d*|SMASH|\\d{2,3} ?CC|C ?110|LD ?110|DUE|ZB|RX ?\\d+|BOXER|FZ\\w*|MT ?\\d+|CRYPTON|SZ|XTZ\\w*|NEW ?\\w*|DAX|MIRAGE|HUNTER|KELLER|S2|BLITZ|TRIP|SIRIUS|STYLER|CUSTOM)\\b");
+const MOTO_MODEL_RX=new RegExp("\\b(?:"+MD_MOTO+"|CBX ?\\d*|CB ?\\d+\\w*|CBR|XRE|NXR|BROS|ELITE|POP ?\\d*|NAVI|GLH|FUN|AX ?\\d+|GN ?\\d+|EN ?\\d+|GSX\\w*|BURGMAN|MAX ?\\d*|SMASH|\\d{2,3} ?CC|C ?110|LD ?110|DUE|ZB|RX ?\\d+|BOXER|FZ\\w*|MT ?\\d+|CRYPTON|SZ|XTZ\\w*|NEW ?\\w*|DAX|MIRAGE|HUNTER|KELLER|S2|BLITZ|TRIP|SIRIUS|STYLER|CUSTOM)\\b");
 const limpio=v=>{v=(v||"").toString().trim();return /^(?:SIN ESPECIFICAR|S\/D|NO POSEE|NO APORTA|NO RECUERDA.*|SIN DATOS?|DESCONOCE|-+|X+|0+|A+|1+)$/i.test(v)?"":v};
 function pie(raw){
   const z=(raw??"").toString().replace(/\s+/g," "), out=[];
@@ -654,6 +723,20 @@ function estiloDe(t){
   return acta&&!/\bCOMPARECE\b|\bRADICAR (?:UNA )?DENUNCIA\b/.test(h)?"ACTA":den?"DENUNCIA":acta?"ACTA":"OTRO";
 }
 function auditar(row,opts){
+  const r=auditar0(row,opts);
+  if(r.CONDICION!=="DESCARTADO"||!r.MOTIVO||/^Sin relato|no menciona veh/.test(r.MOTIVO))return r;
+  // Red de seguridad: lo cargado como sustracción/hallazgo de automotor nunca se descarta en silencio si el relato nombra un automotor
+  const cg=norm((row.caratula||"")+" ; "+(row.calificaciones||""));
+  const cargaAuto=/HALLAZGO (?:DE )?AUTOMOTOR|(?:ROBO|HURTO|SUSTRACCION)[^;]{0,25}AUTOMOTOR|VEHICULO DEJADO EN LA VIA PUBLICA/.test(cg)&&!/MOTO ?VEHICULO|MOTOCICLETA/.test(cg);
+  if(!cargaAuto)return r;
+  const t=norm(pie(row.relato).texto), hayAuto=mentions(t).some(m=>m.type==="A"&&!m.medio);
+  if(!hayAuto)return r;
+  const q=Object.assign({},r,{CONDICION:"REVISION HUMANA",CONFIANZA:"BAJA",MOTIVO:"Está cargado como sustracción o hallazgo de automotor y el relato nombra un automotor. El auditor lo habría descartado: "+r.MOTIVO});
+  if(!q.TIPO_VEHICULO)q.TIPO_VEHICULO="AUTOMOTOR";
+  q.CONTROL_CARGA=controlCarga(row.caratula||row.calificaciones,q);
+  return q;
+}
+function auditar0(row,opts){
   opts=opts||{};
   const P=pie(row.relato), t=norm(P.texto);
   const base={CONDICION:"DESCARTADO",CONFIANZA:"ALTA",MOTIVO:"",EVIDENCIA:"",TIPO_VEHICULO:"",MARCA:"",MODELO:"",PATENTE:"",MOTOR:"",CHASIS:"",FECHA_ANTECEDENTE:"",PIE:P.veh.map(v=>v.tipo+":"+v.vinculo).join(",")};
@@ -718,6 +801,7 @@ function auditar(row,opts){
 
   // ---- C) Sólo sustracción del automotor
   if(aS.length&&!th&&/\bESTAFA\w*|\bENGAN\w+|\bCOMPRA ?VENTA\b|\bMERCADO ?LIBRE\b|\bMARKETPLACE\b|\bPERMUTA\b|\bALQUIL\w+|\bRETENCION INDEBIDA\b|\bDEFRAUDACION\b|\bSENA\b|\bTRANSFERENCIA BANCARIA\b/.test(t))return R("REVISION HUMANA","BAJA","La ficha registra un automotor como sustraído, pero el relato describe una estafa o entrega voluntaria y no una sustracción.",-1);
+  if(aS.length&&thOtro.length&&dt==="M")return R("REVISION HUMANA","BAJA","La ficha registra un automotor como sustraído, pero el relato cuenta la sustracción de una moto o bicicleta.",thOtro[0].pos);
   if(aS.length)return R("SUSTRAIDO","ALTA","La ficha del hecho registra un automotor con vínculo «Sustraído» ("+[aS[0].MARCA,aS[0].MODELO,aS[0].PATENTE].filter(Boolean).join(" ")+") y el relato no muestra que haya sido recuperado.",th?th.pos:-1);
   if(th){
     if(mS.length&&!qS.length)return R("DESCARTADO","ALTA","La ficha del hecho registra como sustraído un motovehículo ("+[mS[0].MARCA,mS[0].MODELO].filter(Boolean).join(" ")+"), no un automotor.",null,{TIPO_VEHICULO:"MOTOVEHICULO"});
@@ -745,6 +829,11 @@ function auditar(row,opts){
   const otros=TH.filter(x=>x.type==="P"||x.type==="X");
   if(otros.length)return R("DESCARTADO","ALTA","Lo sustraído no es el vehículo ("+otros[0].obj.toLowerCase()+").");
   if(!M.length)return R("DESCARTADO","ALTA","El relato no menciona vehículos.");
+  {
+    const cg=norm((row.caratula||"")+" ; "+(row.calificaciones||""));
+    const cargaAuto=/HALLAZGO (?:DE )?AUTOMOTOR|(?:ROBO|HURTO|SUSTRACCION)[^;]{0,25}AUTOMOTOR|VEHICULO DEJADO EN LA VIA PUBLICA/.test(cg)&&!/MOTO ?VEHICULO|MOTOCICLETA/.test(cg);
+    if(cargaAuto&&(dt==="A"||victimType(M)==="A")&&!thOtro.length&&!TH.some(x=>x.type==="X"))return R("REVISION HUMANA","BAJA","Está cargado como sustracción o hallazgo de automotor y el relato nombra un automotor, pero el auditor no pudo confirmar el hecho en el texto.",-1);
+  }
   return R("DESCARTADO","ALTA","Aparece un vehículo en el relato pero sin sustracción ni hallazgo del automotor.");
 }
 const API={norm,auditar,pie,controlCarga,mentions,docType,thefts,pedidos,founds,parseAny,datosVehiculo,version:"V13"};
