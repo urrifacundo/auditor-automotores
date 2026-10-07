@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Auditor de Automotores - SUPERINTENDENCIA INTELIGENCIA CRIMINAL</title>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js" onerror="document.write('<scr'+'ipt src=&quot;https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js&quot;></scr'+'ipt>')"></script>
 <style>
 :root{--bg:#f3f6fb;--panel2:#f8fafc;--text:#142033;--muted:#66758c;--line:#dce4ef;--primary:#234a7d;--soft:#eaf1f9;--shadow:0 12px 34px rgba(25,45,75,.08)}
 *{box-sizing:border-box}
@@ -78,7 +78,7 @@ details p{line-height:1.55;color:#30445e}
         <p class="lead">Clasificación de robos y hallazgos de automotores · Cassandra → Quirón</p>
       </div>
     </div>
-    <div class="version">V13</div>
+    <div class="version">V13.2</div>
   </div>
 </header>
 
@@ -91,7 +91,7 @@ details p{line-height:1.55;color:#30445e}
       <div class="file-hint">Seleccioná el Excel crudo. Se procesa en esta computadora; no se envía a ningún lado.</div>
     </div>
     <div class="opts">
-      <label class="chk"><input type="checkbox" id="optDesc" checked>Omitir los hechos que el analista marcó como descartados</label>
+      <label class="chk"><input type="checkbox" id="optDesc" checked>Omitir los hechos descartados en Cassandra (si el relato muestra un automotor, van a revisión humana)</label>
       <label class="chk"><input type="checkbox" id="optAband">Contar como Hallazgo los autos abandonados sin pedido de secuestro</label>
       <div><button id="run" class="pri" disabled>▶ Auditar automotores</button></div>
     </div>
@@ -283,6 +283,8 @@ function thefts(t,M,dt){
   // --- A) verbo + objeto
   for(const m of t.matchAll(new RegExp("\\b(?:(?:SE |ME |LE |LES |NOS )?(?:LO |LA |LOS |LAS )?)?(?:HA(?:N|BIAN?|BRIAN?|YAN?)? |FUE |FUERA |FUERE |FUERON |SIDO |SIENDO )?(?:RECIENTEMENTE |ANTERIORMENTE |PREVIAMENTE |YA |TAMBIEN |LUEGO )?("+VERBF+")\\b","g"))){
     const v=m[1], p=m.index, e=p+m[0].length, pre=m[0].slice(0,m[0].length-v.length);
+    if(/\b(?:LO QUE|COSAS QUE|TODO LO QUE) (?:LE |LES |ME |NOS |SE )?$/.test(t.slice(Math.max(0,p-22),p))||/\bHAC\w+ $/.test(t.slice(Math.max(0,p-9),p))&&/AR$/.test(v))continue;      // "vende lo que roban", "hace robar a menores"
+    if(/^LLEV/.test(v)&&/\bLE $/.test(pre+"")&&/\b(?:TALLER|MECANICO|GOMERIA|CHAPISTA|LAVADERO|CONCESIONARI[AO]|SERVICE)\b/.test(t.slice(Math.max(0,p-260),p+60)))continue;   // "le llevó su auto al mecánico": lo llevó el dueño
     if(/^LLEV/.test(v)){ if(!/\bSE (?:LO |LA |LOS |LAS |ME |LE )?(?:HA(?:N|BIAN?|BRIAN?)? )?$/.test(t.slice(Math.max(0,p-4),e-v.length)+"")&&!/SE$|SELO$|SELA$/.test(v)&&!/\b(?:SE|ME|LE|LES)\b/.test(pre)&&!/\b(?:SE|ME|LE|LES|NOS) (?:LO |LA |LOS |LAS )?(?:HAN |HABIAN? |HABRIAN? )?$/.test(t.slice(Math.max(0,p-22),p)))continue; if(/^ A CABO| ADELANTE| PUEST| CONSIGO UN ARMA/.test(t.slice(e,e+12)))continue; }
     if(/^LLEV/.test(v)&&!/^ (?:SU|MI|NUESTR[OA]) (?:VEHICULO|RODADO|AUTOMOVIL|AUTO|CAMIONETA|CAMION|UTILITARIO|UNIDAD|MOTO\w*)\b/.test(t.slice(e,e+26))&&!/\b(?:AUTOR(?:ES)?|SUJETOS?|MASCULINOS?|MALVIVIENTES?|DELINCUENTES?|NN|IGNORAD[OA]S?|DESCONOCID[OA]S?|ESTOS|LOS MISMOS|LADRON(?:ES)?|MALHECHOR(?:ES)?|INDIVIDUOS?|CACOS?|PERSONAS?|ARMA|ARMAD[OA]S?|GOLPE\w*|APUNT\w+|AMENAZ\w+|INTIMID\w+|CULATAZO|ENGANCH\w+|FORZ\w+|VIOLENT\w+)\b/.test(t.slice(Math.max(0,p-180),p))&&!/^[^.]{0,70}\b(?:AUTOR(?:ES)?|SUJETOS?|MASCULINOS?|MALVIVIENTES?|DELINCUENTES?|IGNORAD[OA]S?|DESCONOCID[OA]S?)\b/.test(t.slice(e,e+90)))continue;
     if(/\bLO $/.test(pre)&&/^(?:SUSTRAIDO|ROBADO|HURTADO)$/.test(v)&&!/\b(?:SE|ME|LE|NOS) LO (?:HA\w* )?$/.test(t.slice(Math.max(0,p-2),e-v.length))&&/\b(?:VALUA|VALOR|TODO|RESPECTO|SOBRE|DE|RECUPER\w+) LO $/.test(t.slice(Math.max(0,p-12),p)+pre))continue;
@@ -324,7 +326,7 @@ function thefts(t,M,dt){
       const refV=ref||(pron&&!plural?bo.filter(x=>"MBAG".includes(x.k)&&(!gen||(gen==="F")===FEM.test(x.txt)||true)).pop():null)||null;
       const lejos=refV&&!"MBAG".includes(refV.k)&&back.length-(refV.idx+refV.txt.length)>80&&(pasiva||rel||pron||anaf);
       if(refV&&!lejos){o=refV;opos=b0+refV.idx}
-      if(lejos){const lv=M.filter(x=>x.pos<p&&p-x.pos<1300&&x.kind==="word"&&!x.medio).pop(); if(lv&&(lv.propio||lv.type!=="G")){o={k:lv.type,idx:0,txt:lv.txt};opos=lv.pos}else{o=refV;opos=b0+refV.idx}}
+      if(lejos){const lv=M.filter(x=>x.pos<p&&p-x.pos<1300&&x.kind==="word"&&!x.medio&&(plural||!/[^U]S$/.test(x.txt))).pop(); if(lv&&(lv.propio||lv.type!=="G")){o={k:lv.type,idx:0,txt:lv.txt};opos=lv.pos}else{o=refV;opos=b0+refV.idx}}
       if(!o&&(pasiva||anaf||rel)&&!plural&&!bo.length){const lv=M.filter(x=>x.pos<p&&p-x.pos<1300&&(x.kind==="word")&&!x.medio).pop(); if(lv){o={k:lv.type,idx:0,txt:lv.txt};opos=lv.pos}
         else{const ty=typeAt(M,p,dt); if(ty!=="G"&&M.some(x=>x.pos<p&&!x.medio&&x.type===ty)){o={k:ty,idx:0,txt:"VEHICULO"};opos=p}}}
     }
@@ -378,6 +380,8 @@ function thefts(t,M,dt){
       const subj=[...before.matchAll(new RegExp("\\b("+VEHW+"|EL MISMO|LA MISMA)\\b","g"))].filter(x=>!/\b(?:EN|DENTRO DE|DENTRO DEL|INTERIOR DE|INTERIOR DEL|SOBRE|BAJO)(?: EL| LA| SU| MI)? ?$/.test(before.slice(Math.max(0,x.index-22),x.index))).pop();
       if(subj&&(lugar||before.length-subj.index<70)){
         const tail=before.slice(subj.index+subj[0].length);
+        if(/\b(?:CONDUCTOR|CHOFER|DUENO|PROPIETARI[OA]|TITULAR|OCUPANTES?|TRIPULANTES?|ACOMPANANTE) (?:DE|DEL|DE LA|DE DICH[OA]|DE SU|DE EL)(?: \w+)? ?$/.test(before.slice(0,subj.index)))continue;   // quien no estaba es la persona
+        if(subj[1]==="RODADO"&&/^ (?:N\w{0,5} ?)?\d/.test(tail))continue;                                   // "cubierta rodado 285": medida, no vehículo
         if(/\b(?:QUIEN|EL DENUNCIANTE|LA DENUNCIANTE|SU (?:MARIDO|ESPOSA|PAREJA|HIJ\w+|MADRE|PADRE)|EL CONDUCTOR|PERSONA|MASCULINO|FEMENINA|NADIE)\b/.test(tail)&&!lugar)continue;
         if(/MISM/.test(subj[1])){const s2=[...t.slice(Math.max(0,p-320),p).matchAll(new RegExp("\\b("+VEHW+")\\b","g"))].pop(); if(!s2)continue; vpos=Math.max(0,p-320)+s2.index;k=s2[1]}
         else{vpos=Math.max(0,p-150)+subj.index;k=subj[1]}
@@ -411,6 +415,14 @@ function thefts(t,M,dt){
     const autorSuj=/\b(?:SUJETOS?|MASCULINOS?|MALVIVIENTES?|DELINCUENTES?|AUTOR(?:ES)?|NN|INDIVIDUOS?|ESTOS|LOS MISMOS|UNO DE (?:ELLOS|LOS)|AGRESOR(?:ES)?|LADRON(?:ES)?|CACOS?|MALHECHOR(?:ES)?|ACOMPANANTE|ARMADOS?|EL OTRO|EL RESTO|AMBOS)\b[^.]{0,80}$/.test(t.slice(Math.max(0,p-95),p))||/^(?:ABORDAN|SUBEN|INGRESAN|ASCIENDEN|ABORDARON|SUBIERON)\b/.test(m[0]);
     const dentroV=new RegExp("\\b(?:DENTRO|EN EL INTERIOR|AL INTERIOR) (?:DE|DEL) (?:EL |LA |SU |MI |DICHO |DICHA )?(?:"+VEHA+")\\b[^.]{0,25}\\b(?:QUEDO|QUEDARON|TENIA|SE ENCONTRABAN?|SE HALLABAN?|HABIA|POSEIA|ESTABAN?)\\b").test(t.slice(p,p+m[0].length+260));
     if(!cue&&!(suyo&&autorSuj)&&!dentroV)continue;
+    {   // "sube a su auto y se retira": puede ser el vehículo del propio autor (amenazas, discusiones de tránsito)
+      const hayRobo0=/\b(?:ROB(?!UST|ERT|OT|LE)\w+|SUSTRA\w+|DESAPODER\w+|HURT\w+|APODER\w+|ASALT\w+|DESPOJ\w+)\b/.test(t), prev=t.slice(Math.max(0,p-1500),p);
+      const llego=new RegExp("\\b(?:A BORDO DE|ABORDO DE|CONDUCIENDO|CONDUCIA|CIRCULABA EN|ESTACIONAD[OA](?: EN LA CALLE)?|DESCIENDEN? DE|BAJAN? DE|EN) UNA? (?:"+VEHA+")\\b|\\bDE(?:L| LA) (?:CUAL|MISM[OA]) (?:SE )?(?:BAJ|DESC)").test(prev);
+      const hayRobo=hayRobo0||(!llego&&/\b(?:ARMA DE FUEGO|ARMA BLANCA|APUNT\w+|EFECTOS PERSONALES|PERTENENCIAS|LAS? LLAVES?)\b/.test(prev.slice(-700)));
+      const su3=/\bSU $/.test(m[0].slice(0,m[0].length-tail.length-m[1].length));
+      if(!hayRobo&&((!cue&&!dentroV)||(su3&&llego)))continue;
+      if(!cue&&!dentroV&&llego&&!/\b(?:SU|MI) (?:AUTO\w*|VEHICULO|RODADO|CAMIONETA|UTILITARIO|COCHE)\b/.test(prev))continue;
+    }
     if(!cue&&/^[^.]{0,80}\b(?:HACIA|A|PARA) SU (?:DOMICILIO|CASA|VIVIENDA|TRABAJO)\b/.test(tail))continue;
     const k=new RegExp("^(?:"+W_MOTO+")$").test(m[1])?"M":/^(?:AUTOMOVIL|AUTO|CAMIONETA|CAMION|UTILITARIO|COCHE|FURGON)$/.test(m[1])?"A":"G";
     const vpos=p+m[0].length-tail.length-m[1].length;
@@ -472,7 +484,7 @@ function mkDate(y,mo,d){y=+String(y).replace(".","");if(y<100)y+=2000;mo=+mo;d=+
 function findDate(seg){
   const c=[];
   for(const m of seg.matchAll(/\b([0-3]?\d)[\/.\-]([01]?\d)[\/.\-]((?:20)?\d{2})\b/g))c.push({i:m.index,d:mkDate(m[3],m[2],m[1])});
-  for(const m of seg.matchAll(/\b([0-3]?\d) (?:DIAS? )?DE(?:L MES DE)? (ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|SETIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE) (?:DE |DEL )?(?:ANO )?(\d\.?\d{3})\b/g))c.push({i:m.index,d:mkDate(m[3],MESES[m[2]],m[1])});
+  for(const m of seg.matchAll(/\b([0-3]?\d) (?:DIAS? )?DE(?:L MES DE)? (ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|SETIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE) (?:DE |DEL )?(?:ANO )?(\d\.?\d{3})\b/g))c.push({i:m.index,d:mkDate(m[3],(MESES[m[2]]||MESES[m[2].slice(0,3)]),m[1])});
   const ok=c.filter(x=>x.d&&!/\b(?:NACID[OA]|NACIMIENTO|NAC)\b[^,;]{0,28}$/.test(seg.slice(Math.max(0,x.i-40),x.i))).sort((a,b)=>a.i-b.i);
   const pref=ok.find(x=>/\b(?:FECHA|ALTA|DIA)\b[^,;]{0,22}$/.test(seg.slice(Math.max(0,x.i-30),x.i)));
   return (pref||ok[0]||{}).d||null;
@@ -626,6 +638,15 @@ function datosVehiculo(t,pos){
 // ---------------------------------------------------------------- 8) DECISION
 const RX_INM=/\bMOMENTOS (?:ANTES|PREVIOS)\b|\bMINUTOS (?:ANTES|DESPUES)\b|\bINSTANTES (?:ANTES|PREVIOS|DESPUES)\b|\b(?:POCAS |UNAS )?HORAS (?:ANTES|DESPUES)\b|\bRECIENTEMENTE\b|\bACABA(?:BA)?N? DE\b|\bFECHA DE HOY\b|\bEN EL DIA DE (?:LA FECHA|HOY)\b|\bESCUCHA RADIAL\b|\bALERTA RADIAL\b|\bRASTRILLAJE\b|\bDURANTE LA DENUNCIA\b|\bMIENTRAS (?:RADICABA|FORMULABA|REALIZABA|DENUNCIABA)\b|\bLOJACK\b|\bRASTREO SATELITAL\b|\bGPS\b|\bPERSECUCION\b|\bSEGUIMIENTO\b/;
 const RX_OLD=/\b(?:DIAS|SEMANAS?|MESES|ANOS) (?:ATRAS|ANTES|PASAD[OA]S?)\b|\bHACE (?:UNOS |UNAS |VARIOS |VARIAS |APROXIMADAMENTE |\w+ )?(?:DIAS|SEMANAS?|MES|MESES|ANOS?)\b|\bLA SEMANA PASADA\b|\bEL MES PASADO\b|\bANO PASADO\b|\bDIAS PREVIOS\b|\bCON ANTERIORIDAD\b|\bTIEMPO ATRAS\b|\bOPORTUNAMENTE\b/;
+
+function fechasTexto(t){
+  const out=[];
+  for(const m of t.matchAll(/\b(\d{1,2})[\/](\d{1,2})[\/](\d{4}|\d{2})\b/g)){const d=mkDate(m[3].length===2?"20"+m[3]:m[3],m[2],m[1]); if(d)out.push({i:m.index,d})}
+  for(const m of t.matchAll(/\b(\d{1,2}) (?:DIAS? )?(?:DEL MES )?DE (ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|SETIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE) (?:DEL? )?(?:ANO )?(?:EN CURSO |CORRIENTE )?(\d{4})\b/g)){const d=mkDate(m[3],(MESES[m[2]]||MESES[m[2].slice(0,3)]),m[1]); if(d)out.push({i:m.index,d})}
+  return out.filter(x=>!/\b(?:NACID[OA]|NACIMIENTO|NAC\.?|F\.? ?N\.?)\b[^.]{0,40}$/.test(t.slice(Math.max(0,x.i-60),x.i))).sort((a,b)=>a.i-b.i);
+}
+function fechaCerca(t,a,b,distinta){const f=fechasTexto(t).filter(x=>x.i>=a&&x.i<=b&&(!distinta||+x.d!==+distinta));return f.length?f[f.length-1].d:null}
+function fechaActa(t){const m=t.slice(0,700).match(/\bA LOS? (\d{1,2}) DIAS? DEL MES DE (\w+) (?:DEL? )?(?:ANO )?(\d{4})\b/);return m&&(MESES[m[2]]||MESES[m[2].slice(0,3)])?mkDate(m[3],(MESES[m[2]]||MESES[m[2].slice(0,3)]),m[1]):null}
 function estiloDe(t){
   const h=t.slice(0,900);
   const acta=/\bACTA DE (?:PROCEDIMIENTO|PROCEDIMENTO|INTERVENCION|HALLAZGO|SECUESTRO|APREHENSION|CONSTATACION)|\b(?:QUIEN|QUIENES) SUSCRIBEN?\b|\b(?:EL|LA|LOS|LAS) SUSCRIPT[OA]S?\b|\bSECUNDAD[OA]\b|\bNUMERARIOS?\b|\bMOVIL (?:IDENTIFICABLE|POLICIAL|RO|ORDEN)\b|\bEN RECORRIDA\b|\bRECORRIENDO\b|\bSOMOS (?:COMISIONADOS|DESPLAZADOS|ALERTADOS|CONVOCADOS)\b|\bPERSONAL POLICIAL\b/.test(h);
@@ -661,7 +682,7 @@ function auditar(row,opts){
   const tentativaDoc=/\bTENTATIVA\b/.test(t);
   const cueNear=(pos,rx,w=230)=>rx.test(t.slice(Math.max(0,pos-w),pos+w));
   const thSolid=thAuto.filter(x=>!x.weak), th=thSolid.find(x=>!x.absence&&!x.rotulo)||thSolid[0]||thAuto[0]||null;
-  const fo=foAuto.find(x=>x.fuerte)||foAuto[0]||null;
+  let fo=foAuto.find(x=>x.fuerte)||foAuto[0]||null;
   const esRef=x=>x&&/(?:HABIA|HABRIA|HABIAN|HABRIAN) SIDO $|\b(?:FUE|FUERA|FUERON|SIDO|SIENDO) $/.test(t.slice(Math.max(0,x.pos-16),x.pos+((x.verb||"").length?0:0))+" ".repeat(0))||x&&x.rotulo;
 
   // ---- A) Automotor intervenido con pedido de secuestro / alerta preexistente
@@ -675,10 +696,22 @@ function auditar(row,opts){
   if(pedGen.length&&!pedOtro.length&&!aS.length)return R("REVISION HUMANA","BAJA","Hay un vehículo con pedido de secuestro pero el relato no permite saber si es auto o moto.",pedGen[0].pos,{TIPO_VEHICULO:"INDETERMINADO"});
 
   // ---- B) Sustracción y hallazgo del automotor en el mismo relato
+  if(!fo&&th&&!th.absence&&!thOtro.length){   // hallazgo cuyo tipo quedó confundido por un vehículo de los autores ("un menor en bicicleta")
+    const fx=FO.find(x=>x.pos>th.pos&&x.fuerte&&!new RegExp("\\b(?:"+W_MOTO+"|"+W_BICI+")\\b").test(t.slice(Math.max(0,x.pos-90),x.pos+40)));
+    if(fx)fo=fx;
+  }
   const robado=th||aS.length, hallado=fo||aR.length;
   if(robado&&hallado){
     const tp=th?th.pos:0, fp=fo?fo.pos:t.length;
-    const viejo=th&&cueNear(th.pos,RX_OLD,160);
+    const RX_YA=/\bMOMENTOS (?:ANTES|PREVIOS)\b|\bMINUTOS (?:ANTES|DESPUES|PREVIOS|MAS TARDE)\b|\bINSTANTES (?:ANTES|PREVIOS|DESPUES)\b|\bACABA(?:BA)?N? DE\b|\bHACE (?:UNOS |POCOS |APROXIMADAMENTE |\w+ )?(?:MINUTOS|INSTANTES|MOMENTOS)\b/;
+    const fRobo=th?fechaCerca(t,th.pos-230,th.pos+90):null, fHall=fo?fechaCerca(t,fo.pos-260,fo.pos+60,fRobo):null, fDoc=fechaActa(t)||parseAny(row.fecha_carga);
+    const fRef=fHall||fDoc;
+    const porFecha=fRobo&&fRef&&(fRef-fRobo)>=DAY&&(fRef-fRobo)<400*DAY&&!(fo&&!fHall&&cueNear(fo.pos,RX_YA,200));
+    const denPrev=th&&/\b(?:RADICO|RADICARA|HABIA RADICADO|HABIA REALIZADO|REALIZO|EFECTUO|FORMULO|HIZO|YA (?:RADICO|REALIZO|HIZO))\b (?:OPORTUNAMENTE )?(?:UNA |LA |SU )?(?:CORRESPONDIENTE )?DENUNCIA\b[^.]{0,90}$/.test(t.slice(Math.max(0,th.pos-150),th.pos));
+    const viejo=th&&(cueNear(th.pos,RX_OLD,160)||porFecha||denPrev);
+    const ya=!viejo&&thAuto.some(x=>cueNear(x.pos,RX_YA,170));
+    if(ya)return R("INMEDIATO","ALTA","El automotor fue sustraído momentos antes y aparece enseguida.",th.pos,fRobo?{FECHA_ANTECEDENTE:fmt(fRobo)}:null);
+    if(porFecha||denPrev)return R("HALLAZGO","ALTA","Automotor hallado; la sustracción es de una fecha anterior"+(fRobo?" ("+fmt(fRobo)+")":"")+".",fo?fo.pos:tp,fRobo?{FECHA_ANTECEDENTE:fmt(fRobo)}:null);
     if(viejo||(fo&&th&&fp<tp&&estilo==="ACTA")||(fo&&th&&fp<tp&&esRef(th)))return R("HALLAZGO",viejo?"ALTA":"MEDIA","Automotor hallado; la sustracción figura como un hecho anterior.",fo?fo.pos:tp);
     return R("INMEDIATO",fo&&fo.fuerte||aR.length?"ALTA":"MEDIA",aR.length&&!fo?"La ficha del hecho registra el automotor como recuperado y el relato cuenta su sustracción.":"El relato cuenta la sustracción del automotor y, a continuación, su hallazgo.",th?th.pos:fp);
   }
@@ -690,7 +723,7 @@ function auditar(row,opts){
     if(mS.length&&!qS.length)return R("DESCARTADO","ALTA","La ficha del hecho registra como sustraído un motovehículo ("+[mS[0].MARCA,mS[0].MODELO].filter(Boolean).join(" ")+"), no un automotor.",null,{TIPO_VEHICULO:"MOTOVEHICULO"});
     if(th.weak)return R("REVISION HUMANA","BAJA","Los autores huyen y podría ser en el vehículo de la víctima; no hay una sustracción explícita.",th.pos);
     if(th.rotulo&&thAuto.every(x=>x.rotulo))return R("REVISION HUMANA","BAJA","El relato nombra una sustracción de automotor sólo como carátula; no describe el hecho.",th.pos);
-    const estafaDoc=/\bESTAFA\w*|\bENGAN\w+|\bCOMPRA ?VENTA\b|\bMERCADO ?LIBRE\b|\bMARKETPLACE\b|\bPERMUTA\b|\bLE PREST[OA]\b|\bPRESTAD[OA]\b|\bALQUIL\w+|\bEX ?PAREJA\b|\bSU PAREJA SE\b|\bRECIBIO SU VEHICULO\b|\bENTREG[OA] (?:EL|SU) (?:VEHICULO|RODADO|AUTO|AUTOMOVIL)\b|\bSIN PAGAR\b/.test(t.slice(Math.max(0,th.pos-600),th.pos+500));
+    const estafaDoc=/\bESTAFA\w*|\bENGAN\w+|\bCOMPRA ?VENTA\b|\bMERCADO ?LIBRE\b|\bMARKETPLACE\b|\bPERMUTA\b|\bINTERCAMBIO\b|\bTRUEQUE\b|\bCANJE\b|\bSALDANDO\b|\bLE PREST[OA]\b|\bPRESTAD[OA]\b|\bALQUIL\w+|\bEX ?PAREJA\b|\bSU PAREJA SE\b|\bRECIBIO SU VEHICULO\b|\bENTREG[OA] (?:EL|SU) (?:VEHICULO|RODADO|AUTO|AUTOMOVIL)\b|\bSIN PAGAR\b/.test(t.slice(Math.max(0,th.pos-600),th.pos+500));
     if(estafaDoc&&(th.absence||th.weak||/^LLEV|^HUYEN|^AUSENCIA/.test(th.verb))&&!thSolid.some(x=>x.asalto&&!x.weak)&&!thSolid.some(x=>/^SUSTRA|^ROB|^HURT|^DESAPODER|^DESPOJ/.test(x.verb)&&!x.rotulo))return R("REVISION HUMANA","BAJA","El vehículo falta, pero el relato sugiere una entrega voluntaria, estafa o conflicto entre conocidos más que un robo.",th.pos);
     if(tentativaDoc&&thSolid.length===1&&!th.asalto)return R("REVISION HUMANA","BAJA","Hay una sustracción de automotor pero el relato también habla de tentativa.",th.pos);
     return R("SUSTRAIDO",th.absence&&thSolid.length===1?"MEDIA":"ALTA",th.absence?"Automotor que ya no estaba donde su dueño lo dejó; sin hallazgo posterior.":"Sustracción del automotor ("+th.verb.toLowerCase()+") sin hallazgo posterior en el relato.",th.pos);
@@ -779,10 +812,14 @@ $("run").onclick=async()=>{
   let omitidos=0;
   for(let i=0;i<src.length;i++){
     const r=src[i];
-    if(omit&&siNo(g(r,COL.descartado))){omitidos++; continue}
+    const desc=omit&&siNo(g(r,COL.descartado));
     let res;
     try{res=A.auditar({relato:g(r,COL.relato),calificaciones:g(r,COL.calificaciones),caratula:g(r,COL.caratula),fecha_hecho:g(r,COL.fecha_hecho),fecha_carga:g(r,COL.fecha_carga)},opts)}
     catch(e){res={CONDICION:"REVISION HUMANA",CONFIANZA:"BAJA",CONTROL_CARGA:"",MOTIVO:"No se pudo analizar el relato: "+e.message,EVIDENCIA:"",TIPO_VEHICULO:"",MARCA:"",MODELO:"",PATENTE:"",MOTOR:"",CHASIS:"",FECHA_ANTECEDENTE:""}}
+    if(desc){   // descartado en Cassandra: si el auditor ve un automotor no se pierde, pasa a revisión humana
+      if(!AUTO.includes(res.CONDICION)&&res.CONDICION!=="REVISION HUMANA"){omitidos++; continue}
+      res.MOTIVO="Cassandra lo tiene como descartado, pero el relato indica "+res.CONDICION+". "+res.MOTIVO; res.CONDICION="REVISION HUMANA"; res.CONFIANZA="BAJA";
+    }
     out.push({r,res,id:String(g(r,COL.id)),car:g(r,COL.caratula)||g(r,COL.calificaciones)});
     if(i%150===0){$("status").textContent="Auditando… "+Math.round(100*i/src.length)+"%"; setBar(100*i/src.length); await tick()}
   }
@@ -824,12 +861,25 @@ function pintar(){
 
 // ---- salidas
 function base(x){const g=getter(x.r), o={}; BASE.forEach(k=>{let v=g(x.r,[k]); if(typeof v==="string"&&v.length>32000)v=v.slice(0,32000)+" […]"; o[k]=v}); return o}
-function filaFinal(x){return Object.assign(base(x),{CONDICION:x.res.CONDICION,MARCA:x.res.MARCA,MODELO:x.res.MODELO,MOTOR:x.res.MOTOR,CHASIS:x.res.CHASIS,PATENTE:x.res.PATENTE,ARCHIVO_ORIGEN:fileName})}
+function filaFinal(x){return Object.assign(base(x),{CONDICION:x.res.CONDICION,MARCA:x.res.MARCA,MODELO:x.res.MODELO,MOTOR:x.res.MOTOR,CHASIS:x.res.CHASIS,PATENTE:x.res.PATENTE,ARCHIVO_ORIGEN:fileName,ALERTA:x.cruce||""})}
 function filaRev(x){return Object.assign(base(x),{CONDICION:x.res.CONDICION,MOTIVO:x.res.MOTIVO,EVIDENCIA:x.res.EVIDENCIA,CARGADO_COMO:x.car,MARCA:x.res.MARCA,MODELO:x.res.MODELO,MOTOR:x.res.MOTOR,CHASIS:x.res.CHASIS,PATENTE:x.res.PATENTE,ARCHIVO_ORIGEN:fileName})}
 function filaCtl(x){const g=getter(x.r);return {delito_id:x.id,nro_registro:g(x.r,["nro_registro"]),ipp:g(x.r,["ipp"]),dependencia:g(x.r,["dependencia"]),CARGADO_COMO:x.car,CONDICION:x.res.CONDICION,CONFIANZA:x.res.CONFIANZA,CONTROL_CARGA:x.res.CONTROL_CARGA,MOTIVO:x.res.MOTIVO,TIPO_VEHICULO:x.res.TIPO_VEHICULO,MARCA:x.res.MARCA,MODELO:x.res.MODELO,PATENTE:x.res.PATENTE,EVIDENCIA:x.res.EVIDENCIA}}
+const XCOL={SUSTRAIDO:["F8D0CC","C0392B","FFFFFF"],HALLAZGO:["CFE0F5","2B6CB0","FFFFFF"],INMEDIATO:["FFF3B0","F6D32D","000000"],"REVISION HUMANA":["E4DCF7","7C5CC4","FFFFFF"]};
+function pintarHoja(ws){
+  try{
+    const R=XLSX.utils.decode_range(ws["!ref"]); let cc=-1;
+    for(let c=R.s.c;c<=R.e.c;c++){const h=ws[XLSX.utils.encode_cell({r:0,c})]; if(h){h.s={font:{bold:true,color:{rgb:"FFFFFF"}},fill:{patternType:"solid",fgColor:{rgb:"17365F"}}}; if(h.v==="CONDICION")cc=c;}}
+    if(cc<0)return;
+    for(let r=1;r<=R.e.r;r++){
+      const k=ws[XLSX.utils.encode_cell({r,c:cc})], col=k&&XCOL[k.v]; if(!col)continue;
+      for(let c=R.s.c;c<=R.e.c;c++){const a=XLSX.utils.encode_cell({r,c}); if(!ws[a])ws[a]={t:"s",v:""};
+        ws[a].s=c===cc?{font:{bold:true,color:{rgb:col[2]}},fill:{patternType:"solid",fgColor:{rgb:col[1]}}}:{fill:{patternType:"solid",fgColor:{rgb:col[0]}}};}
+    }
+  }catch(e){console.warn("sin colores",e)}
+}
 function bajar(nombre,hojas){
   const wb=XLSX.utils.book_new();
-  hojas.forEach(([n,rows])=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows.length?rows:[{SIN_DATOS:""}]),n));
+  hojas.forEach(([n,rows])=>{const ws=XLSX.utils.json_to_sheet(rows.length?rows:[{SIN_DATOS:""}]); pintarHoja(ws); XLSX.utils.book_append_sheet(wb,ws,n)});
   XLSX.writeFile(wb,nombre);
 }
 const stem=()=>fileName.replace(/\.[^.]+$/,"");
