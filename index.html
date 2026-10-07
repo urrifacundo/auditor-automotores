@@ -26,6 +26,8 @@ h1{font-size:27px;margin:0 0 5px;letter-spacing:-.4px}
 .file-hint{font-size:11px;color:#7b899c}
 input[type=file]{width:100%;padding:9px;background:#fff;border:1px solid #cdd7e4;border-radius:10px;color:#44546a;font:inherit}
 .opts{display:flex;flex-direction:column;gap:10px;justify-content:center}
+.opt-hint{font-size:12.5px;line-height:1.5;color:#5b6b82;background:#f4f7fb;border-left:3px solid #2b6cb0;border-radius:6px;padding:8px 10px;margin:6px 0 10px;max-width:640px}
+.files-list{margin:8px 0 0;padding:0;list-style:none}.files-list li{padding:9px 0;border-top:1px solid #e6ebf2;line-height:1.5;color:#30445e}.files-list li:first-child{border-top:0}.files-list b.fn{color:#17365f}.files-list .sh{display:block;margin-top:2px;font-size:13px;color:#5b6b82}
 label.chk{color:#25364d;font-weight:600;line-height:1.35}
 input[type=checkbox]{width:16px;height:16px;vertical-align:-3px;margin-right:7px}
 button{min-height:44px;padding:10px 14px;border-radius:11px;border:1px solid #cbd6e4;cursor:pointer;background:#fff;color:#25364d;font:inherit;font-weight:750;transition:.15s ease;box-shadow:0 2px 5px rgba(25,45,75,.03)}
@@ -78,7 +80,7 @@ details p{line-height:1.55;color:#30445e}
         <p class="lead">Clasificación de robos y hallazgos de automotores · Cassandra → Quirón</p>
       </div>
     </div>
-    <div class="version">V13.6</div>
+    <div class="version">V13.9</div>
   </div>
 </header>
 
@@ -92,7 +94,8 @@ details p{line-height:1.55;color:#30445e}
     </div>
     <div class="opts">
       <input type="checkbox" id="optDesc" checked hidden>
-      <label class="chk"><input type="checkbox" id="optAband">Contar como Hallazgo los autos abandonados sin pedido de secuestro</label>
+      <label class="chk"><input type="checkbox" id="optAband" checked>Contar como Hallazgo los autos abandonados sin pedido de secuestro</label>
+      <div class="opt-hint">Se refiere a los autos que la policía encuentra abandonados, <b>sin pedido de secuestro</b> y sin que el relato diga que fueron robados.<br><b>Tildada:</b> entran al Excel final como Hallazgo. <b>Destildada:</b> van a Revisión humana para que una persona decida.<br>Los autos con pedido de secuestro son siempre Hallazgo, con la casilla de cualquiera de las dos formas.</div>
       <div><button id="run" class="pri" disabled>▶ Auditar automotores</button></div>
     </div>
   </div>
@@ -132,11 +135,32 @@ details p{line-height:1.55;color:#30445e}
 </section>
 
 <section class="card">
+  <details open><summary>Qué trae cada Excel que se descarga</summary>
+  <ul class="files-list">
+    <li><b class="fn">Excel final (automotores)</b> — es el resultado principal: sólo los automotores que el auditor clasificó como Sustraído, Hallazgo o Inmediato.
+      <span class="sh"><b>Hoja1:</b> una fila por hecho, con las columnas de Cassandra más CONDICION, MARCA, MODELO, MOTOR, CHASIS, PATENTE, ARCHIVO_ORIGEN y ALERTA. Las filas salen pintadas: rojo Sustraído, azul Hallazgo, amarillo Inmediato.</span>
+      <span class="sh"><b>SUSTRAIDOS QUE APARECEN:</b> los vehículos que figuran como sustraídos en un hecho y como hallados en otro del mismo Excel (misma patente o chasis), con los dos números de hecho lado a lado.</span></li>
+    <li><b class="fn">Revisión humana</b> — los hechos que el auditor no se anima a clasificar solo. <b>Hay que leerlos:</b> ahí hay automotores reales.
+      <span class="sh"><b>REVISION HUMANA:</b> cada hecho con el MOTIVO de la duda y la EVIDENCIA (el fragmento del relato que la generó).</span>
+      <span class="sh"><b>DESC. CASSANDRA CON AUTO:</b> hechos que Cassandra trae como descartados pero donde el auditor ve un posible automotor. No entran al Excel final; quedan acá por si se quieren controlar.</span></li>
+    <li><b class="fn">Control de carga</b> — no cambia la clasificación; marca diferencias entre lo cargado en Quirón y lo que dice el relato.
+      <span class="sh"><b>MAL CARGADOS:</b> figura automotor y el relato es de una moto o bicicleta, o al revés.</span>
+      <span class="sh"><b>CALIFICACION GENERICA:</b> es un hecho de automotor pero está cargado como Robo, Hurto, Encubrimiento u otra figura que no lo dice.</span></li>
+    <li><b class="fn">Detalle de todos los hechos</b> — el registro completo de lo que decidió el auditor, para auditar o buscar un hecho puntual.
+      <span class="sh"><b>DETALLE:</b> todos los hechos analizados, incluidos los descartados, con su condición, confianza y motivo.</span>
+      <span class="sh"><b>DESCARTADOS EN CASSANDRA:</b> los hechos que Cassandra trae como descartados, con lo que opina el auditor de cada uno.</span>
+      <span class="sh"><b>RESUMEN:</b> cantidades por condición y nivel de confianza.</span></li>
+    <li><b class="fn">Diferencias</b> (opcional) — sólo si se carga un Excel ya clasificado para comparar: lista los hechos donde el auditor y ese Excel no coinciden.</li>
+  </ul>
+  </details>
+</section>
+<section class="card">
   <details><summary>Cómo decide</summary>
   <p><b>Sustraído</b>: el relato cuenta que se llevaron el automotor completo (asalto, levantamiento o el auto que ya no estaba donde lo dejaron) y no aparece en el mismo relato. También cuando la ficha al pie del relato trae un automotor con vínculo «Sustraído».<br>
   <b>Hallazgo</b>: automotor que aparece con pedido de secuestro o alerta, o del que el relato dice que había sido sustraído antes.<br>
   <b>Inmediato</b>: el mismo relato cuenta primero la sustracción y después que el automotor apareció.<br>
-  <b>Revisión humana</b>: robo y hallazgo sin orden claro, auto abandonado sin pedido, vehículo sin tipo identificable, tentativa mezclada con sustracción, estafas o entregas voluntarias.<br>
+  <b>Revisión humana</b>: hechos cargados como automotor que el auditor no pudo confirmar en el relato, vehículo sin tipo identificable (auto o moto), tentativa mezclada con sustracción, estafas o entregas voluntarias, y los autos abandonados sin pedido de secuestro cuando la casilla está destildada.<br>
+  <b>Descartados en Cassandra</b>: los hechos que el Excel trae marcados como descartados no entran al Excel final ni a la revisión humana; quedan registrados en el archivo de detalle.<br>
   <b>Sustraídos que aparecen</b>: alerta cuando un automotor denunciado como sustraído figura también como hallazgo en otro hecho del mismo Excel, con la misma patente o el mismo chasis.<br>
   <b>Auto o moto</b>: se resuelve por la palabra usada, la marca y el modelo, el formato de la patente (ABC123 / AB123CD es auto; 123ABC / A123BCD es moto) y a quién pertenece el vehículo en el relato. La moto en la que llegan los autores no cuenta.</p>
   <p><b>Control de carga</b> (no cambia la clasificación): «Mal cargado» = en Quirón figura automotor y el relato es de una moto o bicicleta, o al revés. «Revisar carga» = figura automotor y el relato no lo muestra, o figura hallazgo y es una sustracción. «Calificación genérica» = es un hecho de automotor cargado como Robo, Hurto, Encubrimiento, etc.</p>
@@ -206,6 +230,7 @@ function mentions(t){
     o.propio=/\b(?:SU|MI|NUESTR[OA]|DE SU PROPIEDAD) ?$/.test(pre);
   }
   out.sort((a,b)=>a.pos-b.pos);
+  for(let i=1;i<out.length;i++){const o=out[i]; if(o.kind==="word"||o.propio)continue; let j=i-1; while(j>=0&&out[j].kind!=="word")j--; if(j>=0&&out[j].medio&&/\b(?:A ?BORDO DE|ABORDO DE) (?:UNA?|DOS|OTR[OA]) ?$/.test(t.slice(Math.max(0,out[j].pos-22),out[j].pos))&&o.pos-out[j].end<=45&&!/[.;]/.test(t.slice(out[j].end,o.pos)))o.medio=true;}   // "a bordo de un vehículo marca Ford Focus": la marca también es de los autores
   for(const T of ["M","B"]){
     const w=out.filter(o=>o.type===T&&o.kind==="word");
     if(w.length&&w[0].medio&&!w.some(o=>o.propio))w.forEach(o=>{o.medio=true});
@@ -279,6 +304,10 @@ const ATT_AFTER=/^[^.]{0,140}\b(?:(?:NO LOGRANDO|SIN LOGRAR|NO PUDIENDO|SIN PODE
 function thefts(t,M,dt){
   const ev=[], push=(o)=>{
     if(o.type==="A"&&/^(?:RODADO|VEHICULO|UNIDAD|MISMO|MISMA)$/.test(o.obj||"")){const sp=t.slice(Math.max(0,o.pos-170),o.pos+12); if(/\b(?:ENTREG\w+|DAME|DEJ[AE]|SOLT\w+|SUELT[AE]|QUIERO) (?:LA|MI|SU) MOTO\w*\b/.test(sp)&&!/\b(?:AUTO\w*|CAMIONETA|UTILITARIO)\b/.test(sp))o.type="M";}
+    if(o.type==="A"&&/ID[AO]S?$|AD[AO]S?$/.test(o.verb||"")&&/AS?$/.test(o.verb)&&/^(?:RODADO|VEHICULO|AUTOMOVIL|AUTO|UTILITARIO|MISMO)$/.test(o.obj||"")){
+      const sp=t.slice(Math.max(0,o.pos-130),o.pos), mm=sp.match(/\b(CHAPAS? PATENTES?|PATENTES?|RUEDAS?|BATERIAS?|CUBIERTAS?|LLANTAS?|OPTICAS?|MOCHILAS?|CARTERAS?|BILLETERAS?|LLAVES?|HERRAMIENTAS?|DOCUMENTACION|BICICLETA|MOTO\w*)\b(?![^.]*\b(?:CAMIONETA|UNIDAD|PICK ?UP)\b)/);
+      if(mm){o.type=/^BICI/.test(mm[1])?"B":/^MOTO/.test(mm[1])?"M":"X"; o.obj=mm[1];}
+    }
     ev.push(o)};
   const typeOf=(k,pos)=>k==="G"?typeAt(M,pos,dt):k;
   const cutS=s=>{const c=s.search(/\. [A-Z]|\.- ?[A-Z]|\b(?:PREGUNTAD[OA]|CONSULTAD[OA]|A PREGUNTAS?)\b/);return c>=0?s.slice(0,c):s};
@@ -399,6 +428,14 @@ function thefts(t,M,dt){
       if(/\b(?:A PIE|CORRIENDO|EN (?:LA|UNA|SU) MOTO\w*)\b/.test(t.slice(m.index+m[0].length,m.index+m[0].length+40)))continue;
       push({pos:m.index,opos:vp,verb:"TOMAN LAS LLAVES, ABORDAN Y HUYEN",type:"A",obj:m[1],attempt:false,asalto:true});
     }
+    // "puso en marcha el vehículo y se dio a la fuga"
+    for(const m of t.matchAll(new RegExp("\\b(?:PUSO|PONE|PONEN|PUSIERON|PONIENDO|ENCIENDE|ENCENDIO|ENCIENDEN|ARRANCA|ARRANCO|ARRANCAN) (?:EN MARCHA )?(EL |SU |MI |DICHO |LA |DICHA )("+VG+")\\b[^.]{0,80}?\\b(?:FUGA\\w*|HUYE\\w*|SE RETIRA\\w*|SE ALEJA\\w*|SE MARCHA\\w*)","g"))){
+      if(cerca(m.index)||neg(m.index))continue;
+      if(!/SU |MI /.test(m[1])&&prevOff(m.index))continue;
+      if(!/\b(?:EMPUJ\w+|BAJ\w+|DESCEND\w+|DESCIEND\w+|ARMA\w*|APUNT\w+|INTIMID\w+|LLAVES?|GOLPE\w*|MANIAT\w+|ATAD[OA]S?|ESCUCHA\w*|SUBIO|SUBE|SUBEN|ABORD\w+)\b/.test(t.slice(Math.max(0,m.index-320),m.index+12)))continue;
+      const vp=m.index+m[0].indexOf(m[2]), ty=tipo(m[2],vp); if(ty!=="A")continue;
+      push({pos:m.index,opos:vp,verb:"PONEN EN MARCHA EL VEHICULO Y HUYEN",type:"A",obj:m[2],attempt:false,asalto:true});
+    }
     // "junto a su vehículo se llevaron la billetera"
     for(const m of t.matchAll(new RegExp("\\bJUNTO (?:A|CON|AL) (?:SU |EL |LA |MI )?("+VG+")\\b[^.]{0,30}?\\b(?:SE LLEV\\w+|L[EO]S? SUSTRA\\w+|SUSTRA\\w+|L[EO]S? ROB\\w+)","g"))){
       if(cerca(m.index))continue; const vp=m.index+m[0].indexOf(m[1]), ty=tipo(m[1],vp); if(ty!=="A")continue;
@@ -478,7 +515,7 @@ function thefts(t,M,dt){
     if(/\bSIN PAGAR\b|\bSIN ABONAR\b/.test(tail.slice(0,fu.index+90)))continue;
     if(new RegExp("\\b(?:SUSTRA\\w+|ROB\\w+|LLEV\\w+|APODER\\w+)\\b[^.]{0,40}\\b(?:"+PERT+")\\b").test(tail.slice(0,fu.index))&&!/\b(?:SU|MI) $/.test(m[0].slice(0,m[0].length-tail.length-m[1].length)))continue;
     const ctx=t.slice(Math.max(0,p-380),p);
-    const cue=/\b(?:L[OA]S?|ME|NOS|LE) (?:HAC\w+|OBLIG\w+|BAJ\w+|SAC\w+|TIR\w+|ARROJ\w+|EXIG\w+|ORDEN\w+|REFIER\w+|DIC\w+)\b[^.]{0,50}\b(?:DESCEND\w+|BAJ\w+|DESCIEND\w+|DEL (?:AUTO|VEHICULO|RODADO)|DE LA CAMIONETA)|\bBAJATE\b|\bBAJENSE\b|\bSE BAJEN?\b|\bBAJEN? DEL\b|\bSE LO ENTREGUE\b|\bDESCIENDAN? DEL\b|\bSUSTRAYENDOLE\b|\bDAME (?:EL|LA|TU|LAS?) (?:AUTO|VEHICULO|RODADO|CAMIONETA|LLAVES?)|\bQUIERO (?:ES )?EL (?:AUTO|VEHICULO|RODADO)|\bENTREG\w+ (?:DE )?(?:LAS? )?LLAVES?|\b(?:DICENTE|DENUNCIANTE|DEPONENTE|DECLARANTE|VICTIMA|DAMNIFICAD[OA]|EL MISMO|LA MISMA)\b[^.]{0,60}\b(?:DESCIENDE|DESCENDIO|DESCENDER|SE BAJA|SE BAJO|BAJA DEL|BAJO DEL|BAJAR|SALE CORRIENDO|INGRESA CORRIENDO|ACCEDE)\b|\bHACIENDOL[OA]S? (?:DESCENDER|BAJAR)|\bHACE(?:N)? (?:DESCENDER|BAJAR)\b|\bOBLIGA(?:N|NDOL[OA])? A (?:DESCENDER|BAJAR)|\bDESCEND(?:ER|ES|E) DEL\b|\bBAJAR(?:SE)? DEL\b|\bLO HACE BAJAR\b|\bSIN OPONER RESISTENCIA\b|\bSE L[OA] SACARON\b|\bSACAR A (?:LA|EL|L[OA]S) (?:DENUNCIANTE|DICENTE|VICTIMA|DEPONENTE)|\bPROCEDE A DESCENDER\b|\bBAJA O TE\b|\bDALE BAJA\b|\bBAJO AMENAZA\b/.test(ctx+" "+m[0].slice(0,30));
+    const cue=/\b(?:L[OA]S?|ME|NOS|LE) (?:HAC\w+|OBLIG\w+|BAJ\w+|SAC\w+|TIR\w+|ARROJ\w+|EXIG\w+|ORDEN\w+|REFIER\w+|DIC\w+)\b[^.]{0,50}\b(?:DESCEND\w+|BAJ\w+|DESCIEND\w+|DEL (?:AUTO|VEHICULO|RODADO)|DE LA CAMIONETA)|\bBAJATE\b|\bBAJENSE\b|\bSE BAJEN?\b|\bBAJEN? DEL\b|\bSE LO ENTREGUE\b|\bDESCIENDAN? DEL\b|\bSUSTRAYENDOLE\b|\bDAME (?:EL|LA|TU|LAS?) (?:AUTO|VEHICULO|RODADO|CAMIONETA|LLAVES?)|\bQUIERO (?:ES )?EL (?:AUTO|VEHICULO|RODADO)|\bENTREG\w+ (?:DE )?(?:LAS? )?LLAVES?|\b(?:DICENTE|DENUNCIANTE|DEPONENTE|DECLARANTE|VICTIMA|DAMNIFICAD[OA]|EL MISMO|LA MISMA)\b[^.]{0,60}\b(?:DESCIENDE|DESCENDIO|DESCENDER|SE BAJA|SE BAJO|BAJA DEL|BAJO DEL|BAJAR|SALE CORRIENDO|INGRESA CORRIENDO|ACCEDE)\b|\bHACIENDOL[OA]S? (?:DESCENDER|BAJAR)|\bHACE(?:N)? (?:DESCENDER|BAJAR)\b|\bOBLIGA(?:N|NDOL[OA])? A (?:DESCENDER|BAJAR)|\bDESCEND(?:ER|ES|E) DEL\b|\bBAJAR(?:SE)? DEL\b|\bLO HACE BAJAR\b|\bSIN OPONER RESISTENCIA\b|\bSE L[OA] SACARON\b|\bSACAR A (?:LA|EL|L[OA]S) (?:DENUNCIANTE|DICENTE|VICTIMA|DEPONENTE)|\bPROCEDE A DESCENDER\b|\bL[OA]S? EMPUJ\w+|\bBAJA O TE\b|\bDALE BAJA\b|\bBAJO AMENAZA\b/.test(ctx+" "+m[0].slice(0,30));
     const suyo=/\b(?:SU|MI) $/.test(m[0].slice(0,m[0].length-tail.length-m[1].length))||/^ (?:DEL?|DE LA) (?:DENUNCIANTE|DICENTE|DICIENTE|VICTIMA|DEPONENTE|DAMNIFICAD[OA]|EST[AE])\b/.test(tail);
     const autorSuj=/\b(?:SUJETOS?|MASCULINOS?|MALVIVIENTES?|DELINCUENTES?|AUTOR(?:ES)?|NN|INDIVIDUOS?|ESTOS|LOS MISMOS|UNO DE (?:ELLOS|LOS)|AGRESOR(?:ES)?|LADRON(?:ES)?|CACOS?|MALHECHOR(?:ES)?|ACOMPANANTE|ARMADOS?|EL OTRO|EL RESTO|AMBOS)\b[^.]{0,80}$/.test(t.slice(Math.max(0,p-95),p))||/^(?:ABORDAN|SUBEN|INGRESAN|ASCIENDEN|ABORDARON|SUBIERON)\b/.test(m[0]);
     const dentroV=new RegExp("\\b(?:DENTRO|EN EL INTERIOR|AL INTERIOR) (?:DE|DEL) (?:EL |LA |SU |MI |DICHO |DICHA )?(?:"+VEHA+")\\b[^.]{0,25}\\b(?:QUEDO|QUEDARON|TENIA|SE ENCONTRABAN?|SE HALLABAN?|HABIA|POSEIA|ESTABAN?)\\b").test(t.slice(p,p+m[0].length+260));
@@ -845,7 +882,7 @@ if(typeof module!=="undefined"&&module.exports)module.exports=API; else root.Aud
 (function(){
 "use strict";
 const A=window.AuditorV13, $=id=>document.getElementById(id);
-let src=[], out=[], fileName="", filtro="AUTOMOTORES", refMap=null, difRows=[];
+let descCas=[], src=[], out=[], fileName="", filtro="AUTOMOTORES", refMap=null, difRows=[];
 const nk=s=>A.norm(s).replace(/[^A-Z0-9]/g,"");
 function getter(sample){
   const map={}; Object.keys(sample||{}).forEach(k=>{map[nk(k)]=k});
@@ -896,7 +933,7 @@ $("file").addEventListener("change",async function(){
 });
 
 $("run").onclick=async()=>{
-  $("run").disabled=true; btns(false); out=[];
+  $("run").disabled=true; btns(false); out=[]; descCas=[];
   const g=getter(src[0]), omit=$("optDesc").checked, opts={abandonoEsHallazgo:$("optAband").checked}, t0=Date.now();
   let omitidos=0;
   for(let i=0;i<src.length;i++){
@@ -906,15 +943,18 @@ $("run").onclick=async()=>{
     try{res=A.auditar({relato:g(r,COL.relato),calificaciones:g(r,COL.calificaciones),caratula:g(r,COL.caratula),fecha_hecho:g(r,COL.fecha_hecho),fecha_carga:g(r,COL.fecha_carga)},opts)}
     catch(e){res={CONDICION:"REVISION HUMANA",CONFIANZA:"BAJA",CONTROL_CARGA:"",MOTIVO:"No se pudo analizar el relato: "+e.message,EVIDENCIA:"",TIPO_VEHICULO:"",MARCA:"",MODELO:"",PATENTE:"",MOTOR:"",CHASIS:"",FECHA_ANTECEDENTE:""}}
     if(desc){   // descartado en Cassandra: si el auditor ve un automotor no se pierde, pasa a revisión humana
-      if(!AUTO.includes(res.CONDICION)&&res.CONDICION!=="REVISION HUMANA"){omitidos++; continue}
-      res.MOTIVO="Cassandra lo tiene como descartado, pero el relato indica "+res.CONDICION+". "+res.MOTIVO; res.CONDICION="REVISION HUMANA"; res.CONFIANZA="BAJA";
+      // descartado en Cassandra: no entra al Excel final ni a la revisión humana, pero queda registrado con lo que opina el auditor
+      const veAuto=AUTO.includes(res.CONDICION)||res.CONDICION==="REVISION HUMANA";
+      res.OPINION_AUDITOR=res.CONDICION; res.CONDICION=veAuto?"DESCARTADO EN CASSANDRA (POSIBLE AUTOMOTOR)":"DESCARTADO EN CASSANDRA";
+      descCas.push({r,res,id:String(g(r,COL.id)),car:g(r,COL.caratula)||g(r,COL.calificaciones),veAuto});
+      omitidos++; continue;
     }
     out.push({r,res,id:String(g(r,COL.id)),car:g(r,COL.caratula)||g(r,COL.calificaciones)});
     if(i%150===0){$("status").textContent="Auditando… "+Math.round(100*i/src.length)+"%"; setBar(100*i/src.length); await tick()}
   }
   setBar(100);
   const n=out.filter(x=>AUTO.includes(x.res.CONDICION)).length, rv=out.filter(x=>x.res.CONDICION==="REVISION HUMANA").length;
-  $("status").textContent="✅ "+src.length.toLocaleString("es-AR")+" hechos leídos"+(omitidos?" ("+omitidos.toLocaleString("es-AR")+" omitidos por estar descartados)":"")+" → "+n.toLocaleString("es-AR")+" automotores y "+rv.toLocaleString("es-AR")+" para revisión humana. "+((Date.now()-t0)/1000).toFixed(0)+" s.";
+  $("status").textContent="✅ "+src.length.toLocaleString("es-AR")+" hechos leídos"+(omitidos?" ("+omitidos.toLocaleString("es-AR")+" descartados en Cassandra, "+descCas.filter(x=>x.veAuto).length.toLocaleString("es-AR")+" de ellos con posible automotor)":"")+" → "+n.toLocaleString("es-AR")+" automotores y "+rv.toLocaleString("es-AR")+" para revisión humana. "+((Date.now()-t0)/1000).toFixed(0)+" s.";
   cruzar(); $("run").disabled=false; btns(true); filtro="AUTOMOTORES"; pintar(); comparar();
 };
 
@@ -973,11 +1013,11 @@ function bajar(nombre,hojas){
 }
 const stem=()=>fileName.replace(/\.[^.]+$/,"");
 $("d1").onclick=()=>bajar(stem()+" - AUTOMOTORES.xlsx",[["Hoja1",out.filter(x=>AUTO.includes(x.res.CONDICION)).map(filaFinal)],["SUSTRAIDOS QUE APARECEN",pares]]);
-$("d2").onclick=()=>bajar(stem()+" - REVISION HUMANA.xlsx",[["REVISION HUMANA",out.filter(x=>x.res.CONDICION==="REVISION HUMANA").map(filaRev)]]);
+$("d2").onclick=()=>bajar(stem()+" - REVISION HUMANA.xlsx",[["REVISION HUMANA",out.filter(x=>x.res.CONDICION==="REVISION HUMANA").map(filaRev)],["DESC. CASSANDRA CON AUTO",descCas.filter(x=>x.veAuto).map(x=>Object.assign(filaRev(x),{OPINION_AUDITOR:x.res.OPINION_AUDITOR}))]]);
 $("d3").onclick=()=>bajar(stem()+" - CONTROL DE CARGA.xlsx",[["MAL CARGADOS",out.filter(esMal).map(filaCtl)],["CALIFICACION GENERICA",out.filter(x=>/^CALIFICACION GENERICA/.test(x.res.CONTROL_CARGA||"")).map(filaCtl)]]);
 $("d4").onclick=()=>{
   const c={}; out.forEach(x=>{const k=x.res.CONDICION+"|"+x.res.CONFIANZA;c[k]=(c[k]||0)+1});
-  bajar(stem()+" - DETALLE.xlsx",[["DETALLE",out.map(filaCtl)],["RESUMEN",Object.entries(c).sort().map(([k,v])=>({CONDICION:k.split("|")[0],CONFIANZA:k.split("|")[1],CANTIDAD:v}))]]);
+  bajar(stem()+" - DETALLE.xlsx",[["DETALLE",out.map(filaCtl)],["DESCARTADOS EN CASSANDRA",descCas.map(x=>Object.assign(filaCtl(x),{OPINION_AUDITOR:x.res.OPINION_AUDITOR}))],["RESUMEN",Object.entries(c).sort().map(([k,v])=>({CONDICION:k.split("|")[0],CONFIANZA:k.split("|")[1],CANTIDAD:v}))]]);
 };
 
 // ---- comparación con un Excel ya clasificado
