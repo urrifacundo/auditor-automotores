@@ -80,7 +80,7 @@ details p{line-height:1.55;color:#30445e}
         <p class="lead">Clasificación de robos y hallazgos de automotores · Cassandra → Quirón</p>
       </div>
     </div>
-    <div class="version">V13.9</div>
+    <div class="version">V15.3</div>
   </div>
 </header>
 
@@ -114,6 +114,7 @@ details p{line-height:1.55;color:#30445e}
     <button id="d2" disabled>⬇ Revisión humana</button>
     <button id="d3" disabled>⬇ Control de carga</button>
     <button id="d4" disabled>⬇ Detalle de todos los hechos</button>
+    <button id="d6" disabled>⬇ Plataforma Hermes</button>
   </div>
 </section>
 
@@ -150,6 +151,9 @@ details p{line-height:1.55;color:#30445e}
       <span class="sh"><b>DETALLE:</b> todos los hechos analizados, incluidos los descartados, con su condición, confianza y motivo.</span>
       <span class="sh"><b>DESCARTADOS EN CASSANDRA:</b> los hechos que Cassandra trae como descartados, con lo que opina el auditor de cada uno.</span>
       <span class="sh"><b>RESUMEN:</b> cantidades por condición y nivel de confianza.</span></li>
+    <li><b class="fn">Plataforma Hermes</b> — los mismos automotores del Excel final, listos para «Importar desde Excel» en Hermes. Una hoja («Autos») con las columnas: patente, nro_registro, partido_hecho, localidad_hecho, condicion (Sustraido, Hallado o Inmediato), marca, modelo, chasis, motor, fecha_inicio_hecho, hora_inicio_hecho, analisis_coordenadas, relato, analisis_caratula, analisis_modalidad y jurisdiccion.
+      <span class="sh">Hermes pide como obligatorias: nro_registro, partido_hecho, localidad_hecho, fecha_inicio_hecho, condicion, patente y relato. Al descargar, el aviso de arriba indica cuántos automotores salen sin patente.</span>
+      <span class="sh">Las coordenadas son las del analista (analisis_coordenadas). Se reemplazan por la latitud y longitud del crudo cuando el analista las dejó vacías, puso S/D o S/C, o las coordenadas caen fuera de la Provincia de Buenos Aires. Si falta la fecha del hecho se usa la del analista o, en último caso, la de carga.</span></li>
     <li><b class="fn">Diferencias</b> (opcional) — sólo si se carga un Excel ya clasificado para comparar: lista los hechos donde el auditor y ese Excel no coinciden.</li>
   </ul>
   </details>
@@ -175,7 +179,31 @@ details p{line-height:1.55;color:#30445e}
 (function(root){
 "use strict";
 
-const norm=s=>(s??"").toString().normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[“”"'`´]/g," ").replace(/([A-Z]{2,})-([A-Z]{2,})/g,(x,a,b)=>/^(?:PICK|NO|EX|SUB|SEMI|AUTO|MOTO|VICE|CO|SAN|VILLA|LA|EL|DE|GRAL)$/.test(a)||b.length<3?x:a+b).replace(/\s+/g," ").trim();
+const norm0=s=>(s??"").toString().normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[“”"'`´]/g," ").replace(/([A-Z]{2,})-([A-Z]{2,})/g,(x,a,b)=>/^(?:PICK|NO|EX|SUB|SEMI|AUTO|MOTO|VICE|CO|SAN|VILLA|LA|EL|DE|GRAL)$/.test(a)||b.length<3?x:a+b).replace(/\s+/g," ").trim();
+// ---- corrección de marcas y modelos mal escritos ("CHEBROLET" -> CHEVROLET)
+function _dl(a,b){if(Math.abs(a.length-b.length)>3)return 9;let p=[],q=[],r=[];for(let j=0;j<=b.length;j++)q[j]=j;for(let i=1;i<=a.length;i++){r=[i];for(let j=1;j<=b.length;j++){const c=a[i-1]===b[j-1]?0:1;r[j]=Math.min(q[j]+1,r[j-1]+1,q[j-1]+c);if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])r[j]=Math.min(r[j],p[j-2]+1)}p=q;q=r}return q[b.length]}
+const MARCAS_LARGAS=["VOLKSWAGEN","CHEVROLET","PEUGEOT","RENAULT","CITROEN","MITSUBISHI","DAIHATSU","HYUNDAI","CHRYSLER","SSANGYONG"];
+const MARCAS_TODAS=MARCAS_LARGAS.concat(["MERCEDES","TOYOTA","NISSAN","SUZUKI","SUBARU","SCANIA","DAEWOO","AGRALE","PORSCHE","CHANGAN","PONTIAC","SHINERAY","HONDA","DODGE","CHERY","IVECO","ISUZU","VOLVO","GEELY","LIFAN","FOTON","MAZDA","LEXUS","SKODA","SMART","DACIA","LANCIA"]);
+const MARCA_ALIAS={FIAR:"FIAT",FAIT:"FIAT",FIANT:"FIAT",FIATA:"FIAT",FITA:"FIAT",FIATT:"FIAT",FORDO:"FORD",FOKD:"FORD",EORD:"FORD",FIRD:"FORD",FORT:"FORD",JEPP:"JEEP",JEPE:"JEEP",DOGE:"DODGE",DOGGE:"DODGE",DDOGE:"DODGE",CHER:"CHERY",CHERRY:"CHERY",CHERI:"CHERY",KAIA:"KIA",IVECCO:"IVECO",IBECO:"IVECO",INECO:"IVECO",IVACO:"IVECO",ISUZO:"ISUZU",ESCANIA:"SCANIA",SACNIA:"SCANIA",PORCHE:"PORSCHE",GELLY:"GEELY",SABARU:"SUBARU",CHYSLER:"CHRYSLER",CRYSLER:"CHRYSLER",CHRISLER:"CHRYSLER",HIUNDAY:"HYUNDAI",HUNDAY:"HYUNDAI",RENOLT:"RENAULT",RANUALT:"RENAULT",REANAUL:"RENAULT",RENAIT:"RENAULT",RENUAL:"RENAULT",PAUEGEOT:"PEUGEOT",PEGEUOT:"PEUGEOT",PEOUGET:"PEUGEOT",ONDA:"HONDA",HONA:"HONDA",HODA:"HONDA",HONDO:"HONDA",NISSA:"NISSAN",TOYOT:"TOYOTA",MERCEDEZ:"MERCEDES",MERCEDE:"MERCEDES",MERCES:"MERCEDES",MERDES:"MERCEDES",MERCDES:"MERCEDES",MECEDES:"MERCEDES",MERDECES:"MERCEDES",MARCEDES:"MERCEDES",MERECEDES:"MERCEDES",MERECEDEZ:"MERCEDES",MERCERDES:"MERCEDES",MERCADEZ:"MERCEDES",MERCEBENS:"MERCEDES",NERCEDES:"MERCEDES",MENCEDES:"MERCEDES",MERECES:"MERCEDES",MCEDES:"MERCEDES",MEREDES:"MERCEDES"};
+const NO_MARCA=new Set(["MERCED","MERELES","MERCADOS","MERCADER","PEREDES","TERCERES","MECEDER","CHANGAS","CHANGA","STINGRAY","CITIZEN","DITRON","CHANDON","CHANSON","TOYAMA","NISMAN","SCALIA","AGRAVE","AGRADE","REMAULT","HACIA","POLVO","START","GANCIA","SALIO","PATIO","VIRTUD","MOLDEO","MODEO","RANGE","FIORITO","ASTRO","DERIVA","PRIMA","FOCOS","TRAFICO","CRUZA","JACK","CORSO","SENDA","CAPTOR","BENTO"]);
+const MODELOS=["KANGOO","AMAROK","HILUX","ECOSPORT","SANDERO","DUSTER","CRONOS","SIENA","PALIO","CORSA","PRISMA","ETIOS","COROLLA","SURAN","VENTO","SAVEIRO","PARTNER","BERLINGO","RANGER","FIORINO","STRADA","KARDIAN","LOGAN","MEGANE","FLUENCE","CRUZE","TRACKER","AGILE","MERIVA","SYMBOL","TIGUAN","NIVUS","VIRTUS","VOYAGE","RENEGADE","FRONTIER","SPRINTER","COURIER","ESCORT","FIESTA","MONDEO","TRAFIC","DUCATO","STEPWAY","CAPTUR","AIRCROSS","CLASSIC","VECTRA","ASTRA","FOCUS","SPACEFOX","CROSSFOX","GOLTREND","MASTER","EXPERT","BOXER","PICANTO","TUCSON","COMPASS"];
+const _memo=new Map();
+function _mejor(w,lista,estricto){const k=(estricto?"E":"L")+w;if(_memo.has(k))return _memo.get(k);let best=null;
+  if(!NO_MARCA.has(w)&&!lista.includes(w))for(const c of lista){const lim=c.length<=5?(estricto?1:0):c.length<=7?1:2;if(lim===0)continue;if(w.length<c.length-2||w.length>c.length+2)continue;if(w[0]!==c[0]&&!(/^[VW]/.test(w)&&/^[VW]/.test(c))&&!(/^[SZ]/.test(w)&&/^[SZ]/.test(c))&&!(w[1]===c[1]&&w[2]===c[2]))continue;const d=_dl(w,c);if(d<=lim&&(!best||d<best.d))best={c,d}}
+  const r=best?best.c:null;_memo.set(k,r);return r}
+function fixMarcas(t){
+  if(!t)return t;
+  // 1) marcas largas mal escritas en cualquier parte del texto
+  t=t.replace(/\b[A-Z]{6,13}\b/g,w=>{const c=_mejor(w,MARCAS_LARGAS,false);return c||w});
+  // 2) después de "MARCA": cualquier marca, con alias de las cortas
+  t=t.replace(/\b(MARCA[ :.,-]+)([A-Z]{3,13})\b/g,(x,p,w)=>{const c=MARCA_ALIAS[w]||_mejor(w,MARCAS_TODAS,true);return c?p+c:x});
+  // 3) "MERCEDEZ BENZ"
+  t=t.replace(/\b([A-Z]{5,10}) ?BENZ\b/g,(x,w)=>{const c=MARCA_ALIAS[w]||(_mejor(w,["MERCEDES"],true));return c?c+" BENZ":x});
+  // 4) modelo mal escrito después de una marca o de "MODELO"
+  t=t.replace(/\b((?:(?:VOLKSWAGEN|CHEVROLET|PEUGEOT|RENAULT|CITROEN|FIAT|FORD|TOYOTA|NISSAN|JEEP|HYUNDAI|KIA|MERCEDES BENZ|MERCEDES|DODGE|HONDA)[ :.,-]+(?:MODELO[ :.,-]+)?|MODELO[ :.,-]+))([A-Z]{5,10})\b/g,(x,p,w)=>{const c=_mejor(w,MODELOS,true);return c?p+c:x});
+  return t;
+}
+const norm=s=>fixMarcas(norm0(s));
 
 // ---------------------------------------------------------------- 1) VOCABULARIO
 const W_AUTO="AUTOMOVIL(?:ES)?|SEMI ?REMOLQUE|SEMI ?ACOPLADO|ACOPLADO|MOTORHOME|CASA RODANTE|(?<!EN |DE |PRESENTES |ESTOS |DICHOS |TESTIGO DE |TESTIGOS DE )AUTOS|(?<!TESTIGO DE |TESTIGOS DE |PRESENTE |DICTO |DICTA |DICTADO |MEDIANTE )AUTO(?! DE (?:PROCESAMIENTO|ELEVACION|MERITO|FECHA|COLECCION|JUGUETE)| INTERLOCUTORIO| FUNDADO|[ -]?(?:STEREO|ESTEREO|RADIO|PARTES?)\\b| A ESCALA)|CAMIONETAS?|CAMION(?:ES)?|UTILITARIOS?|FURGON(?:ETA)?|PICK ?UP|SEDAN|COCHE|TAXI|REMIS";
@@ -675,7 +703,7 @@ function controlCarga(calif,res){
 // ---------------------------------------------------------------- 9) FICHA DE VEHICULOS AL PIE DEL RELATO
 // Muchas denuncias terminan con "AUTOMOTORES Marca X Dominio Y Modelo Z Nro. Motor .. Color .. Nro. Chasis .. Vínculo Sustraído".
 const RX_PIE=/Marca\s+(.{0,40}?)\s+Dominio\s+(.{0,40}?)\s+Modelo\s+(.{0,60}?)\s+Nro\. ?Motor\s+(.{0,40}?)\s+Color\s+(.{0,30}?)\s+Nro\. ?Chasis\s+(.{0,40}?)\s+V[ií]nculo\s+(Sustra[ií]do|Secuestrado|Utilizado durante el hecho|Abandonado|Hallado|Recuperado)/g;
-const MOTO_MODEL_RX=new RegExp("\\b(?:"+MD_MOTO+"|CBX ?\\d*|CB ?\\d+\\w*|CBR|XRE|NXR|BROS|ELITE|POP ?\\d*|NAVI|GLH|FUN|AX ?\\d+|GN ?\\d+|EN ?\\d+|GSX\\w*|BURGMAN|MAX ?\\d*|SMASH|\\d{2,3} ?CC|C ?110|LD ?110|DUE|ZB|RX ?\\d+|BOXER|FZ\\w*|MT ?\\d+|CRYPTON|SZ|XTZ\\w*|NEW ?\\w*|DAX|MIRAGE|HUNTER|KELLER|S2|BLITZ|TRIP|SIRIUS|STYLER|CUSTOM)\\b");
+const MOTO_MODEL_RX=new RegExp("\\b(?:"+MD_MOTO+"|CBX ?\\d*|CB ?\\d+\\w*|CBR|XRE|NXR|BROS|ELITE|POP ?\\d*|NAVI|GLH|AX ?\\d+|GN ?\\d+|EN ?\\d+|GSX\\w*|BURGMAN|MAX ?\\d*|SMASH|\\d{2,3} ?CC|C ?110|LD ?110|DUE|ZB|RX ?\\d+|BOXER|FZ\\w*|MT ?\\d+|CRYPTON|SZ|XTZ\\w*|NEW ?\\w*|DAX|MIRAGE|HUNTER|KELLER|S2|BLITZ|TRIP|SIRIUS|STYLER|CUSTOM)\\b");
 const limpio=v=>{v=(v||"").toString().trim();return /^(?:SIN ESPECIFICAR|S\/D|NO POSEE|NO APORTA|NO RECUERDA.*|SIN DATOS?|DESCONOCE|-+|X+|0+|A+|1+)$/i.test(v)?"":v};
 function pie(raw){
   const z=(raw??"").toString().replace(/\s+/g," "), out=[];
@@ -703,15 +731,7 @@ function limpiaModelo(x){
   x=x.replace(/[,;:(\/].*$/,"").replace(/\.\s.*$/,"").replace(/\s\d\.\d.*$/,"").trim().split(/\s+/).slice(0,3).join(" ");
   return /^[A-Z0-9]/.test(x)&&x.length<=28?x.replace(/[.\-]+$/,""):"";
 }
-function datosVehiculo(t,pos){
-  const noPol=i=>!/\b(?:MOVIL|AMBULANCIA|PATRULL\w*|GRUA|R\.?O\.?|ORDEN)\b[^.]{0,40}$/.test(t.slice(Math.max(0,i-70),i));
-  // patentes de auto
-  const plates=[];
-  for(const m of t.matchAll(/\b(?:(?:CON)?DOMINIOS?|DOMINO|PATENTES?|PTTE|CHAPAS?|ALFANUMERICA|GRABADO|NUMERACION)\b[^0-9.]{0,48}?\b([A-Z]{2}[ -]?\d{3}[ -]?[A-Z]{2}|[A-Z]{3}[ -]?\d{3})\b/g))if(noPol(m.index))plates.push({i:m.index+m[0].length,v:m[1].replace(/[ -]/g,"")});
-  const near=(arr,p,antes=1,despues=1.6)=>{let b=null;for(const x of arr){const d=x.i<=p?(p-x.i)*antes:(x.i-p)*despues;if(!b||d<b.d)b={d,x}}return b?b.x:null};
-  const pl=near(plates,pos,1,1.2);
-  const ref=pl?pl.i:pos;
-  // marca y modelo
+function marcasEnTexto(t){
   const brands=[];
   const rxB=new RegExp("\\b(?:MARCA[ :]+)?("+BR_ALL+")\\b[ ,:/-]*((?:MODELO[ :]+)?[A-Z0-9][A-Z0-9 .+/-]{0,34})?","g");
   for(const m of t.matchAll(rxB)){
@@ -721,24 +741,86 @@ function datosVehiculo(t,pos){
     let marca=m[1].replace(/^(?:VOLKSWAGUEN|VOLKWAGEN|WOLKSWAGEN|VOLSKWAGEN|VOLSWAGEN|VOLWAGEN|WOLSVAGEN|VOLKSVAGEN|VW)$/,"VOLKSWAGEN").replace(/^(?:CHEVROLETT|CHEBROLET|CHEVROLE)$/,"CHEVROLET").replace(/^(?:PEUGOT|PEUGEOUT|PEUYOT|PEUGEOTT)$/,"PEUGEOT").replace(/^(?:RENAUL|RENOL)$/,"RENAULT").replace(/^TOYOTTA$/,"TOYOTA").replace(/^NISAN$/,"NISSAN").replace(/^(?:HIUNDAY|HYUNDAY|HIUNDAI)$/,"HYUNDAI").replace(/^CITROEM$/,"CITROEN").replace(/^MERCEDE[SZ].*$/,"MERCEDES BENZ");
     brands.push({i:m.index,marca,modelo:mod});
   }
-  // "marca X modelo Y" con marcas que no están en la lista
   for(const m of t.matchAll(/\bMARCA[ :]+([A-Z][A-Z0-9-]{1,14})[ ,]+MODELO[ :]+([A-Z0-9][A-Z0-9 .+/-]{0,30})/g)){
     if(brands.some(b=>Math.abs(b.i-m.index)<12))continue;
     if(new RegExp("^(?:"+BR_MOTO+")$").test(m[1]))continue;
     if(!/\b(?:VEHICULO|RODADO|AUTOMOVIL|AUTO|CAMIONETA|CAMION|UTILITARIO|UNIDAD|AUTOMOTOR|PICK ?UP|FURGON)\b[^.]{0,40}$/.test(t.slice(Math.max(0,m.index-70),m.index)))continue;
     brands.push({i:m.index,marca:m[1],modelo:limpiaModelo(m[2])});
   }
-  const noMoto=brands.filter(b=>!(/^(?:HONDA|SUZUKI)$/.test(b.marca)&&MOTO_MODEL_RX.test(b.modelo)));
-  const br=near(noMoto,ref,1,1.3);
-  const br2=near(noMoto,pos,1,1.3);
-  const usable=br&&Math.abs(br.i-ref)<700?br:(br2&&Math.abs(br2.i-pos)<900?br2:(noMoto.length===1?noMoto[0]:null));
-  const idClean=v=>v.replace(/[ .\-*]/g,"");
-  const pick=(rx,ok,anchor,lim)=>{const c=[];for(const m of t.matchAll(rx)){const v=idClean(m[1]);if(ok(v))c.push({i:m.index,v})}const x=near(c,anchor,1.2,1);return x&&Math.abs(x.i-anchor)<=lim?x.v:""};
-  const anchor=pl?pl.i:(usable?usable.i:pos);
-  const okId=(v,min)=>v.length>=min&&v.length<=22&&(v.match(/\d/g)||[]).length>=3&&!/^(?:CHASIS|NUMERO|MARCA|MOTOR|COLOR|DOMINIO)/.test(v);
-  const motor=pick(/\bMOTOR(?: NRO| N°| Nº| Nª| N| NUMERO| NUM)?[.:º°ª ]*((?!CON |DE |SIN |NO |Y |EL |LA |COLOR|MARCA|CHASIS|NRO|NUMERO)[A-Z0-9][A-Z0-9*.\-]{1,24}(?: [0-9][A-Z0-9*.\-]{2,14})?)/g,v=>okId(v,5),anchor,1500);
-  const chasis=pick(/\b(?:CHASIS|VIN)(?: NRO| N°| Nº| Nª| N| NUMERO| NUM)?[.:º°ª ]*((?!CON |DE |SIN |NO |Y |EL |LA |COLOR|MARCA|MOTOR|NRO|NUMERO)[A-Z0-9][A-Z0-9.\-]{5,24})/g,v=>okId(v,7),anchor,1500);
-  return {PATENTE:pl?pl.v:"",MARCA:usable?usable.marca:"",MODELO:usable?usable.modelo:"",MOTOR:motor,CHASIS:chasis};
+  return brands.filter(b=>!(/^(?:HONDA|SUZUKI)$/.test(b.marca)&&MOTO_MODEL_RX.test(b.modelo)));
+}
+// Identificadores del vehículo (patente, motor, chasis) con su posición en el texto
+const ID_RELLENO=/^(?:[\s.:,;#\-–—º°ª*()]|NROS?\b|NUMEROS?\b|NUM\b|NO\b|N\b|NRO\b|NUMERACION\b|IDENTIFICACION\b|IDENTIFICATORIO\b|DE\b|DEL\b|ES\b|SERIA\b|SERIAN\b|POSEERIA\b|POSEE\b|QUE\b|EL\b|LA\b|CUAL\b|RESULTA\b|SER\b|SIENDO\b|ESTE\b|GRABADO\b|GRAVADO\b|COLOCADO\b|ORIGINAL\b|VISIBLE\b|LEGIBLE\b|PARCIAL\b|A SIMPLE VISTA\b)+/;
+function codigoEn(seg,min){
+  // lee el primer código alfanumérico después de la palabra clave (se saltean "NRO", "NUMERO", "DE", ":" ...)
+  seg=seg.replace(/[ºª]/g,m=>m==="ª"?"A":"O");
+  const f=seg.match(ID_RELLENO); let s=f?seg.slice(f[0].length):seg;
+  if(/^(?:SIN|NO POSEE|NO APORTA|NO RECUERDA|DESCONOCE|ILEGIBLE|SUPRIMID|ADULTERAD|LIMAD|BORRAD)/.test(s))return "";
+  let m=s.match(/^([A-Z0-9][A-Z0-9*.\-]{0,24})(?:[ ,]([A-Z0-9][A-Z0-9*.\-]{0,20}))?/); if(!m)return "";
+  let a=m[1].replace(/[*.\-]/g,""), b=(m[2]||"").replace(/[*.\-]/g,"");
+  const dig=x=>(x.match(/\d/g)||[]).length;
+  if(b&&(a.length<=2||(!dig(a)&&a.length<=5&&dig(b)>=3)||(a.length+b.length===17&&dig(a+b)>=5&&a.length<=8)))a=a+b;   // "8 A1BB270F8L891151", "PSA WJZ10DXBJ0011195"
+  if(a.length<min||a.length>22||dig(a)<3||/^(?:CHASIS|NUMERO|MARCA|MOTOR|COLOR|DOMINIO|CUADRO)/.test(a))return "";
+  return a;
+}
+function idsEnTexto(t){
+  const T=t.replace(/[–—]/g,"-");
+  const noPol=i=>!/\b(?:MOVIL|AMBULANCIA|PATRULL\w*|GRUA|R\.?O\.?|ORDEN|IDENTIFICABLE)\b[^.]{0,40}$/.test(T.slice(Math.max(0,i-70),i));
+  const out=[];
+  for(const m of T.matchAll(/\b(?:(?:CON)?DOMINIOS?|DOMINO|DOMINUI|DOM\.?|PATENTES?|PTTE\.?|PAT\.?|CHAPAS?|ALFANUMERICA|ALFANUMERICO|GRABADO|NUMERACION)\b[^0-9.]{0,48}?\b([A-Z]{2}[ .-]{0,3}(?=[0-9O]{3}\b|[0-9O]{3}[ .-]{0,3}[A-Z]{2}\b)(?=[0-9O]*\d[0-9O]*\d)[0-9O]{3}[ .-]{0,3}[A-Z]{2}|[A-Z]{3}[ .-]{0,3}(?=[0-9O]*\d[0-9O]*\d)[0-9O]{3}|[A-Z]\d{3}[A-Z]{3}|\d{3}[ .-]?[A-Z]{3})\b/g)){
+    if(!noPol(m.index))continue; let v=m[1].replace(/[ .-]/g,""); if(/^[A-Z]{2}[0-9O]{3}[A-Z]{2}$/.test(v))v=v.slice(0,2)+v.slice(2,5).replace(/O/g,"0")+v.slice(5); else if(/^[A-Z]{3}[0-9O]{3}$/.test(v))v=v.slice(0,3)+v.slice(3).replace(/O/g,"0"); out.push({k:"P",i:m.index,e:m.index+m[0].length,v,moto:/^(?:[A-Z]\d{3}[A-Z]{3}|\d{3}[A-Z]{3})$/.test(v)});
+  }
+  for(const m of T.matchAll(/\b[A-Z]{2}\d{3}[A-Z]{2}\b/g)){if(!out.some(x=>x.k==="P"&&m.index>=x.i&&m.index<x.e)&&noPol(m.index))out.push({k:"P",i:m.index,e:m.index+7,v:m[0],moto:false})}
+  for(const m of T.matchAll(/\bMOTOR(?=[A-Z]{0,4}\d[A-Z0-9]{4,})/g)){const v=codigoEn(T.slice(m.index+5,m.index+60),5); if(v)out.push({k:"M",i:m.index,e:m.index+5,v})}
+  for(const m of T.matchAll(/\b(CHASIS|CUADRO)(?=\d[A-Z0-9]{6})/g)){const v=codigoEn(T.slice(m.index+m[1].length,m.index+60),7); if(v)out.push({k:"C",i:m.index,e:m.index+m[1].length,v})}
+  for(const m of T.matchAll(/\bMOTOR(?:ES)?\b/g)){const v=codigoEn(T.slice(m.index+m[0].length,m.index+m[0].length+70),5); if(v)out.push({k:"M",i:m.index,e:m.index+m[0].length,v})}
+  for(const m of T.matchAll(/\b(?:CHASIS|CHASSIS|CHASI|CHASIZ|VIN|CUADRO|CARROCERIA)\b/g)){const v=codigoEn(T.slice(m.index+m[0].length,m.index+m[0].length+70),7); if(v)out.push({k:"C",i:m.index,e:m.index+m[0].length,v})}
+  for(const m of T.matchAll(/\b(?=[A-Z0-9]{17}\b)(?=(?:[A-Z]*\d){5})[A-HJ-NPR-Z0-9]{17}\b/g)){if(!out.some(x=>x.k==="C"&&x.v===m[0]))out.push({k:"C",i:m.index,e:m.index+17,v:m[0],suelto:true})}
+  return out.sort((a,b)=>a.i-b.i);
+}
+// Agrupa los identificadores en "fichas" de vehículo (lo que está escrito junto describe al mismo vehículo)
+function fichasVehiculo(t){
+  const ids=idsEnTexto(t), brands=marcasEnTexto(t).map(b=>({k:"B",i:b.i,e:b.i+8,v:b}));
+  const all=ids.concat(brands).sort((a,b)=>a.i-b.i), fichas=[]; let cur=null;
+  for(const x of all){
+    const corte=!cur||x.i-cur.fin>350||(x.k==="P"&&cur.P&&cur.P!==x.v&&_dl(cur.P,x.v)>1)||(x.k!=="B"&&cur[x.k]&&cur[x.k]!==x.v&&x.k!=="P")||(x.k==="B"&&cur.B&&cur.B.marca!==x.v.marca&&x.i-cur.fin>40)||/\b(?:OTRO|OTRA|SEGUNDO|SEGUNDA|ASIMISMO|TAMBIEN SE)\b/.test(t.slice(cur?cur.fin:0,x.i));
+    if(corte){cur={ini:x.i,fin:x.e,P:"",M:"",C:"",B:null,moto:false,ps:[]};fichas.push(cur)}
+    if(x.k!=="B"||!cur.ps.length)cur.ps.push(x.i);
+    if(x.k==="B"){if(!cur.B)cur.B=x.v}else if(!cur[x.k]){cur[x.k]=x.v; if(x.k==="P"&&x.moto)cur.moto=true}
+    cur.fin=Math.max(cur.fin,x.e);
+  }
+  for(const f of fichas){const pre=t.slice(Math.max(0,f.ini-160),f.ini+20);
+    f.propio=/\b(?:(?:SU|MI|SUS)(?: \w+)? (?:VEHICULO|RODADO|AUTOMOVIL|AUTO|CAMIONETA|UTILITARIO|CAMION|UNIDAD)|TITULAR|PROPIETARI[OA]|POSEEDOR[A]?|CONDUCTOR[A]? (?:HABITUAL|AUTORIZAD)|AUTORIZAD[OA] A CONDUCIR|DE SU PROPIEDAD)\b/.test(pre);
+    f.ajeno=/\b(?:A ?BORDO DE UNA?|MOVIL|PATRULL\w*|IDENTIFICABLE|GRUAS?|EN EL QUE (?:SE )?(?:MOVILIZ|CIRCUL|DESPLAZ)|DE APOYO)\b/.test(pre.slice(-90));}
+  const F=fichas.filter(f=>f.P||f.M||f.C||f.B), igual=(a,b)=>a&&b&&(a===b||(a.length>=6&&_dl(a,b)<=1));
+  for(let i=0;i<F.length;i++)for(let j=i+1;j<F.length;j++){const a=F[i],b=F[j];
+    if((igual(a.P,b.P)||igual(a.C,b.C)||igual(a.M,b.M))&&!(a.P&&b.P&&!igual(a.P,b.P))){for(const k of ["P","M","C"])if(!a[k])a[k]=b[k]; if(!a.B)a.B=b.B; a.ps=a.ps.concat(b.ps); a.propio=a.propio||b.propio; a.ajeno=a.ajeno&&b.ajeno; a.moto=a.moto||b.moto; F.splice(j,1); j--}}
+  return F;
+}
+function datosVehiculo(t,pos,ref){
+  // ref: datos de la ficha del pie de Cassandra (si los hay) para elegir el mismo vehículo
+  const F=fichasVehiculo(t).filter(f=>!f.moto&&!(f.B&&/^(?:HONDA|SUZUKI|YAMAHA)$/.test(f.B.marca)&&MOTO_MODEL_RX.test(f.B.modelo||"")));
+  if(!F.length)return {PATENTE:"",MARCA:"",MODELO:"",MOTOR:"",CHASIS:""};
+  let elegida=null;
+  if(ref){
+    const iguales=(a,b)=>a&&b&&(a===b||_dl(a,b)<=1);
+    elegida=F.find(f=>iguales(f.P,ref.PATENTE))||F.find(f=>iguales(f.C,ref.CHASIS))||F.find(f=>iguales(f.M,ref.MOTOR))||null;
+    if(!elegida&&ref.PATENTE&&F.some(f=>f.P))return {PATENTE:"",MARCA:"",MODELO:"",MOTOR:"",CHASIS:""};   // el relato describe otros vehículos
+  }
+  if(!elegida){
+    const dist=f=>Math.min(...f.ps.map(p=>p>=pos?(p-pos)*1.2:(pos-p)));
+    const nivel=[F.filter(f=>f.P),F.filter(f=>f.M||f.C),F];       // primero las fichas con patente, después con motor/chasis, después sólo marca
+    const peso=f=>dist(f)-(f.M?200:0)-(f.C?200:0)-(f.B?60:0)-(f.propio?600:0)+(f.ajeno?600:0);      // entre fichas con patente, la más completa y cercana al hecho
+    for(const L of nivel){if(!L.length)continue; elegida=L.reduce((a,b)=>peso(b)<peso(a)?b:a); break}
+  }
+  // datos sueltos (motor/chasis sin patente) que quedaron en otra ficha cercana: si no hay otra patente en el medio, son del mismo vehículo
+  for(const k of ["M","C"]){if(elegida[k])continue; let b=null;
+    const unaSola=F.filter(f=>f.P).length<=1;      // si el relato tiene una sola patente, los datos sueltos son de ese vehículo
+    for(const f of F){if(f===elegida||f.P||!f[k])continue; const d=Math.min(...f.ps.map(p=>Math.min(...elegida.ps.map(q=>Math.abs(p-q))))); if((d<700||unaSola)&&(!b||d<b.d))b={d,f}}
+    if(b)elegida[k]=b.f[k];}
+  let B=elegida.B;
+  if(!B){const bs=F.filter(f=>f.B); let b=null; for(const f of bs){const d=Math.abs(f.ini-elegida.ini); if(d<700&&(!b||d<b.d))b={d,B:f.B}} if(b)B=b.B; else if(bs.length===1)B=bs[0].B;}
+  return {PATENTE:elegida.P||"",MARCA:B?B.marca:"",MODELO:B?B.modelo:"",MOTOR:elegida.M||"",CHASIS:elegida.C||""};
 }
 
 // ---------------------------------------------------------------- 8) DECISION
@@ -784,8 +866,7 @@ function auditar0(row,opts){
       const fv=aS[0]||aR[0]||null;
       let dp=pos!=null&&pos>=0?pos:-1;
       if(fv&&fv.PATENTE){const ip=t.search(new RegExp(fv.PATENTE.split("").join("[ -]?"))); if(ip>=0)dp=ip}
-      const dv=dp>=0?datosVehiculo(t,dp):(fv?datosVehiculo(t,0):{});
-      if(fv&&fv.PATENTE&&dv.PATENTE&&dv.PATENTE!==fv.PATENTE){dv.MOTOR="";dv.CHASIS=""}       // los datos del relato son de otro vehículo
+      const dv=dp>=0?datosVehiculo(t,dp,fv):(fv?datosVehiculo(t,0,fv):{});
       for(const k of ["MARCA","MODELO","PATENTE","MOTOR","CHASIS"])r[k]=(fv&&fv[k])||dv[k]||"";
       if(!r.TIPO_VEHICULO)r.TIPO_VEHICULO="AUTOMOTOR";
     }
@@ -873,7 +954,7 @@ function auditar0(row,opts){
   }
   return R("DESCARTADO","ALTA","Aparece un vehículo en el relato pero sin sustracción ni hallazgo del automotor.");
 }
-const API={norm,auditar,pie,controlCarga,mentions,docType,thefts,pedidos,founds,parseAny,datosVehiculo,version:"V13"};
+const API={norm,auditar,fichasVehiculo,idsEnTexto,pie,controlCarga,mentions,docType,thefts,pedidos,founds,parseAny,datosVehiculo,version:"V13"};
 if(typeof module!=="undefined"&&module.exports)module.exports=API; else root.AuditorV13=API;
 })(typeof window!=="undefined"?window:globalThis);
 
@@ -900,6 +981,53 @@ const COL={
   descartado:["analisis_descartado","descartado"],
   condicion:["CONDICION","CONDICION_CORRECTA","CONDICION_AUDITOR"]
 };
+// ---- exportación para Hermes
+const HERMES_MAP={"P": {"MORON": "Morón", "LOMAS DE ZAMORA": "Lomas de Zamora", "LA MATANZA": "La Matanza", "QUILMES": "Quilmes", "ITUZAINGO": "Ituzaingó", "TRES DE FEBRERO": "Tres de Febrero", "JUNIN": "Junín", "GENERAL PUEYRREDON": "General Pueyrredón", "ALMIRANTE BROWN": "Almirante Brown", "PILAR": "Pilar", "LA PLATA": "La Plata", "LUJAN": "Luján", "GENERAL RODRIGUEZ": "General Rodríguez", "LANUS": "Lanus", "GENERAL SAN MARTIN": "General San Martín", "MORENO": "Moreno", "MERLO": "Merlo", "FLORENCIO VARELA": "Florencio Varela", "ESCOBAR": "Escobar", "JOSE C PAZ": "José C. Paz", "HURLINGHAM": "Hurlingham", "SAN MIGUEL": "San Miguel", "ESTEBAN ECHEVERRIA": "Esteban Echeverria", "ENSENADA": "Ensenada", "BERAZATEGUI": "Berazategui", "SALADILLO": "Saladillo", "TRENQUE LAUQUEN": "Trenque Lauquen", "ZARATE": "Zárate", "CAMPANA": "Campana", "MARCOS PAZ": "Marcos Paz", "NECOCHEA": "Necochea", "MALVINAS ARGENTINAS": "Malvinas Argentinas", "AVELLANEDA": "Avellaneda", "VICENTE LOPEZ": "Vicente López", "SAN ISIDRO": "San Isidro", "SAN VICENTE": "San Vicente", "BAHIA BLANCA": "Bahía Blanca", "DOLORES": "Dolores", "EZEIZA": "Ezeiza", "OLAVARRIA": "Olavarría", "GENERAL PINTO": "General Pinto", "PRESIDENTE PERON": "Presidente Peron", "GENERAL BELGRANO": "General Belgrano", "SAN NICOLAS": "San Nicolás", "MERCEDES": "Mercedes", "TIGRE": "Tigre", "ARRECIFES": "Arrecifes", "PERGAMINO": "Pergamino", "CORONEL ROSALES": "Coronel Rosales", "CANUELAS": "Cañuelas", "MONTE HERMOSO": "Monte Hermoso", "GENERAL ALVARADO": "General Alvarado", "BERISSO": "Berisso", "SAN FERNANDO": "San Fernando", "MAR CHIQUITA": "Mar Chiquita", "SAN ANTONIO DE ARECO": "San Antonio de Areco", "ROJAS": "Rojas", "AYACUCHO": "Ayacucho", "VILLA GESELL": "Villa Gesell", "PEHUAJO": "Pehuajó", "SAN MIGUEL DEL MONTE": "San Miguel del Monte", "BALCARCE": "Balcarce", "PINAMAR": "Pinamar", "COLON": "Colón", "GRAL ALVEAR": "Gral. Alvear", "LOBOS": "Lobos", "TANDIL": "Tandil", "LA COSTA": "La Costa", "AZUL": "Azul", "CHASCOMUS": "Chascomús", "SAN ANDRES DE GILES": "San Andrés de Giles", "SAN PEDRO": "San Pedro", "BARADERO": "Baradero", "GENERAL LAS HERAS": "General Las Heras", "TRES ARROYOS": "Tres Arroyos", "GRAL LA MADRID": "Gral. La Madrid", "CARMEN DE ARECO": "Carmen de Areco", "SAN CAYETANO": "San Cayetano", "GRAL LAPRIDA": "Gral. Laprida", "LOBERIA": "Lobería", "CHIVILCOY": "Chivilcoy", "LINCOLN": "Lincoln", "MAIPU": "Maipú", "LAS FLORES": "Las Flores", "PATAGONES": "Patagones", "GENERAL MADARIAGA": "General Madariaga", "CORONEL DORREGO": "Coronel Dorrego", "EXALTACION DE LA CRUZ": "Exaltación de la Cruz", "VILLARINO": "Villarino", "MAGDALENA": "Magdalena", "25 DE MAYO": "25 de Mayo", "CASTELLI": "Castelli", "GENERAL VIAMONTE": "General Viamonte", "TORDILLO GENERAL CONESA": "Tordillo (General Conesa)", "GRAL PAZ": "Gral. Paz", "BOLIVAR": "Bolivar", "FLORENTINO AMEGHINO": "Florentino Ameghino", "CORONEL PRINGLES": "Coronel Pringles", "CORONEL BRANDSEN": "Coronel Brandsen", "SALTO": "Salto", "BRAGADO": "Bragado", "GENERAL VILLEGAS": "General Villegas", "RAMALLO": "Ramallo", "9 DE JULIO": "9 de Julio", "LEANDRO N ALEM": "Leandro N. Alem", "GRAL ARENALES": "Gral. Arenales", "RAUCH": "Rauch", "CORONEL SUAREZ": "Coronel Suárez", "TAPALQUE": "Tapalqué", "HIPOLITO YRIGOYEN HENDERSON": "Hipólito Yrigoyen (Henderson)", "CAPITAL FEDERAL": "Capital Federal", "TRES LOMAS": "Tres Lomas", "ADOLFO GONZALES CHAVES": "Adolfo Gonzáles Chaves", "ADOLFO ALSINA CARHUE": "Adolfo Alsina (Carhué)", "GENERAL GUIDO": "General Guido", "LEZAMA": "Lezama", "DAIREAUX": "Daireaux", "NAVARRO": "Navarro", "SAAVEDRA PIGUE": "Saavedra (Pigüe)", "ROQUE PEREZ": "Roque Perez", "PUAN": "Puan", "SUIPACHA": "Suipacha", "SALLIQUELO": "Salliqueló", "TORNQUIST": "Tornquist"}, "L": {"MORON": "Morón", "TURDERA": "Turdera", "ALTOS DE LA FERRERE": "Altos De La Ferrere", "LOMAS DEL MIRADOR": "Lomas del Mirador", "QUILMES OESTE": "Quilmes Oeste", "VILLA CELINA": "Villa Celina", "ITUZAINGO": "Ituzaingó", "QUILMES": "Quilmes", "CIUDADELA": "Ciudadela", "LA CANADA": "La Canada", "RAMOS MEJIA": "Ramos Mejía", "JUNIN": "Junín", "MAR DEL PLATA": "Mar del Plata", "VILLA SARMIENTO": "Villa Sarmiento", "SAN FRANCISCO SOLANO": "San Francisco Solano", "VILLA LUZURIAGA": "Villa Luzuriaga", "DEL VISO": "Del Viso", "RAFAEL CASTILLO": "Rafael Castillo", "LAS QUINTAS": "Las Quintas", "GONZALEZ CATAN": "González Catán", "LUJAN": "Luján", "LOMAS DE ZAMORA": "Lomas de Zamora", "GREGORIO DE LAFERRERE": "Gregorio de Laferrere", "INGENIERO BUDGE": "Ingeniero Budge", "SAN JUSTO": "San Justo", "GENERAL RODRIGUEZ": "General Rodríguez", "LOS ACANTILADOS": "Los Acantilados", "BANFIELD": "Banfield", "TAPIALES": "Tapiales", "LANUS": "Lanús", "SAN ANDRES": "San Andres", "BERNAL": "Bernal", "ABASTO": "Abasto", "MONTE CHINGOLO": "Monte Chingolo", "VILLA BALLESTER": "Villa Ballester", "MORENO": "Moreno", "CASEROS": "Caseros", "VIRREY DEL PINO": "Virrey del Pino", "LA MATANZA": "La Matanza", "EL PALOMAR": "El Palomar", "VILLA BOSCH": "Villa Bosch", "ISIDRO CASANOVA": "Isidro Casanova", "MERLO": "Merlo", "BOSQUES": "Bosques", "LA TABLADA": "La Tablada", "VILLA LA FLORIDA": "Villa La Florida", "GONNET": "Gonnet", "SAN ANTONIO DE PADUA": "San Antonio de Padua", "GARIN": "Garín", "PONTEVEDRA": "Pontevedra", "JOSE C PAZ": "José C. Paz", "HURLINGHAM": "Hurlingham", "BELLA VISTA": "Bella Vista", "JOSE LEON SUAREZ": "José León Suárez", "FLORENCIO VARELA": "Florencio Varela", "LA PLATA": "La Plata", "LOMA HERMOSA": "Loma Hermosa", "BURZACO": "Burzaco", "9 DE ABRIL VILLA TRANSRADIO": "9 de Abril / Villa Transradio", "ENSENADA": "Ensenada", "BERAZATEGUI": "Berazategui", "LONGCHAMP": "Longchamp", "TOLOSA": "Tolosa", "PILAR": "Pilar", "SALADILLO": "Saladillo", "VILLA ELVIRA": "Villa Elvira", "MARIANO ACOSTA": "Mariano Acosta", "CASTELAR": "Castelar", "LIBERTAD": "Libertad", "LUIS GUILLON": "Luis Guillón", "SAN JOSE": "San Jose", "TRENQUE LAUQUEN": "Trenque Lauquen", "BILLINGHURST": "Billinghurst", "HAEDO": "Haedo", "CLAYPOLE": "Claypole", "VILLA MADERO": "Villa Madero", "ZARATE": "Zárate", "CAMPANA": "Campana", "VILLA MAIPU": "Villa Maipú", "MARCOS PAZ": "Marcos Paz", "TRUJUI": "Trujui", "NECOCHEA": "Necochea", "CIUDAD EVITA": "Ciudad Evita", "ING PABLO NOGUES": "Ing. Pablo Nogués", "GRAND BOURG": "Grand Bourg", "VILLA CENTENARIO": "Villa Centenario", "MONTE GRANDE": "Monte Grande", "VILLA FIORITO": "Villa Fiorito", "CRUCECITA": "Crucecita", "LA LUCILA": "La Lucila", "TEMPERLEY": "Temperley", "MARTINEZ": "Martínez", "EZPELETA": "Ezpeleta", "ESTANISLAO SEVERO ZEBALLOS": "Estanislao Severo Zeballos", "VILLA GDOR UDAONDO": "Villa Gdor Udaondo", "ALEJANDRO KORN": "Alejandro Korn", "GERLI": "Gerli", "MANUEL ALBERTI": "Manuel Alberti", "SARANDI": "Sarandi", "BAHIA BLANCA": "Bahía Blanca", "CUARTEL V": "Cuartel V", "SAN MARTIN": "San Martín", "AREA DE PROMOCION": "Area de Promocion", "TORTUGUITAS": "Tortuguitas", "DOLORES": "Dolores", "LA REJA": "La Reja", "FLORIDA": "Florida", "LLAVALLOL": "Llavallol", "WILDE": "Wilde", "VILLA VATTEONE": "Villa Vatteone", "TRISTAN SUAREZ": "Tristán Suárez", "RANELAGH": "Ranelagh", "ALIANZA": "Alianza", "SAN MIGUEL": "San Miguel", "FRANCISCO ALVAREZ": "Francisco Álvarez", "DOCK SUD": "Dock Sud", "OLAVARRIA": "Olavarría", "GOBERNADOR J COSTA": "GOBERNADOR J.COSTA", "CIUDAD JARDIN LOMAS DEL PALOMAR": "Ciudad Jardín Lomas del Palomar", "VILLA DE MAYO": "Villa de Mayo", "11 DE SEPTIEMBRE": "11 DE SEPTIEMBRE", "REMEDIOS DE ESCALADA": "Remedios de Escalada", "RAFAEL CALZADA": "Rafael Calzada", "PLATANOS": "Plátanos", "D DE ALVEAR": "D. De Alvear", "GUERNICA": "Guernica", "BARRIO PARQUE CALCHAQUI": "Barrio Parque Calchaqui", "GENERAL BELGRANO": "General Belgrano", "VA YAPEYU": "VA YAPEYU", "MINISTRO RIVADAVIA": "Ministro Rivadavia", "TORRES": "Torres", "VILLA UDAONDO": "Villa Udaondo", "DON ORIONE": "Don Orione", "SAN NICOLAS": "San Nicolás", "MERCEDES": "Mercedes", "MALVINAS ARGENTINAS": "Malvinas Argentinas", "BELEN DE ESCOBAR": "Belén de Escobar", "VILLA CONCEPCION": "Villa Concepción", "PASO DEL REY": "Paso del Rey", "ESCALADA": "ESCALADA", "JOSE MELCHOR ROMERO": "José Melchor Romero", "DON TORCUATO": "Don Torcuato", "EL LIBERTADOR": "El Libertador", "VILLA DOMINICO": "Villa Domínico", "ARRECIFES": "Arrecifes", "GUILLERMO ENRIQUE HUDSON": "Guillermo Enrique Hudson", "OLIVOS": "Olivos", "PERGAMINO": "Pergamino", "VILLA MARTELLI": "Villa Martelli", "GLEW": "Glew", "VILLA ESPANA": "Villa España", "PUNTA ALTA": "Punta Alta", "BOULOGNE": "Boulogne", "VILLA LYNCH": "Villa Lynch", "VEINTE DE JUNIO": "VEINTE DE JUNIO", "EL PATO": "El Pato", "LOS HORNOS": "Los Hornos", "ADROGUE": "Adrogue", "ALEJANDRO PETION": "Alejandro Petión", "VILLA ADELINA": "Villa Adelina", "DON BOSCO": "Don Bosco", "AVELLANEDA": "Avellaneda", "SAN ISIDRO": "San Isidro", "VILLA SANTA ROSA": "VILLA SANTA ROSA", "ESTEBAN ECHEVERRIA": "Esteban Echeverria", "LOMA VERDE": "Loma Verde", "LOS POLVORINES": "Los Polvorines", "VALENTIN ALSINA": "Valentín Alsina", "VICENTE CASARES": "Vicente Casares", "MONTE HERMOSO": "Monte Hermoso", "MIRAMAR": "Miramar", "SAN VICENTE": "San Vicente", "BERISSO": "Berisso", "VICENTE LOPEZ": "Vicente López", "CARLOS SPEGAZZINI": "Carlos Spegazzini", "SAN FERNANDO": "San Fernando", "BARRIO FRINO": "Barrio Frino", "SANTA CLARA DEL MAR": "Santa Clara del Mar", "WILLIAM MORRIS": "William Morris", "CANUELAS": "Cañuelas", "LA CAPILLA": "La Capilla", "MAXIMO PAZ": "Maximo Paz", "CITY BELL": "City Bell", "EL JAGUEL": "El Jagüel", "V CIUDAD JARDIN": "V Ciudad Jardin", "LA UNION": "La Unión", "SAN ANTONIO DE ARECO": "San Antonio de Areco", "ROJAS": "Rojas", "AYACUCHO": "Ayacucho", "VILLA GESELL": "Villa Gesell", "VILLA LIBERTAD": "VILLA LIBERTAD", "PINEYRO": "Piñeyro", "PEHUAJO": "Pehuajó", "INGENIERO ADOLFO SOURDEAUX": "Ingeniero Adolfo Sourdeaux", "SAENZ PENA": "Sáenz Peña", "INGENIERO ALLAN": "Ingeniero Allan", "MONTE": "MONTE", "SIERRA DE LOS PADRES": "Sierra de los Padres", "QUEQUEN": "Quequén", "VILLA SANTOS TESEI": "Villa Santos Tesei", "EZEIZA": "Ezeiza", "LAS MALVINAS": "Las Malvinas", "BALCARCE": "Balcarce", "MANZANARES": "Manzanares", "JUAN MARIA GUTIERREZ": "Juan María Gutierrez", "MAQUINISTA SAVIO": "Maquinista Savio", "VILLA BROWN": "VILLA BROWN", "MARTIN CORONADO": "Martín Coronado", "ALMIRANTE BROWN": "Almirante Brown", "JOSE INGENIEROS": "José Ingenieros", "PINAMAR": "Pinamar", "VILLA ELISA": "Villa Elisa", "SANTOS LUGARES": "Santos Lugares", "COLON": "Colón", "VILLA SAN LUIS": "Villa San Luis", "CHURRUCA": "Churruca", "GENERAL PACHECO": "General Pacheco", "GENERAL ALVEAR": "GENERAL ALVEAR", "ANGEL ETCHEVERRY": "Ángel Etcheverry", "CANNING": "Canning", "LOBOS": "Lobos", "TANDIL": "Tandil", "VIRREYES": "Virreyes", "LA LONJA": "La Lonja", "EL MARQUESADO": "El Marquesado", "VA CNEL ZAPIOLA": "VA. CNEL ZAPIOLA", "JOSE MARMOL": "Jose Marmol", "VILLA RAFFO": "Villa Raffo", "SAN C DEL TUYU": "SAN C. DEL TUYU", "PARQUE SAN MARTIN": "Parque San Martín", "GDOR MONTEVERDE": "Gdor Monteverde", "PABLO PODESTA": "Pablo Podestá", "INGENIERO MASCHWITZ": "Ingeniero Maschwitz", "OSTENDE": "Ostende", "PRESIDENTE DERQUI": "Presidente Derqui", "AZUL": "Azul", "VA B MONTEAGUDO": "VA. B. MONTEAGUDO", "RINGUELET": "Ringuelet", "SOURIGUES": "Sourigues", "CHASCOMUS": "Chascomús", "SAN ANDRES DE GILES": "San Andrés de Giles", "VILLA ROSA": "Villa Rosa", "BENAVIDEZ": "Benavídez", "FATIMA": "Fátima", "ESTACION CAMET": "Estación Camet", "SAN PEDRO": "San Pedro", "BARADERO": "Baradero", "GENERAL LAS HERAS": "General Las Heras", "BECCAR": "Beccar", "EL TALAR DE PACHECO": "EL TALAR DE PACHECO", "ARTURO SEGUI": "Arturo Seguí", "TRES ARROYOS": "Tres Arroyos", "PEREYRA": "Pereyra", "MAR DEL TUYU": "MAR DEL TUYU", "HERNANDEZ": "Hernández", "VILLA OBRERA": "Villa Obrera", "MUNRO": "Munro", "GENERAL LAMADRID": "GENERAL LAMADRID", "TRES SARGENTOS": "Tres Sargentos", "BATAN": "Batán", "DOMSELAAR": "Domselaar", "SAN CAYETANO": "San Cayetano", "CARAPACHAY": "Carapachay", "LAPRIDA": "LAPRIDA", "CARLOS KEEN": "Carlos Keen", "CHAPADMALAL": "Chapadmalal", "LOBERIA": "Lobería", "CHIVILCOY": "Chivilcoy", "LISANDRO OLMOS": "Lisandro Olmos", "BAYAUCA": "Bayauca", "MAIPU": "Maipú", "PUNTA LARA": "Punta Lara", "LA BALLENERA": "LA BALLENERA", "BARRIO SAN JOSE": "Barrio San Jose", "RICARDO ROJAS": "Ricardo Rojas", "DIONISIA": "Dionisia", "VILLA BARCELO": "Villa Barcelo", "OPEN DOOR": "Open Door", "LAS FLORES": "Las Flores", "RANCAGUA": "Rancagua", "GOLDNEY": "Goldney", "VILLA RITA": "Villa Rita", "CARMEN DE PATAGONES": "Carmen de Patagones", "GENERAL MADARIAGA": "General Madariaga", "SANTA TERESITA": "SANTA TERESITA", "ESCOBAR": "Escobar", "CORONEL DORREGO": "Coronel Dorrego", "PAVON": "Pavón", "RIO TALA": "Río Tala", "ALGARROBO": "ALGARROBO", "VILLA ARIZA": "Villa Ariza", "VICTORIA": "Victoria", "JUAN JOSE PASO": "Juan José Paso", "MAGDALENA": "Magdalena", "25 DE MAYO": "25 DE MAYO", "ZAMUDIO": "Zamudio", "GORCHS": "Gorchs", "CARMEN DE ARECO": "Carmen de Areco", "EL PELIGRO": "El Peligro", "SAN BERNARDO": "SAN BERNARDO", "MUNIZ": "Muñiz", "CASTELLI": "Castelli", "VA PQUE PRES ALCORTA": "VA.PQUE.PRES.ALCORTA", "VA AYACUCHO": "VA. AYACUCHO", "LOS TOLDOS": "Los Toldos", "BO PQUE GRL S MARTIN": "Bo Pque Grl S.Martin", "ESQUINA DE CROTTO": "ESQUINA DE CROTTO", "LAS CABANAS": "Las Cabañas", "BARTOLOME BAVIO": "Bartolome Bavio", "RANCHOS": "RANCHOS", "BOLIVAR": "Bolivar", "TIGRE": "Tigre", "VA PQUE S LORENZO": "VA PQUE S LORENZO", "MAR AZUL": "Mar Azul", "GENERAL HORNOS": "GENERAL HORNOS", "FLORENTINO AMEGHINO": "Florentino Ameghino", "LIMA": "Lima", "CARILO": "Cariló", "RINCON DE MILBERG": "Rincón de Milberg", "MATHEU": "Matheu", "BARRIO MARITIMO": "Barrio Maritimo", "VILLA DIAMANTE": "Villa Diamante", "VILLA PROGRESO": "Villa Progreso", "CHENAUT": "Chenaut", "JAUREGUI": "Jáuregui", "CORONEL PRINGLES": "Coronel Pringles", "MANZONE": "MANZONE", "EL CARMEN": "El Carmen", "V J N PUEYRREDON": "V J N PUEYRREDON", "DIQUE LUJAN": "Dique Luján", "OLIDEN": "Oliden", "VILLA ARGUELLO": "Villa Arguello", "PARQUE VARON": "Parque Varon", "CAPILLA DEL SENOR": "Capilla del Señor", "DUGGAN": "Duggan", "SALTO": "Salto", "VILLA ASTOLFI": "Villa Astolfi", "BRAGADO": "Bragado", "ACASSUSO": "Acassuso", "URIBELARREA": "Uribelarrea", "GENERAL VILLEGAS": "General Villegas", "PEDRO LURO": "Pedro Luro", "VA CHACABUCO": "VA. CHACABUCO", "HINOJALES": "Hinojales", "LAS TONINAS": "LAS TONINAS", "CORONEL BRANDSEN": "Coronel Brandsen", "RAMALLO": "Ramallo", "LOS CARDALES": "Los Cardales", "PARADA ROBLES": "Parada Robles", "BARRIO UNO": "Barrio Uno", "NUEVE DE JULIO": "NUEVE DE JULIO", "MAR DE AJO": "MAR DE AJO", "LINCOLN": "Lincoln", "LOS EUCALIPTUS": "LOS EUCALIPTUS", "JUAN BAUTISTA ALBERDI": "Juan Bautista Alberdi", "GENERAL ARENALES": "GENERAL ARENALES", "VILLA RAMALLO": "Villa Ramallo", "LAS ARMAS": "Las Armas", "GORINA": "Gorina", "CASTELAR NORTE": "Castelar Norte", "ARRIBENOS": "ARRIBEÑOS", "ROSAS": "Rosas", "RAUCH": "Rauch", "CORTINES": "Cortines", "TRES DE FEBRERO": "Tres de Febrero", "CORONEL SUAREZ": "Coronel Suárez", "CONESA": "Conesa", "VILLA GALICIA": "Villa Galicia", "VILLA CORINA": "Villa Corina", "TOMAS STA COLOMA": "Tomas Sta Coloma", "GERVASIO PAVON": "Gervasio Pavon", "ALSINA": "Alsina", "GENERAL PAZ": "General Paz", "SOLIS": "Solís", "MAR CHIQUITA": "Mar Chiquita", "ZELAYA": "Zelaya", "LA LOMA": "La Loma", "POBLET": "POBLET", "TAPALQUE": "Tapalqué", "VA R DE ESCALADA": "Va. R. De Escalada", "RUTA 9 KM 72": "Ruta 9 Km 72", "HENDERSON": "HENDERSON", "RIO LUJAN": "RIO LUJAN", "LA GRANJA": "La Granja", "CAPITAL FEDERAL": "Capital Federal", "TRES LOMAS": "Tres Lomas", "VILLA PONZATTI": "Villa Ponzatti", "GENERAL O BRIEN": "General O'Brien", "VILLA FLANDRIA": "VILLA FLANDRIA", "GONZALEZ CHAVEZ": "GONZALEZ CHAVEZ", "COSTA AZUL": "COSTA AZUL", "RIVERA": "RIVERA", "MAR DE LAS PAMPAS": "Mar de las Pampas", "GENERAL GUIDO": "General Guido", "LA LUCILA DEL MAR": "LA LUCILA DEL MAR", "BALNI CASCALLARES": "Balni Cascallares", "EXALTAC DE LA CRUZ": "Exaltac. De La Cruz", "VILLA MONTORO": "VILLA MONTORO", "VIVORATA": "Vivoratá", "EL SOCORRO": "El Socorro", "BANCALARI": "Bancalari", "LEZICA Y TORREZURI": "LEZICA Y TORREZURI", "LAS CATONAS": "Las Catonas", "LEZAMA": "Lezama", "PARQUE BRISTOL": "Parque Bristol", "VILLA VERDE": "Villa Verde", "DEL CARRIL": "Del Carril", "VILLARS": "Villars", "LAS LOMAS": "Las Lomas", "DIQUE N 1": "Dique Nº1", "COBO": "Cobo", "VILLA BONICH": "Villa Bonich", "ARANA": "Arana", "SAN ALBERTO": "San Alberto", "V JOSE INGENIEROS": "V Jose Ingenieros", "EL PESCADO": "El Pescado", "DAIREAUX": "Daireaux", "LA RIESTRA": "LA RIESTRA", "LA EMILIA": "La Emilia", "MAR DEL SUR": "Mar del Sur", "EMPALME LOBOS": "Empalme Lobos", "NAVARRO": "Navarro", "GRAL ALVEAR": "Gral. Alvear", "LOMAS DEL MILLON": "Lomas Del Millon", "CHILAVERT": "Chilavert", "HINOJO": "Hinojo", "PLAYA SERENA": "Playa Serena", "JOSE A GUISASOLA": "Jose A Guisasola", "OBLIGADO": "Obligado", "CASTELAR SUR": "Castelar Sur", "PIGUE": "PIGUE", "JUAN A DE LA PENA": "Juan A. de la Peña", "ALTAMIRA": "Altamira", "LA VIOLETA": "La Violeta", "V LOPEZ ROMERO": "V Lopez Romero", "BARRIO SAN JUAN": "Barrio San Juan", "GENERAL MANSILLA": "General Mansilla", "ROQUE PEREZ": "Roque Pérez", "PUAN": "Puán", "VEDIA": "Vedia", "SUIPACHA": "Suipacha", "VILLA LA ATA": "Villa La ¥Ata", "SALLIQUELO": "Salliqueló", "GOROSTIAGA": "Gorostiaga", "TORNQUIST": "Tornquist", "EL PARCHE": "El Parche", "VILLANUEVA": "Villanueva", "MONES CAZON": "Mones Cazón", "CORONEL VIDAL": "Coronel Vidal", "B ANTAR ARGENTINA": "B Antar Argentina"}, "M": {"FIAT": "Fiat", "CHEVROLET": "Chevrolet", "RENAULT": "Renault", "GALLOPER": "Galloper", "PEUGEOT": "Peugeot", "VOLKSWAGEN": "Volkswagen", "BMW": "BMW", "TOYOTA": "Toyota", "FORD": "Ford", "AUDI": "Audi", "MERCEDESBENZ": "Mercedes-Benz", "IVECO": "Iveco", "DODGE": "Dodge", "HONDA": "Honda", "JEEP": "Jeep", "HYUNDAI": "Hyundai", "CITROEN": "Citroën", "SEAT": "Seat", "NISSAN": "Nissan", "SUZUKI": "Suzuki", "CHERY": "Chery", "DS": "DS", "DACIA": "Dacia", "RAM": "RAM", "CHRYSLER": "Chrysler", "KIA": "Kia", "MITSUBISHI": "Mitsubishi", "ALFA ROMEO": "Alfa Romeo", "BAIC": "BAIC", "VOLVO": "Volvo", "JAC": "JAC", "LAND ROVER": "Land Rover", "DAEWOO": "Daewoo", "BYD": "BYD", "LIFAN": "Lifan", "ISUZU": "Isuzu", "SUBARU": "Subaru", "SSANGYONG": "SsangYong", "FOTON": "Foton", "MINI": "Mini", "SANTANA": "Santana", "JMC": "JMC", "GEELY": "Geely", "JETOUR": "Jetour", "HAVAL": "Haval", "CHANGAN": "Changan", "SMART": "Smart", "GMC": "GMC", "DAIHATSU": "Daihatsu", "PORSCHE": "Porsche", "MAZDA": "Mazda", "LADA": "Lada", "OPEL": "Opel", "DONGFENG": "Dongfeng"}};
+const nkH=v=>A.norm(v).replace(/[^A-Z0-9 ]/g," ").replace(/\s+/g," ").trim();
+const titulo=v=>{v=(v??"").toString().trim().toLowerCase(); return v.split(/\s+/).map((w,i)=>i>0&&/^(?:de|del|la|las|los|y|e|el)$/.test(w)?w:w.charAt(0).toUpperCase()+w.slice(1)).join(" ")};
+const mapaH=(tipo,v)=>{if(v==null||v==="")return ""; return HERMES_MAP[tipo][nkH(v)]||titulo(v)};
+function fechaISO(v){
+  if(v==null||v==="")return "";
+  if(typeof v==="number"){const d=new Date(Math.round((v-25569)*864e5)); return d.getUTCFullYear()+"-"+String(d.getUTCMonth()+1).padStart(2,"0")+"-"+String(d.getUTCDate()).padStart(2,"0")}
+  if(v instanceof Date&&!isNaN(v))return v.getFullYear()+"-"+String(v.getMonth()+1).padStart(2,"0")+"-"+String(v.getDate()).padStart(2,"0");
+  const s=String(v).trim(); let m;
+  if((m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)))return m[1]+"-"+m[2].padStart(2,"0")+"-"+m[3].padStart(2,"0");
+  if((m=s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/)))return (m[3].length===2?"20"+m[3]:m[3])+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0");
+  return s;
+}
+function horaHMS(v){
+  if(v==null||v==="")return "";
+  if(typeof v==="number"){const secs=Math.round((v%1)*86400); return String(Math.floor(secs/3600)%24).padStart(2,"0")+":"+String(Math.floor(secs/60)%60).padStart(2,"0")+":"+String(secs%60).padStart(2,"0")}
+  const m=String(v).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/); return m?m[1].padStart(2,"0")+":"+m[2]+":"+(m[3]||"00"):"";
+}
+// Coordenadas: se usan las del analista (analisis_coordenadas); si están vacías, dicen S/D o S/C, o caen fuera de la Provincia de Buenos Aires, se completan con latitud y longitud del crudo
+const enPBA=(la,lo)=>isFinite(la)&&isFinite(lo)&&la<=-33.2&&la>=-41.1&&lo<=-56.6&&lo>=-63.4;
+function leerCoord(v){
+  const s=String(v??"").trim(); if(!s||/^(?:S\s*\/\s*[DC]|SIN DATOS?|SD|SC|-+|0)$/i.test(s))return null;
+  let m=s.match(/^\s*(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)\s*$/)||s.match(/^\s*(-?\d+,\d+)\s+(-?\d+,\d+)\s*$/);
+  if(!m)return null;
+  let la=parseFloat(m[1].replace(",",".")), lo=parseFloat(m[2].replace(",","."));
+  let giro=false; if(!enPBA(la,lo)&&enPBA(-Math.abs(la),-Math.abs(lo))){la=-Math.abs(la);lo=-Math.abs(lo);giro=true}          // les falta el signo menos
+  if(!enPBA(la,lo)&&enPBA(lo,la)){[la,lo]=[lo,la];giro=true}          // vinieron al revés
+  return enPBA(la,lo)?{la,lo,giro}:null;
+}
+function coordenadas(r,g){
+  const a=leerCoord(g(r,["analisis_coordenadas"]));
+  if(a)return {v:a.giro?a.la+", "+a.lo:String(g(r,["analisis_coordenadas"])).trim(),origen:"analista"};
+  const la=String(g(r,["latitud","lat"])).trim(), lo=String(g(r,["longitud","lon","lng"])).trim();
+  if(la!==""&&lo!==""&&enPBA(parseFloat(la.replace(",",".")),parseFloat(lo.replace(",","."))))return {v:la+", "+lo,origen:"crudo"};
+  const c=leerCoord(la+", "+lo); if(c)return {v:c.la+", "+c.lo,origen:"crudo"};
+  return {v:"",origen:"ninguna"};
+}
+function filaHermes(x){
+  const g=getter(x.r), est={SUSTRAIDO:"Sustraido",HALLAZGO:"Hallado",INMEDIATO:"Inmediato"}[x.res.CONDICION]||x.res.CONDICION;
+  const marca=x.res.MARCA?(HERMES_MAP.M[nkH(x.res.MARCA)]||titulo(x.res.MARCA)):"";
+  let rel=String(g(x.r,["relato"])||""); if(rel.length>32000)rel=rel.slice(0,32000)+" […]";
+  return {patente:x.res.PATENTE||"",nro_registro:g(x.r,["nro_registro"]),partido_hecho:g(x.r,["partido_hecho","analisis_partido"]),localidad_hecho:g(x.r,["localidad_hecho","analisis_localidad"]),
+    condicion:est,marca,modelo:x.res.MODELO||"",chasis:x.res.CHASIS||"",motor:x.res.MOTOR||"",
+    fecha_inicio_hecho:fechaISO(g(x.r,["fecha_inicio_hecho","analisis_fecha_hecho"])||g(x.r,["fecha_carga"])),hora_inicio_hecho:horaHMS(g(x.r,["hora_inicio_hecho","analisis_hora_hecho"])),
+    analisis_coordenadas:(x._co=coordenadas(x.r,g)).v,relato:rel,analisis_caratula:g(x.r,["analisis_caratula"]),analisis_modalidad:g(x.r,["analisis_modalidad"]),jurisdiccion:g(x.r,["analisis_jurisdiccion","jurisdiccion","dependencia"])};
+}
 const BASE=["delito_id","nro_registro","ipp","fecha_carga","hora_carga","dependencia","fecha_inicio_hecho","hora_inicio_hecho","partido_hecho","localidad_hecho","latitud","longitud","calle","altura","entre","calificaciones","relato"];
 const AUTO=["SUSTRAIDO","HALLAZGO","INMEDIATO"], ORDEN=["SUSTRAIDO","HALLAZGO","INMEDIATO","REVISION HUMANA","DESCARTADO"];
 const esc=v=>(v??"").toString().replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
@@ -910,7 +1038,7 @@ const esCruce=x=>!!x.cruce;
 const esMal=x=>/^(?:MAL CARGADO|REVISAR CARGA)/.test(x.res.CONTROL_CARGA||"");
 const fix=s=>{s=A.norm(s);return /REVISION/.test(s)?"REVISION HUMANA":/INMEDIAT/.test(s)?"INMEDIATO":/HALLAZ/.test(s)?"HALLAZGO":/SUSTRA/.test(s)?"SUSTRAIDO":/DESCART/.test(s)?"DESCARTADO":s};
 const setBar=p=>{$("bar").style.width=Math.max(0,Math.min(100,p))+"%"};
-const btns=on=>["d1","d2","d3","d4"].forEach(b=>{$(b).disabled=!on});
+const btns=on=>["d1","d2","d3","d4","d6"].forEach(b=>{$(b).disabled=!on});
 
 async function leer(f){
   if(typeof XLSX==="undefined")throw new Error("No se pudo cargar la librería de Excel. Hace falta conexión a internet al abrir esta página.");
@@ -1013,6 +1141,13 @@ function bajar(nombre,hojas){
 }
 const stem=()=>fileName.replace(/\.[^.]+$/,"");
 $("d1").onclick=()=>bajar(stem()+" - AUTOMOTORES.xlsx",[["Hoja1",out.filter(x=>AUTO.includes(x.res.CONDICION)).map(filaFinal)],["SUSTRAIDOS QUE APARECEN",pares]]);
+$("d6").onclick=()=>{
+  const filas=out.filter(x=>AUTO.includes(x.res.CONDICION)).map(filaHermes);
+  bajar(stem()+" - HERMES.xlsx",[["Autos",filas]]);
+  const sinPat=filas.filter(f=>!f.patente).length, sinFecha=filas.filter(f=>!f.fecha_inicio_hecho).length, autos=out.filter(x=>AUTO.includes(x.res.CONDICION));
+  const coCrudo=autos.filter(x=>x._co&&x._co.origen==="crudo").length, coNada=autos.filter(x=>x._co&&x._co.origen==="ninguna").length;
+  $("status").textContent="⬇ Excel para Hermes: "+filas.length.toLocaleString("es-AR")+" automotores."+(sinPat?" Atención: "+sinPat.toLocaleString("es-AR")+" sin patente (Hermes la pide como obligatoria).":"")+(sinFecha?" "+sinFecha+" sin fecha del hecho.":"")+(coCrudo?" Coordenadas completadas con latitud/longitud del crudo: "+coCrudo.toLocaleString("es-AR")+".":"")+(coNada?" Sin coordenadas válidas: "+coNada+".":"");
+};
 $("d2").onclick=()=>bajar(stem()+" - REVISION HUMANA.xlsx",[["REVISION HUMANA",out.filter(x=>x.res.CONDICION==="REVISION HUMANA").map(filaRev)],["DESC. CASSANDRA CON AUTO",descCas.filter(x=>x.veAuto).map(x=>Object.assign(filaRev(x),{OPINION_AUDITOR:x.res.OPINION_AUDITOR}))]]);
 $("d3").onclick=()=>bajar(stem()+" - CONTROL DE CARGA.xlsx",[["MAL CARGADOS",out.filter(esMal).map(filaCtl)],["CALIFICACION GENERICA",out.filter(x=>/^CALIFICACION GENERICA/.test(x.res.CONTROL_CARGA||"")).map(filaCtl)]]);
 $("d4").onclick=()=>{
