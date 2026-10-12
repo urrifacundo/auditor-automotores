@@ -804,7 +804,7 @@ details p{line-height:1.55;color:#30445e}
         <p class="lead">Clasificación de robos y hallazgos de automotores · Cassandra → Quirón</p>
       </div>
     </div>
-    <div class="version">V15.10</div>
+    <div class="version">V16.4</div>
   </div>
 </header>
 
@@ -924,10 +924,10 @@ details p{line-height:1.55;color:#30445e}
   <p><b>Sustraído</b>: el relato cuenta que se llevaron el automotor completo (asalto, levantamiento o el auto que ya no estaba donde lo dejaron) y no aparece en el mismo relato. También cuando la ficha al pie del relato trae un automotor con vínculo «Sustraído».<br>
   <b>Hallazgo</b>: automotor que aparece con pedido de secuestro o alerta, o del que el relato dice que había sido sustraído antes.<br>
   <b>Inmediato</b>: el mismo relato cuenta primero la sustracción y después que el automotor apareció.<br>
-  <b>Revisión humana</b>: hechos cargados como automotor que el auditor no pudo confirmar en el relato, vehículo sin tipo identificable (auto o moto), tentativa mezclada con sustracción, estafas o entregas voluntarias, y los autos abandonados sin pedido de secuestro cuando la casilla está destildada.<br>
+  <b>Revisión humana</b>: hechos cargados como automotor que el auditor no pudo confirmar en el relato, vehículo sin tipo identificable (auto o moto), tentativa mezclada con sustracción, estafas o entregas voluntarias, los autos abandonados sin pedido de secuestro cuando la casilla está destildada, y los «autos» de los que el relato no da ningún dato del vehículo, o las sustracciones sin patente, motor ni chasis (en las pruebas, la mayoría eran robos de cosas del interior, motos, bicicletas o llamados al 911; el dueño de un auto robado casi siempre da la patente).<br>
   <b>Descartados en Cassandra</b>: los hechos que el Excel trae marcados como descartados no entran al Excel final ni a la revisión humana; quedan registrados en el archivo de detalle.<br>
   <b>Sustraídos que aparecen</b>: alerta cuando un automotor denunciado como sustraído figura también como hallazgo en otro hecho del mismo Excel, con la misma patente o el mismo chasis.<br>
-  <b>Auto o moto</b>: se resuelve por la palabra usada, la marca y el modelo, el formato de la patente (ABC123 / AB123CD es auto; 123ABC / A123BCD es moto) y a quién pertenece el vehículo en el relato. La moto en la que llegan los autores no cuenta.</p>
+  <b>Auto o moto</b>: se resuelve por la palabra usada, la marca y el modelo, el formato de la patente (ABC123 / AB123CD es auto; 123ABC / A123BCD es moto) y a quién pertenece el vehículo en el relato. La moto en la que llegan los autores no cuenta. Si el relato cuenta el robo de una bicicleta o una moto, las frases genéricas («se da a la fuga con el rodado», «con el mismo») se toman como ese mismo vehículo y no como un auto.</p>
   <p><b>Control de carga</b> (no cambia la clasificación): «Mal cargado» = en Quirón figura automotor y el relato es de una moto o bicicleta, o al revés. «Revisar carga» = figura automotor y el relato no lo muestra, o figura hallazgo y es una sustracción. «Calificación genérica» = es un hecho de automotor cargado como Robo, Hurto, Encubrimiento, etc.</p>
   </details>
 </section>
@@ -940,11 +940,15 @@ details p{line-height:1.55;color:#30445e}
 (function(root){
 "use strict";
 
-const norm0=s=>(s??"").toString().normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[“”"'`´]/g," ").replace(/([A-Z]{2,})-([A-Z]{2,})/g,(x,a,b)=>/^(?:PICK|NO|EX|SUB|SEMI|AUTO|MOTO|VICE|CO|SAN|VILLA|LA|EL|DE|GRAL)$/.test(a)||b.length<3?x:a+b).replace(/\s+/g," ").trim();
+// V16: errores de tipeo frecuentes del verbo "sustraer" en los relatos
+const TYPO_SUSTRA={SUSTRIDO:"SUSTRAIDO",SUSTRIDA:"SUSTRAIDA",SUSTRIADO:"SUSTRAIDO",SUSTARIDO:"SUSTRAIDO",SUSTARIADO:"SUSTRAIDO",SUSTRTAIDO:"SUSTRAIDO",SUSTADIO:"SUSTRAIDO",SUSTREN:"SUSTRAEN",SUSTAEN:"SUSTRAEN",SUSTRTAEN:"SUSTRAEN",SUSTAREN:"SUSTRAEN",SUSTARE:"SUSTRAE",SUSTARER:"SUSTRAER",SUSTREAER:"SUSTRAER",SUSTRERLE:"SUSTRAERLE",SUSTAJERON:"SUSTRAJERON",SUSTARJERON:"SUSTRAJERON",SUTRAGIERON:"SUSTRAJERON",SUSTARJO:"SUSTRAJO",SUSTRTAJO:"SUSTRAJO",SUSRACCION:"SUSTRACCION",SUSTRYENDOLE:"SUSTRAYENDOLE"};
+const fixTypos=s=>s.replace(/\bSUBSTRA/g,"SUSTRA").replace(/\bSUN?TRA(?=[EIJYG])/g,"SUSTRA").replace(/\bSUS[A-Z]{2,9}\b/g,w=>TYPO_SUSTRA[w]||w);
+const norm0=s=>fixTypos((s??"").toString().normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[“”"'`´]/g," ").replace(/([A-Z]{2,})-([A-Z]{2,})/g,(x,a,b)=>/^(?:PICK|NO|EX|SUB|SEMI|AUTO|MOTO|VICE|CO|SAN|VILLA|LA|EL|DE|GRAL)$/.test(a)||b.length<3?x:a+b).replace(/\s+/g," ").trim());
 // ---- corrección de marcas y modelos mal escritos ("CHEBROLET" -> CHEVROLET)
 function _dl(a,b){if(Math.abs(a.length-b.length)>3)return 9;let p=[],q=[],r=[];for(let j=0;j<=b.length;j++)q[j]=j;for(let i=1;i<=a.length;i++){r=[i];for(let j=1;j<=b.length;j++){const c=a[i-1]===b[j-1]?0:1;r[j]=Math.min(q[j]+1,r[j-1]+1,q[j-1]+c);if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])r[j]=Math.min(r[j],p[j-2]+1)}p=q;q=r}return q[b.length]}
 const MARCAS_LARGAS=["VOLKSWAGEN","CHEVROLET","PEUGEOT","RENAULT","CITROEN","MITSUBISHI","DAIHATSU","HYUNDAI","CHRYSLER","SSANGYONG"];
 const MARCAS_TODAS=MARCAS_LARGAS.concat(["MERCEDES","TOYOTA","NISSAN","SUZUKI","SUBARU","SCANIA","DAEWOO","AGRALE","PORSCHE","CHANGAN","PONTIAC","SHINERAY","HONDA","DODGE","CHERY","IVECO","ISUZU","VOLVO","GEELY","LIFAN","FOTON","MAZDA","LEXUS","SKODA","SMART","DACIA","LANCIA"]);
+const MARCAS_AUTO_RX=["VOLKSWAGEN","VW","CHEVROLET","PEUGEOT","RENAULT","CITROEN","FIAT","FORD","TOYOTA","NISSAN","JEEP","KIA","HYUNDAI","CHERY","AUDI","MERCEDES","MITSUBISHI","SUBARU","DAEWOO","ISUZU","MAZDA","IVECO","SCANIA","CHRYSLER","RAM","ALFA ROMEO","SEAT","GEELY","HAVAL","BAIC","JAC","DS"].join("|");
 const MARCA_ALIAS={FIAR:"FIAT",FAIT:"FIAT",FIANT:"FIAT",FIATA:"FIAT",FITA:"FIAT",FIATT:"FIAT",FORDO:"FORD",FOKD:"FORD",EORD:"FORD",FIRD:"FORD",FORT:"FORD",JEPP:"JEEP",JEPE:"JEEP",DOGE:"DODGE",DOGGE:"DODGE",DDOGE:"DODGE",CHER:"CHERY",CHERRY:"CHERY",CHERI:"CHERY",KAIA:"KIA",IVECCO:"IVECO",IBECO:"IVECO",INECO:"IVECO",IVACO:"IVECO",ISUZO:"ISUZU",ESCANIA:"SCANIA",SACNIA:"SCANIA",PORCHE:"PORSCHE",GELLY:"GEELY",SABARU:"SUBARU",CHYSLER:"CHRYSLER",CRYSLER:"CHRYSLER",CHRISLER:"CHRYSLER",HIUNDAY:"HYUNDAI",HUNDAY:"HYUNDAI",RENOLT:"RENAULT",RANUALT:"RENAULT",REANAUL:"RENAULT",RENAIT:"RENAULT",RENUAL:"RENAULT",PAUEGEOT:"PEUGEOT",PEGEUOT:"PEUGEOT",PEOUGET:"PEUGEOT",ONDA:"HONDA",HONA:"HONDA",HODA:"HONDA",HONDO:"HONDA",NISSA:"NISSAN",TOYOT:"TOYOTA",MERCEDEZ:"MERCEDES",MERCEDE:"MERCEDES",MERCES:"MERCEDES",MERDES:"MERCEDES",MERCDES:"MERCEDES",MECEDES:"MERCEDES",MERDECES:"MERCEDES",MARCEDES:"MERCEDES",MERECEDES:"MERCEDES",MERECEDEZ:"MERCEDES",MERCERDES:"MERCEDES",MERCADEZ:"MERCEDES",MERCEBENS:"MERCEDES",NERCEDES:"MERCEDES",MENCEDES:"MERCEDES",MERECES:"MERCEDES",MCEDES:"MERCEDES",MEREDES:"MERCEDES"};
 const NO_MARCA=new Set(["MERCED","MERELES","MERCADOS","MERCADER","PEREDES","TERCERES","MECEDER","CHANGAS","CHANGA","STINGRAY","CITIZEN","DITRON","CHANDON","CHANSON","TOYAMA","NISMAN","SCALIA","AGRAVE","AGRADE","REMAULT","HACIA","POLVO","START","GANCIA","SALIO","PATIO","VIRTUD","MOLDEO","MODEO","RANGE","FIORITO","ASTRO","DERIVA","PRIMA","FOCOS","TRAFICO","CRUZA","JACK","CORSO","SENDA","CAPTOR","BENTO"]);
 const MODELOS=["KANGOO","AMAROK","HILUX","ECOSPORT","SANDERO","DUSTER","CRONOS","SIENA","PALIO","CORSA","PRISMA","ETIOS","COROLLA","SURAN","VENTO","SAVEIRO","PARTNER","BERLINGO","RANGER","FIORINO","STRADA","KARDIAN","LOGAN","MEGANE","FLUENCE","CRUZE","TRACKER","AGILE","MERIVA","SYMBOL","TIGUAN","NIVUS","VIRTUS","VOYAGE","RENEGADE","FRONTIER","SPRINTER","COURIER","ESCORT","FIESTA","MONDEO","TRAFIC","DUCATO","STEPWAY","CAPTUR","AIRCROSS","CLASSIC","VECTRA","ASTRA","FOCUS","SPACEFOX","CROSSFOX","GOLTREND","MASTER","EXPERT","BOXER","PICANTO","TUCSON","COMPASS"];
@@ -990,7 +994,7 @@ function mentions(t){
   for(const m of t.matchAll(/\b(?:MARCA|MODELO|MARCAR)[ :]+([A-Z0-9][A-Z0-9 -]{0,34})/g)){
     const seg=m[1];
     let mm=seg.match(new RegExp("\\b(?:"+MD_MOTO+")\\b")); if(mm)out.push({pos:m.index,end:m.index+m[0].length,type:"M",kind:"model",txt:mm[0]});
-    if(/^(?:MERCEDES|SEAT|HONDA (?:CIVIC|FIT|CITY|HRV|HR-V|CRV|CR-V|ACCORD|WRV|WR-V)|SUZUKI (?:VITARA|SWIFT|FUN|GRAND|JIMNY))\b/.test(seg))out.push({pos:m.index,end:m.index+m[0].length,type:"A",kind:"brand",txt:seg.split(" ")[0]});
+    if(/^(?:MERCEDES|SEAT|HONDA[ ,]+(?:MODELO[ :]+)?(?:CIVIC|FIT|CITY|HRV|HR-V|CRV|CR-V|ACCORD|WRV|WR-V)|SUZUKI[ ,]+(?:MODELO[ :]+)?(?:VITARA|SWIFT|FUN|GRAND|JIMNY))\b/.test(seg))out.push({pos:m.index,end:m.index+m[0].length,type:"A",kind:"brand",txt:seg.split(" ")[0]});
     let ma=seg.match(new RegExp("\\b(?:"+MD_AUTO+")\\b")); if(ma&&!mm)out.push({pos:m.index,end:m.index+m[0].length,type:"A",kind:"model",txt:ma[0]});
   }
   // modelos inequívocos sueltos ("rodado kangoo")
@@ -1230,6 +1234,12 @@ function thefts(t,M,dt){
       if(cerca(m.index))continue; const vp=m.index+m[0].indexOf(m[1]), ty=tipo(m[1],vp); if(ty!=="A")continue;
       push({pos:m.index,opos:vp,verb:"SE LLEVAN EL VEHICULO Y OTRAS COSAS",type:"A",obj:m[1],attempt:false});
     }
+    // V16: "se retiran llevándose el dinero y su vehículo marca Peugeot"
+    for(const m of t.matchAll(new RegExp("\\b(?:LLEVANDOSE|SE LLEVA(?:N|RON|RIAN|BAN)?|SE LO LLEVA\\w*|LLEVARON|SUSTRAYENDO(?:LE|LES)?|SUSTRAJERON|SUSTRAEN|ROBARON|ROBANDO(?:LE)?)\\b[^.]{0,110}?\\b(?:Y|ASI COMO|COMO ASI TAMBIEN|ADEMAS DE|TAMBIEN|JUNTO CON|E INCLUSO)\\b (?:SU|EL|LA|MI|DICHO) ("+VG+")\\b","g"))){
+      if(cerca(m.index))continue; const vp=m.index+m[0].lastIndexOf(m[1]), ty=tipo(m[1],vp); if(ty!=="A")continue;
+      if(/\b(?:NO|SIN|INTENT\w+|TRATA\w* DE|QUISIERON)\b[^.]{0,25}$/.test(t.slice(Math.max(0,m.index-40),m.index)))continue;
+      push({pos:m.index,opos:vp,verb:"SE LLEVAN OTRAS COSAS Y EL VEHICULO",type:"A",obj:m[1],attempt:false,asalto:true});
+    }
     // "se dan a la fuga con el rodado", "fugaron en el automóvil"
     for(const m of t.matchAll(new RegExp("\\b(?:FUGA\\w*|HUYE\\w*|HUYENDO|HUYERON|MARCHARSE|SE MARCHA\\w*)\\b,? (?:DEL LUGAR )?(CON|EN|A BORDO DE|A BORDO DEL) (EL |SU |MI |DICHO |DICHA |LA )?("+VG+")\\b(?: (?:DEL|DE LA) (?:DICENTE|DENUNCIANTE|VICTIMA|DEPONENTE|DAMNIFICAD[OA]))?","g"))){
       if(cerca(m.index)||neg(m.index))continue;
@@ -1361,10 +1371,10 @@ function thefts(t,M,dt){
     const cueB=/\b(?:BAJ\w+|DESCEND\w+|DESCIEND\w+) (?:DE|DEL)\b|\bLLAVES?\b|\bDAME\b|\bBAJATE\b/.test(t.slice(Math.max(0,m.index-320),m.index))&&!/\b(?:UN|UNA|OTRO|OTRA) $/.test(m[0].slice(0,m[0].length-tail.length-m[1].length));
     if(!own&&!cueB)continue;
     const autores=/\b(?:SUJETOS?|MASCULINOS?|MALVIVIENTES?|DELINCUENTES?|AUTOR(?:ES)?|NN|INDIVIDUOS?|ESTOS|ESTE|LOS MISMOS|AGRESOR(?:ES)?|LADRON(?:ES)?|CACOS?|MALHECHOR(?:ES)?)\b[^.]{0,70}$/.test(t.slice(Math.max(0,m.index-90),m.index+12));
-    push({pos:m.index,opos:m.index,verb:"HUYEN CON EL VEHICULO",type:typeAt(M,m.index,dt)==="M"?"M":"A",obj:m[1],attempt:false,asalto:true,weak:!(cueB||/SUSTRAID|VICTIMA|DENUNCIANTE|DICENTE|DAMNIFICAD|PROPIEDAD|DEPONENTE/.test(tail)||(autores&&/\bCON (?:SU|MI) /.test(m[0])))});
+    push({pos:m.index,opos:m.index,verb:"HUYEN CON EL VEHICULO",type:/^[MB]$/.test(typeAt(M,m.index,dt))?typeAt(M,m.index,dt):"A",obj:m[1],attempt:false,asalto:true,weak:!(cueB||/SUSTRAID|VICTIMA|DENUNCIANTE|DICENTE|DAMNIFICAD|PROPIEDAD|DEPONENTE/.test(tail)||(autores&&/\bCON (?:SU|MI) /.test(m[0])))});
   }
   for(const m of t.matchAll(new RegExp("\\b(?:CONDUC\\w+|MANEJ\\w+|SE LLEV\\w+|LLEVANDOSE|RETIR\\w+ CON|ARRANC\\w+|ALEJ\\w+ CON) (?:EL|LA|SU|DICHO|DICHA) ("+VEHA+") (?:DEL DENUNCIANTE|DE LA DENUNCIANTE|DE LA VICTIMA|DEL DICENTE|DE LA DICENTE|DEL DEPONENTE|DE LA DEPONENTE|DEL DAMNIFICADO|DE LA DAMNIFICADA)\\b","g"))){
-    push({pos:m.index,opos:m.index,verb:"SE LLEVAN EL VEHICULO DE LA VICTIMA",type:typeAt(M,m.index,dt)==="M"?"M":"A",obj:m[1],attempt:false,asalto:true});
+    push({pos:m.index,opos:m.index,verb:"SE LLEVAN EL VEHICULO DE LA VICTIMA",type:/^[MB]$/.test(typeAt(M,m.index,dt))?typeAt(M,m.index,dt):"A",obj:m[1],attempt:false,asalto:true});
   }
   for(const m of t.matchAll(new RegExp("\\b(?:ADEMAS|APARTE) DE(?:L| SU| LA| EL)? ?("+VEHA+")\\b[^.]{0,90}\\b(?:SUSTRA\\w+|ROB\\w+|LLEV\\w+)","g"))){
     if(/^MISM/.test(m[1]))continue;
@@ -1398,7 +1408,7 @@ function pedidos(t,M,dt){
     if(/^[^.]{0,40}\b(?:SIN EFECTO|DE BAJA|DADO DE BAJA)\b/.test(after))continue;
     const bs=before.slice(before.lastIndexOf(". ")+1);
     const has=/\b(?:POSEE|POSEIA|PESA|PESABA|RECAE|RECAIA|ARROJ\w+|REGISTRA\w*|TIENE|TENIA|PRESENTA|CUENTA CON|INFORMA\w*|RESULTADO)\b/.test(bs)||/^ (?:ACTIVO|VIGENTE)/.test(after)||/ACTIVO|ALERTA|IDENTIFICACION|ADELANTO$|POR (?:ROBO|HURTO|SUSTRACCION)$/.test(m[0]);
-    const isNew=/\b(?:SOLICIT\w+|CURS(?:A|AN|E|O|ARON)|INSERT\w+|IMPART\w+|LIBR\w+|CARG(?:A|AN|O|UE)|GENER\w+|DISPON\w+|DISPUS\w+|ORDEN\w+|DA(?:R|N|NDO)? DE ALTA|ALTA DE(?:L)?|EFECTU\w+|REALIZ\w+|CONFECCION\w+|DAR|DAMOS|DIMOS|DANDO|EMIT\w+|IRRADI\w+|MODUL\w+)\b[^.]{0,45}$/.test(bs)&&!/\b(?:POSEE|POSEIA|PESA|RECAE|REGISTRA)/.test(bs);
+    const isNew=/\b(?:SOLICIT\w+|CURS(?:A|AN|E|O|ARON)|INSERT\w+|IMPART\w+|LIBR\w+|CARG(?:A|AN|O|UE)|GENER\w+|DISPON\w+|DISPUS\w+|ORDEN\w+|DA(?:R|N|NDO)? DE ALTA|ALTA DE(?:L)?|EFECTU\w+|REALIZ\w+|CONFECCION\w+|DAR|DAMOS|DIMOS|DANDO|EMIT\w+|IRRADI\w+|MODUL\w+|DA|DIO|BRIND\w+|PAS(?:A|O|AR|AN))\b[^.]{0,45}$/.test(bs)&&!/\b(?:POSEE|POSEIA|PESA|RECAE|REGISTRA)/.test(bs);
     if(isNew&&!/^ (?:ACTIVO|VIGENTE)/.test(after)){out.push({pos:p,nuevo:true});continue}
     if(isImp&&!/\b(?:POSEE|POSEIA|RECAE|PESA|REGISTRA\w*|TIENE|PRESENTA|ARROJ\w+)\b/.test(bs))continue;
     if(!has)continue;
@@ -1417,6 +1427,13 @@ function founds(t,M,dt){
     const p=m.index, before=t.slice(Math.max(0,p-40),p);
     if(/\b(?:NO|SIN|NI|AUN NO|NEGATIVO)\b[^.]{0,26}$/.test(before))continue;
     if(/\b(?:A FIN DE|PARA|FINES DE|PROCURA\w*|INTENTA\w*)\b[^.]{0,22}$/.test(before))continue;
+    // V16.3: falsos hallazgos frecuentes
+    const w0=m[0], aft=t.slice(p+w0.length,p+w0.length+40);
+    if(/^SECUESTRO/.test(w0)&&!/LEVANTA\w*[^.]{0,20}$/.test(before)&&/\b(?:INSERT\w*|INSERCION|PEDIDO(?: DE)?|ADELANTO(?: DE)?|SOLICIT\w+ (?:EL |DE )?PEDIDO(?: DE)?)\s*(?:EL |DE |UN |DEL )?$/.test(before))continue;   // "se inserte el secuestro": es la orden de buscarlo
+    if(/^ENCONTRAD/.test(w0)&&/\bSE $/.test(before))continue;                     // "se encontrada una cartera" (por "se encontraba")
+    if(/^APARECI/.test(w0)&&(/^ (?:CAMINANDO|CORRIENDO|A PIE|DE LA NADA|UNA? |DOS |TRES |OTR[OA]S? |EL SUJETO|LA FEMENINA|UN MASCULINO)/.test(aft)||/\b(?:MASCULINO|SUJETO|PERSONA|HOMBRE|FEMENINA|JOVEN|INDIVIDUO|MALVIVIENTE)S? (?:QUE )?$/.test(before)))continue;
+    if(/^HABID[OA]$/.test(w0)&&/^ [A-Z]+(?:ADO|IDO|ADA|IDA)\b/.test(aft)&&!/^ (?:ESTADO|ABANDONADO)/.test(aft))continue;   // "lo habida dejado" (por "había")
+    if(/^HALLAD[OA]S$/.test(w0)&&/\b(?:VARIOS|OTROS|ALGUNOS|MUCHOS|OTRAS|VARIAS)\b[^.]{0,40}$/.test(before))continue;   // "varios de ellos fueron hallados"
     // debe referirse a un vehículo cercano
     let near=null;
     for(const v of M){const d=v.pos<p?p-v.end:v.pos-(p+m[0].length);if(d<=120&&(!near||d<near.d))near={d,v}}
@@ -1490,6 +1507,11 @@ function limpiaModelo(x){
   x=(x||"").replace(/^[\s,:;.\-]+/,"").replace(/^(?:MODELO|TIPO|LINEA)[\s:,]+/,"");
   const c=x.search(STOP_MOD); if(c>=0)x=x.slice(0,c);
   x=x.replace(/[,;:(\/].*$/,"").replace(/\.\s.*$/,"").replace(/\s\d\.\d.*$/,"").trim().split(/\s+/).slice(0,3).join(" ");
+  // V16: se corta en colores o palabras que no son parte del modelo ("C3 COLO BLANCO", "WEEKEND FUE HALLADO", "KARCHER NO RECUERDA")
+  x=x.replace(/^(?:MODELO|MARCA)\s+/,"").replace(/(?<=\d)COLOR\b/,"");
+  const tk=x.split(/\s+/), cut=tk.findIndex(w=>/^(?:BLANC[OA]S?|NEGR[OA]S?|GRIS|ROJ[OA]S?|AZUL(?:ES)?|VERDES?|PLATA|PLATEAD[OA]|BORDO|BEIGE|DORAD[OA]|CHAMPAGNE|MARRON|AMARILL[OA]|CELESTE|NARANJA|COLO|COLOS|COLOR|FUE|FUERON|HALLAD[OA]|NO|RECUERDA|DESCONOCE|IDENTIFICAD[OA]|INCAUT\w*|SECUESTR\w*|SIENDO|ESTE|ESTA|PATENT\w*|PTTE)$/.test(w));
+  if(cut>=0)x=tk.slice(0,cut).join(" ");
+  if(/^(?:UN|UNA|UNO DE|EQUIPO|MODELO|MARCA|VEHICULO|RODADO|AUTOMOVIL|AUTO|CAMIONETA|POWER|SIMILAR|PARECE|INCAUT\w*)\b/.test(x)&&!/^UNO\b/.test(x))x="";
   return /^[A-Z0-9]/.test(x)&&x.length<=28?x.replace(/[.\-]+$/,""):"";
 }
 function marcasEnTexto(t){
@@ -1537,7 +1559,9 @@ function idsEnTexto(t){
   for(const m of T.matchAll(/\bMOTOR(?:ES)?\b/g)){const v=codigoEn(T.slice(m.index+m[0].length,m.index+m[0].length+70),5); if(v)out.push({k:"M",i:m.index,e:m.index+m[0].length,v})}
   for(const m of T.matchAll(/\b(?:CHASIS|CHASSIS|CHASI|CHASIZ|VIN|CUADRO|CARROCERIA)\b/g)){const v=codigoEn(T.slice(m.index+m[0].length,m.index+m[0].length+70),7); if(v)out.push({k:"C",i:m.index,e:m.index+m[0].length,v})}
   for(const m of T.matchAll(/\b(?=[A-Z0-9]{17}\b)(?=(?:[A-Z]*\d){5})[A-HJ-NPR-Z0-9]{17}\b/g)){if(!out.some(x=>x.k==="C"&&x.v===m[0]))out.push({k:"C",i:m.index,e:m.index+17,v:m[0],suelto:true})}
-  return out.sort((a,b)=>a.i-b.i);
+  // V16.2: se descartan los números de relleno ("AAA123", "111111111", "000000")
+  const relleno=v=>/^(?:AAA\d{3}|ABC123|AA000AA|AA123AA|XXX\d{3})$/.test(v)||/^(.)\1+$/.test(v.replace(/\D/g,"").length>=6?v.replace(/\D/g,""):"x1")||/^(?:0+|1234567\d*|123456)$/.test(v);
+  return out.filter(x=>x.k==="B"||!relleno(x.v)).sort((a,b)=>a.i-b.i);
 }
 // Agrupa los identificadores en "fichas" de vehículo (lo que está escrito junto describe al mismo vehículo)
 function fichasVehiculo(t){
@@ -1604,6 +1628,41 @@ function estiloDe(t){
 }
 function auditar(row,opts){
   const r=auditar0(row,opts);
+  // V16.2/16.4: número de motor o de chasis con formato de moto (motor 1P52FMH, 152FMH, 162FMJ...; chasis 8CV..., 8EL..., 8CH...)
+  const motMoto=/\d{2,3}(?:FM|QM)[A-Z]/.test(r.MOTOR||""), chMoto=/^(?:8CV|8EL|8CH)/.test(r.CHASIS||"");
+  if(/^(?:SUSTRAIDO|HALLAZGO|INMEDIATO)$/.test(r.CONDICION)&&(motMoto||chMoto)){
+    const tx=norm(pie(row.relato).texto);
+    const nMoto=(tx.match(/\b(?:MOTO|MOTOS|MOTOCICLETAS?|MOTO ?VEHICULOS?|CICLOMOTOR\w*|BICICLETAS?)\b/g)||[]).length, nAuto=(tx.match(/\b(?:AUTOMOVIL\w*|AUTOS?|CAMIONETAS?|AUTOMOTOR\w*|UTILITARIO|PICK ?UP|FURGON\w*)\b/g)||[]).length;
+    const relatoMoto=nMoto>=2&&nAuto===0&&!(r.MARCA&&new RegExp("\\b"+r.MARCA.split(" ")[0]+"\\b").test(tx));
+    const autoClaro=/^(?:[A-Z]{3}\d{3}|[A-Z]{2}\d{3}[A-Z]{2})$/.test(r.PATENTE||"")&&r.MARCA&&new RegExp("^(?:"+MARCAS_AUTO_RX+")").test(r.MARCA)&&!relatoMoto;
+    if(autoClaro){if(motMoto)r.MOTOR=""; if(chMoto)r.CHASIS="";}      // el auto está bien identificado: ese número es de una moto que también aparece en el hecho
+    else{
+      const q=Object.assign({},r,{CONDICION:"REVISION HUMANA",CONFIANZA:"BAJA",TIPO_VEHICULO:"INDETERMINADO",MOTIVO:"El número de "+(motMoto?"motor ("+r.MOTOR+")":"chasis ("+r.CHASIS+")")+" tiene el formato de los de moto"+(relatoMoto?" y el relato habla de una moto":"")+"; verificar si el vehículo es un auto o una moto. "+r.MOTIVO});
+      q.CONTROL_CARGA=controlCarga(row.caratula||row.calificaciones,q);
+      return q;
+    }
+  }
+  // V16.4: una "sustracción" dentro de una denuncia por drogas suele ser un llamado al 911 que dice "entran autos robados": va a revisión
+  if(r.CONDICION==="SUSTRAIDO"&&/ESTUPEFACIENTES|LEY 23\.?737/.test(norm(row.calificaciones||""))&&!/SUSTRA|ROBO|HURTO/.test(norm(row.calificaciones||""))){
+    const q=Object.assign({},r,{CONDICION:"REVISION HUMANA",CONFIANZA:"BAJA",MOTIVO:"La denuncia es por drogas; la sustracción del vehículo puede ser una mención al pasar (\"entran autos robados\"). Verificar. "+r.MOTIVO});
+    q.CONTROL_CARGA=controlCarga(row.caratula||row.calificaciones,q);
+    return q;
+  }
+  // V16: un "automotor" del que el relato no da ningún dato (ni marca, ni modelo, ni patente, ni motor, ni chasis) casi siempre es un error
+  // (bicicleta, moto, llamado al 911 sobre "autos robados", estafa, robo de cosas). En los meses de prueba, 9 de cada 10 no eran autos: va a revisión.
+  if(/^(?:SUSTRAIDO|HALLAZGO|INMEDIATO)$/.test(r.CONDICION)&&!r.PATENTE&&!r.MOTOR&&!r.CHASIS&&!r.MARCA&&!r.MODELO){
+    const nom={SUSTRAIDO:"sustraído",HALLAZGO:"hallazgo",INMEDIATO:"inmediato"}[r.CONDICION];
+    const q=Object.assign({},r,{CONDICION:"REVISION HUMANA",CONFIANZA:"BAJA",MOTIVO:"Parece un automotor "+nom+", pero el relato no da ningún dato del vehículo (marca, modelo, patente, motor ni chasis); verificar que sea un auto. "+r.MOTIVO});
+    q.CONTROL_CARGA=controlCarga(row.caratula||row.calificaciones,q);
+    return q;
+  }
+  // V16: una sustracción denunciada sin patente, motor ni chasis: el dueño de un auto casi siempre da la patente.
+  // En las pruebas, 3 de cada 4 no eran autos (robo de cosas del interior, generadores, motos, llamados al 911): va a revisión.
+  if(r.CONDICION==="SUSTRAIDO"&&!r.PATENTE&&!r.MOTOR&&!r.CHASIS){
+    const q=Object.assign({},r,{CONDICION:"REVISION HUMANA",CONFIANZA:"BAJA",MOTIVO:"Parece la sustracción de un automotor"+(r.MARCA?" ("+[r.MARCA,r.MODELO].filter(Boolean).join(" ")+")":"")+", pero el relato no da patente, motor ni chasis; verificar que se hayan llevado el vehículo y no cosas de su interior. "+r.MOTIVO});
+    q.CONTROL_CARGA=controlCarga(row.caratula||row.calificaciones,q);
+    return q;
+  }
   if(r.CONDICION!=="DESCARTADO"||!r.MOTIVO||/^Sin relato|no menciona veh/.test(r.MOTIVO))return r;
   // Red de seguridad: lo cargado como sustracción/hallazgo de automotor nunca se descarta en silencio si el relato nombra un automotor
   const cg=norm((row.caratula||"")+" ; "+(row.calificaciones||""));
@@ -1637,6 +1696,29 @@ function auditar0(row,opts){
   if(!t&&!P.veh.length)return R("DESCARTADO","ALTA","Sin relato.");
   const M=mentions(t), dt=docType(M), estilo=estiloDe(t);
   const TH=thefts(t,M,dt), PE=pedidos(t,M,dt), FO=founds(t,M,dt);
+  // V16.2: pedido de secuestro consultado "sobre el motovehículo": es de la moto aunque el relato nombre autos en otro lado
+  for(const p of PE){
+    if(p.type!=="A")continue;
+    const w=t.slice(Math.max(0,p.pos-120),p.pos);
+    if(/\b(?:MOTO ?VEHICULO|MOTOCICLETA|MOTO|CICLOMOTOR|BICICLETA)\b[^.]{0,100}$/.test(w)&&!/\b(?:AUTOMOVIL|AUTO|CAMIONETA|AUTOMOTOR|UTILITARIO|PICK ?UP|FURGON)\b[^.]{0,100}$/.test(w))p.type=/BICICLETA[^.]{0,100}$/.test(w)?"B":"M";
+  }
+  // V16: si el relato cuenta el robo de una bicicleta o moto, las frases genéricas ("se da a la fuga con el rodado / con el mismo",
+  // "ya no estaba") se refieren a ese mismo vehículo, salvo que cerca se nombre un auto de forma explícita
+  {
+    const RX_OTRO=/\b(?:BICI\w*|MOUNTAIN ?BIKE|MONOPATIN\w*|MOTO\w*|CICLOMOTOR\w*|CUATRICICLO\w*|SCOOTER)\b/;
+    const otro=TH.filter(x=>(x.type==="M"||x.type==="B")&&!x.attempt&&(RX_OTRO.test(String(x.obj||""))||RX_OTRO.test(t.slice(Math.max(0,x.pos-40),x.pos+25))));
+    if(otro.length){
+      const RX_CAR=new RegExp("\\b(?:AUTOMOVIL(?:ES)?|AUTOS?|CAMIONETAS?|AUTOMOTOR(?:ES)?|UTILITARIO|PICK ?UP|FURGON|FURGONETA|CAMION|SEDAN|"+MARCAS_AUTO_RX+")\\b");
+      const generico=x=>x.absence||/^(?:RODADO|MISM[OA]|VEHICULO|UNIDAD|EL MISMO|LA MISMA)?$/.test(String(x.obj||"").trim());
+      for(const x of TH){
+        if(x.type!=="A"||!generico(x))continue;
+        if(RX_CAR.test(t.slice(Math.max(0,x.pos-160),x.pos+120)))continue;
+        const cerca=otro.reduce((a,b)=>Math.abs(b.pos-x.pos)<Math.abs(a.pos-x.pos)?b:a);
+        if(Math.abs(cerca.pos-x.pos)>250&&typeAt(M,x.pos,dt)==="A")continue;   // "le robaron la camioneta ... además una bicicleta"
+        x.type=cerca.type; x.reTipo=true;
+      }
+    }
+  }
   const isA=x=>x.type==="A";
   const pedA=PE.filter(p=>!p.nuevo&&!p.noRobo), pedNoRobo=PE.filter(p=>!p.nuevo&&p.noRobo&&p.type==="A"), pedAuto=pedA.filter(isA), pedOtro=pedA.filter(p=>p.type==="M"||p.type==="B"), pedGen=pedA.filter(p=>p.type==="G");
   const thAuto=TH.filter(x=>isA(x)&&!x.attempt), thAutoAtt=TH.filter(x=>isA(x)&&x.attempt), thGen=TH.filter(x=>x.type==="G"&&!x.attempt), thOtro=TH.filter(x=>(x.type==="M"||x.type==="B")&&!x.attempt);
@@ -1787,7 +1869,7 @@ function filaHermes(x){
   return {patente:x.res.PATENTE||"",nro_registro:g(x.r,["nro_registro"]),partido_hecho:g(x.r,["partido_hecho","analisis_partido"]),localidad_hecho:g(x.r,["localidad_hecho","analisis_localidad"]),
     condicion:est,marca,modelo:x.res.MODELO||"",chasis:x.res.CHASIS||"",motor:x.res.MOTOR||"",
     fecha_inicio_hecho:fechaISO(g(x.r,["fecha_inicio_hecho","analisis_fecha_hecho"])||g(x.r,["fecha_carga"])),hora_inicio_hecho:horaHMS(g(x.r,["hora_inicio_hecho","analisis_hora_hecho"])),
-    analisis_coordenadas:(x._co=coordenadas(x.r,g)).v,relato:rel,analisis_caratula:g(x.r,["analisis_caratula"]),analisis_modalidad:g(x.r,["analisis_modalidad"]),jurisdiccion:g(x.r,["analisis_jurisdiccion","jurisdiccion","dependencia"])};
+    analisis_coordenadas:(x._co=coordenadas(x.r,g)).v,relato:rel,analisis_caratula:g(x.r,["analisis_caratula"])||g(x.r,["calificaciones"]),analisis_modalidad:g(x.r,["analisis_modalidad"]),jurisdiccion:g(x.r,["analisis_jurisdiccion","jurisdiccion","dependencia"])};
 }
 const BASE=["delito_id","nro_registro","ipp","fecha_carga","hora_carga","dependencia","fecha_inicio_hecho","hora_inicio_hecho","partido_hecho","localidad_hecho","latitud","longitud","calle","altura","entre","calificaciones","relato"];
 const AUTO=["SUSTRAIDO","HALLAZGO","INMEDIATO"], ORDEN=["SUSTRAIDO","HALLAZGO","INMEDIATO","REVISION HUMANA","DESCARTADO"];
