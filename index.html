@@ -804,7 +804,7 @@ details p{line-height:1.55;color:#30445e}
         <p class="lead">Clasificación de robos y hallazgos de automotores · Cassandra → Quirón</p>
       </div>
     </div>
-    <div class="version">V16.4</div>
+    <div class="version">V16.5</div>
   </div>
 </header>
 
@@ -977,8 +977,8 @@ const W_BICI="BICICLETAS?|BICI|MOUNTAIN BIKE|MONOPATIN|RODADO (?:1[2-9]|2[0-9])(
 const W_GEN="VEHICULOS?|RODADOS?|(?<!(?:TITULO|SEGURO|CEDULA|REGISTRO|PARQUE|VERIFICACION|TARJETA|IDENTIFICACION|IDENTIFICACION DEL|DOCUMENTACION|DOCUMENTACION DEL|TITULO DEL|CEDULA DEL|SEGURO DEL) )AUTOMOTOR(?:ES)?|UNIDAD(?! (?:FUNCIONAL|POLICIAL|PENAL|DE |CARCELARIA|SANITARIA|IDENTIFICABLE|FISCAL|N\\b|NRO|REGIONAL|TACTICA|OPERATIVA))";
 const BR_AUTO="VOLKSWAGEN|VOLKSWAGUEN|VOLKWAGEN|WOLKSWAGEN|VOLSKWAGEN|VOLSWAGEN|VOLWAGEN|WOLSVAGEN|VOLKSVAGEN|VW|CHEVROLETT|CHEBROLET|CHEVROLE|PEUGOT|PEUGEOUT|PEUYOT|PEUGEOTT|RENAUL|RENOL|TOYOTTA|NISAN|HIUNDAY|HYUNDAY|HIUNDAI|CITROEM|RENAULT|FIAT|PEUGEOT|CHEVROLET|FORD|TOYOTA|CITROEN|NISSAN|JEEP|HYUNDAI|KIA|AUDI|BMW|MERCEDE[SZ][ -]BENZ|DODGE|CHERY|MITSUBISHI|IVECO|SCANIA|CHRYSLER|ISUZU|DAEWOO|VOLVO|SUBARU|ALFA ROMEO";
 const MD_AUTO="KANGOO|AMAROK|HILUX|ECOSPORT|ECO SPORT|SANDERO|DUSTER|CRONOS|SIENA|PALIO|CORSA|ONIX|PRISMA|ETIOS|COROLLA|SURAN|VENTO|SAVEIRO|PARTNER|BERLINGO|RANGER|FIORINO|STRADA|TAOS|KARDIAN|KWID|LOGAN|MEGANE|FLUENCE|CELTA|CRUZE|TRACKER|AGILE|MERIVA|SYMBOL|CLIO|TIGUAN|TCROSS|T-CROSS|NIVUS|VIRTUS|VOYAGE|RENEGADE|KICKS|FRONTIER|SPRINTER|COURIER|ESCORT|FIESTA|MONDEO|BORA|TRAFIC|DUCATO|S10|S-10|OROCH|STEPWAY|CAPTUR|ARGO|MOBI|YARIS|SW4|VERSA|SENTRA|C3|C4|AIRCROSS|208|207|206|308|307|2008|3008|408|504";
-const BR_MOTO="GILERA|ZANELLA|MOTOMEL|CORVEN|BAJAJ|BENELLI|YAMAHA|KAWASAKI|KTM|MONDIAL|KELLER|GUERRERO|BRAVA|JAWA|KYMCO|ROYAL ENFIELD|DUCATI|VOGE|CFMOTO|APPIA|OKINOI";
-const MD_MOTO="ROUSER|ROUSSER|DOMINAR|TWISTER|TORNADO|SMASH|CRYPTON|TRIAX|SKUA|WAVE|TITAN|BIZ|BLITZ|ENERGY|STORM|YBR ?\\d*|XR ?\\d{3}\\w*|CG ?\\d{3}|TRK ?\\d{3}|XTZ ?\\d*|FZ ?\\d*|NMAX|PCX|DUKE|STRATO|TNT ?\\d*";
+const BR_MOTO="GILERA|ZANELLA|MOTOMEL|CORVEN|BAJAJ|BENELLI|YAMAHA|KAWASAKI|KTM|MONDIAL|KELLER|GUERRERO|BRAVA|JAWA|KYMCO|ROYAL ENFIELD|DUCATI|VOGE|CFMOTO|APPIA|OKINOI|HERO|TVS|SIAM|RVM|BETA|HUSQVARNA|HARLEY DAVIDSON|HARLEY|TRIUMPH|SUZUKI GSX|MOTOMEL";
+const MD_MOTO="XPULSE|PULSAR|NX4|FALCON NX|CB ?\\d{3}\\w*|GS ?\\d{3,4}\\w*|F ?[6789]\\d0 ?(?:R|GS|ST|GT)\\b|R ?1[12]\\d0 ?\\w*|S ?1000 ?RR?|G ?310 ?\\w*|ROUSER|ROUSSER|DOMINAR|TWISTER|TORNADO|SMASH|CRYPTON|TRIAX|SKUA|WAVE|TITAN|BIZ|BLITZ|ENERGY|STORM|YBR ?\\d*|XR ?\\d{3}\\w*|CG ?\\d{3}|TRK ?\\d{3}|XTZ ?\\d*|FZ ?\\d*|NMAX|PCX|DUKE|STRATO|TNT ?\\d*";
 const PARTE="RUEDAS?|CUBIERTAS?|NEUMATICOS?|AUXILIO|BATERIAS?|ESTEREO|CHAPAS? PATENTES?|LLANTAS?|OPTICAS?|ESPEJOS?|FAROS?|PARAGOLPES?|CATALIZADOR|AUTOPARTES?|TAZAS?|COMPUTADORA DE(?:L)? (?:MOTOR|VEHICULO|RODADO|AUTO)|LLAVES?(?: ORIGINAL(?:ES)?)?(?: DE (?:IGNICION|AGNICION|ENCENDIDO))?";
 const PERT="PERTENENCIAS?|PERTENECIAS|ELEMENTOS?|EFECTOS|MORRAL|BOLSOS?|MOCHILAS?|CARTERAS?|BILLETERAS?|CELULAR(?:ES)?|TELEFONOS?|IPHONE|HERRAMIENTAS?|DOCUMENTACION|DOCUMENTOS?|DINERO|EFECTIVO|PESOS|MERCADERIA|GARRAFAS?|TELEVISOR(?:ES)?|NOTEBOOKS?|TABLETS?|COMPUTADORAS?|JOYAS?|ALHAJAS|CERVEZAS?|SILLAS?|ROPA|ZAPATILLAS|CAMPERA|RELOJ|ARMA|PISTOLA|CADENA|ANILLOS?|TARJETAS?|CASCO|DISPOSITIVOS?|PARLANTE|COMERCIO|LOCAL|FINCA|DOMICILIO|VIVIENDA|CASA";
 
@@ -1629,7 +1629,7 @@ function estiloDe(t){
 function auditar(row,opts){
   const r=auditar0(row,opts);
   // V16.2/16.4: número de motor o de chasis con formato de moto (motor 1P52FMH, 152FMH, 162FMJ...; chasis 8CV..., 8EL..., 8CH...)
-  const motMoto=/\d{2,3}(?:FM|QM)[A-Z]/.test(r.MOTOR||""), chMoto=/^(?:8CV|8EL|8CH)/.test(r.CHASIS||"");
+  const motMoto=/\d{2,3}(?:FM|QM)[A-Z]/.test(r.MOTOR||""), chMoto=/^(?:8CV|8EL|8CH|8CX|9C2|9C6)/.test(r.CHASIS||"");
   if(/^(?:SUSTRAIDO|HALLAZGO|INMEDIATO)$/.test(r.CONDICION)&&(motMoto||chMoto)){
     const tx=norm(pie(row.relato).texto);
     const nMoto=(tx.match(/\b(?:MOTO|MOTOS|MOTOCICLETAS?|MOTO ?VEHICULOS?|CICLOMOTOR\w*|BICICLETAS?)\b/g)||[]).length, nAuto=(tx.match(/\b(?:AUTOMOVIL\w*|AUTOS?|CAMIONETAS?|AUTOMOTOR\w*|UTILITARIO|PICK ?UP|FURGON\w*)\b/g)||[]).length;
@@ -1696,6 +1696,12 @@ function auditar0(row,opts){
   if(!t&&!P.veh.length)return R("DESCARTADO","ALTA","Sin relato.");
   const M=mentions(t), dt=docType(M), estilo=estiloDe(t);
   const TH=thefts(t,M,dt), PE=pedidos(t,M,dt), FO=founds(t,M,dt);
+  // V16.5: "el otro juego (de llaves) lo sustrajeron": el pronombre se refiere a un objeto, no al vehículo
+  for(const x of TH){
+    if(x.type!=="A")continue;
+    const w=t.slice(Math.max(0,x.pos-45),x.pos+22);
+    if(/\b(?:JUEGOS?|LLAVES?|CELULAR(?:ES)?|TELEFONOS?|BILLETERAS?|MOCHILAS?|CARTERAS?|DINERO|DOCUMENTACION|CASCOS?|BOLSOS?|CAMPERAS?|ANTEOJOS)\b(?:(?!\b(?:VEHICULO|RODADO|AUTO\w*|CAMIONETA|UNIDAD)\b)[^.,]){0,25}\b(?:SE |ME |LE )?(?:LO|LA|LOS|LAS) (?:HA\w* |HABIAN |HABRIAN )?(?:SUSTRA|ROB|LLEV|HURT)/.test(w)&&!/^[^.]{0,40}\bCON (?:EL|LA|SU) (?:AUTO\w*|VEHICULO|RODADO|CAMIONETA|UNIDAD)\b/.test(t.slice(x.pos,x.pos+70))){x.type="X";x.obj="LLAVES U OTRO OBJETO";}
+  }
   // V16.2: pedido de secuestro consultado "sobre el motovehículo": es de la moto aunque el relato nombre autos en otro lado
   for(const p of PE){
     if(p.type!=="A")continue;
@@ -1781,6 +1787,13 @@ function auditar0(row,opts){
   if(aband&&!pedOtro.length&&!thOtro.length&&!mS.length&&estilo==="ACTA")return R(opts.abandonoEsHallazgo?"HALLAZGO":"REVISION HUMANA","BAJA","Automotor hallado o abandonado, sin pedido de secuestro ni sustracción acreditada en el relato.",aband.pos);
   if(thGen.length&&!thOtro.length&&!mS.length)return R("REVISION HUMANA","BAJA","Sustracción de un vehículo sin datos para saber si es auto o moto.",thGen[0].pos,{TIPO_VEHICULO:"INDETERMINADO"});
 
+  // V16.5: "le dispararon para robarle el vehículo" y después el relato cuenta que el rodado apareció: se lo llevaron (inmediato)
+  {
+    const intento=TH.find(x=>x.attempt&&(x.type==="A"||x.type==="G")&&/\bPARA (?:LUEGO )?$/.test(t.slice(Math.max(0,x.pos-12),x.pos))&&/^(?:ROB|SUSTRA|LLEV|QUIT|APODER)/.test(x.verb||""));
+    const fx=intento&&FO.find(f=>(f.type==="A"||f.type==="G")&&f.fuerte&&f.pos>intento.pos);
+    if(intento&&fx&&!thOtro.length&&!mS.length&&!foOtro.length&&!/\b(?:NO (?:LOGRA\w*|PUDIERON|PUDO|CONSIGUI\w*)|TENTATIVA|INTENT\w+ (?:DE )?(?:ROBAR|SUSTRAER|LLEVAR))\b/.test(t))
+      return R("INMEDIATO","MEDIA","Le robaron el vehículo (\""+intento.verb.toLowerCase()+"\") y el mismo relato cuenta que después apareció.",intento.pos,intento.type==="G"?{TIPO_VEHICULO:"AUTOMOTOR"}:null);
+  }
   // ---- E) Descartes con motivo
   if(mS.length||pedOtro.length||thOtro.length||(foOtro.length&&!foAuto.length)){
     const k=mS.length?"M":(pedOtro[0]||thOtro[0]||foOtro[0]).type;
