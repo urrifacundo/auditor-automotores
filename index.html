@@ -1992,7 +1992,12 @@ $("d6").onclick=()=>{
   $("status").textContent="⬇ Excel para Hermes: "+filas.length.toLocaleString("es-AR")+" automotores."+(sinPat?" Atención: "+sinPat.toLocaleString("es-AR")+" sin patente (Hermes la pide como obligatoria).":"")+(sinFecha?" "+sinFecha+" sin fecha del hecho.":"")+(coCrudo?" Coordenadas completadas con latitud/longitud del crudo: "+coCrudo.toLocaleString("es-AR")+".":"")+(coNada?" Sin coordenadas válidas: "+coNada+".":"");
 };
 $("d2").onclick=()=>bajar(stem()+" - REVISION HUMANA.xlsx",[["REVISION HUMANA",out.filter(x=>x.res.CONDICION==="REVISION HUMANA").map(filaRev)],["DESC. CASSANDRA CON AUTO",descCas.filter(x=>x.veAuto).map(x=>Object.assign(filaRev(x),{OPINION_AUDITOR:x.res.OPINION_AUDITOR}))]]);
-$("d3").onclick=()=>bajar(stem()+" - CONTROL DE CARGA.xlsx",[["MAL CARGADOS",out.filter(esMal).map(filaCtl)],["CALIFICACION GENERICA",out.filter(x=>/^CALIFICACION GENERICA/.test(x.res.CONTROL_CARGA||"")).map(filaCtl)]]);
+$("d3").onclick=()=>{
+  // la hoja de calificación genérica sólo tiene sentido si el Excel trae la carátula del analista (Quirón)
+  const hayCaratula=out.some(x=>String(getter(x.r)(x.r,["analisis_caratula"])||"").trim());
+  const gen=hayCaratula?out.filter(x=>/^CALIFICACION GENERICA/.test(x.res.CONTROL_CARGA||"")).map(filaCtl):[{AVISO:"Este Excel no trae carátula del analista (analisis_caratula), así que no hay calificación de Quirón para controlar."}];
+  bajar(stem()+" - CONTROL DE CARGA.xlsx",[["MAL CARGADOS",out.filter(esMal).map(filaCtl)],["CALIFICACION GENERICA",gen]]);
+};
 $("d4").onclick=()=>{
   const c={}; out.forEach(x=>{const k=x.res.CONDICION+"|"+x.res.CONFIANZA;c[k]=(c[k]||0)+1});
   bajar(stem()+" - DETALLE.xlsx",[["DETALLE",out.map(filaCtl)],["DESCARTADOS EN CASSANDRA",descCas.map(x=>Object.assign(filaCtl(x),{OPINION_AUDITOR:x.res.OPINION_AUDITOR}))],["RESUMEN",Object.entries(c).sort().map(([k,v])=>({CONDICION:k.split("|")[0],CONFIANZA:k.split("|")[1],CANTIDAD:v}))]]);
